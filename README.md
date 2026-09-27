@@ -1,0 +1,1 @@
+# Diseño y evaluación de una aplicación DTN-native para registro y sincronización de telemetría en un escenario Marte-Tierra basado en una arquitectura de relé interplanetario
