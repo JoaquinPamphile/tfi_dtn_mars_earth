@@ -38,7 +38,7 @@ class FixedBatchSyncStrategy:
         eligible_events: Sequence[TelemetryEvent],
         context: SyncPlanningContext,
     ) -> tuple[SyncPlan, ...]:
-        # El contexto no decide la membresía ni el orden.
+        # El contexto no decide qué eventos entran ni en qué orden.
         del context
         ordered: list[TelemetryEvent] = []
         seen: set[UUID] = set()

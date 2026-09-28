@@ -1,4 +1,4 @@
-"""Unidad de sincronización y codec de su contenido lógico."""
+"""Unidad de sincronización, codec de su contenido lógico y estrategias de agrupamiento."""
 
 from core.sync.codec import (
     DEFAULT_STRATEGY_TYPE,
@@ -20,14 +20,40 @@ from core.sync.codec import (
     is_telemetry_unit,
     retry_telemetry_unit,
 )
+from core.sync.fixed_batch import FixedBatchSyncStrategy
+from core.sync.individual import IndividualSyncStrategy
+from core.sync.strategy import (
+    MAX_BATCH_SIZE_EVENTS,
+    MIN_BATCH_SIZE_EVENTS,
+    STRATEGY_TYPE_FIXED_BATCH,
+    STRATEGY_TYPE_INDIVIDUAL,
+    InvalidSyncStrategyConfigError,
+    SyncPlan,
+    SyncPlanningContext,
+    SyncStrategy,
+    UnknownSyncStrategyError,
+    create_sync_strategy,
+)
 from core.sync.unit import SyncUnit
 
 __all__ = [
     "DEFAULT_STRATEGY_TYPE",
+    "MAX_BATCH_SIZE_EVENTS",
+    "MIN_BATCH_SIZE_EVENTS",
+    "STRATEGY_TYPE_FIXED_BATCH",
+    "STRATEGY_TYPE_INDIVIDUAL",
+    "FixedBatchSyncStrategy",
+    "IndividualSyncStrategy",
+    "InvalidSyncStrategyConfigError",
+    "SyncPlan",
+    "SyncPlanningContext",
+    "SyncStrategy",
+    "SyncUnit",
+    "UnknownSyncStrategyError",
+    "create_sync_strategy",
     "KIND_APPLICATION_ACK",
     "KIND_GAP_REQUEST",
     "KIND_TELEMETRY_EVENTS",
-    "SyncUnit",
     "attempt_id_from_unit",
     "canonical_dumps",
     "decode_application_ack",

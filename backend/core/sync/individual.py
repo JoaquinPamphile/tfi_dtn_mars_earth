@@ -26,7 +26,7 @@ class IndividualSyncStrategy:
         eligible_events: Sequence[TelemetryEvent],
         context: SyncPlanningContext,
     ) -> tuple[SyncPlan, ...]:
-        # El contexto no decide la membresía ni el orden.
+        # El contexto no decide qué eventos entran ni en qué orden.
         del context
         plans: list[SyncPlan] = []
         seen: set[UUID] = set()
