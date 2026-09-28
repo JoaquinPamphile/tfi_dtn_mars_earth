@@ -1,5 +1,45 @@
-"""Unidad de sincronización, independiente del transporte."""
+"""Unidad de sincronización y codec de su contenido lógico."""
 
+from core.sync.codec import (
+    DEFAULT_STRATEGY_TYPE,
+    KIND_APPLICATION_ACK,
+    KIND_GAP_REQUEST,
+    KIND_TELEMETRY_EVENTS,
+    attempt_id_from_unit,
+    canonical_dumps,
+    decode_application_ack,
+    decode_gap_request,
+    decode_telemetry_events,
+    encode_application_ack,
+    encode_gap_request,
+    encode_telemetry_event,
+    encode_telemetry_events,
+    gap_request_attempt_number,
+    is_ack_unit,
+    is_gap_request_unit,
+    is_telemetry_unit,
+    retry_telemetry_unit,
+)
 from core.sync.unit import SyncUnit
 
-__all__ = ["SyncUnit"]
+__all__ = [
+    "DEFAULT_STRATEGY_TYPE",
+    "KIND_APPLICATION_ACK",
+    "KIND_GAP_REQUEST",
+    "KIND_TELEMETRY_EVENTS",
+    "SyncUnit",
+    "attempt_id_from_unit",
+    "canonical_dumps",
+    "decode_application_ack",
+    "decode_gap_request",
+    "decode_telemetry_events",
+    "encode_application_ack",
+    "encode_gap_request",
+    "encode_telemetry_event",
+    "encode_telemetry_events",
+    "gap_request_attempt_number",
+    "is_ack_unit",
+    "is_gap_request_unit",
+    "is_telemetry_unit",
+    "retry_telemetry_unit",
+]
