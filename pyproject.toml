@@ -1,0 +1,25 @@
+[project]
+name = "tfi-dtn-mars-earth"
+version = "0.0.0"
+description = "Aplicación y banco experimental de sincronización de telemetría DTN Marte–Tierra."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "pydantic==2.11.3",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.5",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["core*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
