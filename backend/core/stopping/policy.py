@@ -25,10 +25,9 @@ class StopPolicy(StrEnum):
     El horizonte no es un campo de esta política. Cuando el escenario lo
     declara, es un float estrictamente positivo. No hay periodo de drenaje
     aparte, ni un máximo de pasos.
-    Regla de evaluación, todavía no ejecutada: si el horizonte es ``None``,
+    Regla de evaluación, aplicada por el motor: si el horizonte es ``None``,
     se procesa hasta vaciar el scheduler aunque la política sea otra. Si la
-    política es ``UNTIL_IDLE``, también se procesa hasta vaciarlo. Recorrer
-    el scheduler queda para el motor.
+    política es ``UNTIL_IDLE``, también se procesa hasta vaciarlo.
     """
     PROFILE_HORIZON = "PROFILE_HORIZON"
     PROFILE_HORIZON_SETTLED = "PROFILE_HORIZON_SETTLED"
