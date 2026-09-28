@@ -1,1 +1,9 @@
-docs/adr/
+# Salidas de desarrollo. No son evidencia oficial.
+workspace/runs/*
+!workspace/runs/.gitkeep
+workspace/campaigns/*
+!workspace/campaigns/.gitkeep
+
+__pycache__/
+.pytest_cache/
+*.pyc

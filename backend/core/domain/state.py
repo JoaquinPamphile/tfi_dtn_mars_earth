@@ -1,0 +1,9 @@
+from enum import StrEnum
+
+class TelemetryEventState(StrEnum):
+    GENERATED = "GENERATED"
+    PERSISTED_LOCAL = "PERSISTED_LOCAL"
+    PENDING = "PENDING"
+    IN_FLIGHT = "IN_FLIGHT"
+    PERSISTED_EARTH = "PERSISTED_EARTH"
+    CONFIRMED = "CONFIRMED"
