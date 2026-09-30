@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 from uuid import UUID
+from core.domain.ack import ApplicationAck, ApplicationAckStatus
 from core.domain.attempt import SyncAttempt
 from core.domain.event import TelemetryEvent
 from core.domain.gap import MissingSequenceRange
@@ -23,7 +24,8 @@ class MarsNode:
     """Fuente de telemetría en Marte, con el estado de aplicación inyectado.
     Genera eventos, los deja pendientes y responde consultas de esa fuente.
     Un intento que ya existe se guarda tal cual llega: este nodo no lo
-    numera, no agrupa eventos en un plan y no arma una SyncUnit.
+    numera, no agrupa eventos en un plan y no arma una SyncUnit. Un ACK
+    durable confirma eventos ya aceptados; no cambia el intento.
     """
     def __init__(
         self,
@@ -199,6 +201,18 @@ class MarsNode:
     def application_status(self) -> MarsApplicationStatus:
         """Instantánea de contadores de esta fuente."""
         return self._repository.application_status(self._source_id)
+
+    def apply_application_ack(self, ack: ApplicationAck, received_at_sim: float) -> None:
+        """Confirma los eventos que el ACK durable ya aceptó en Tierra.
+
+        ``received_at_sim`` es el instante de llegada del ACK. El orden es
+        el de ``confirmed_event_ids``: primero aceptados, después duplicados.
+        Un rechazado no entra. No decodifica una SyncUnit, no cambia el
+        intento y no emite traza.
+        """
+        if ack.status is not ApplicationAckStatus.ACCEPTED:
+            raise ValueError("el ACK no representa la aceptación durable en Tierra")
+        self._repository.confirm_events(ack.confirmed_event_ids(), at_sim=received_at_sim)
 
     def record_observability_state(
         self,

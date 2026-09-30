@@ -17,6 +17,16 @@ EventHandler = Callable[[ScheduledAction], None]
 # No limita la cantidad de pasos de una corrida.
 ZERO_TIME_LOOP_THRESHOLD = 50_000
 
+# ``emit_trace`` despacha handlers solo para estos tipos. No entran al
+# scheduler. Así la observabilidad de una transmisión no depende de que
+# el nivel de traza conserve el hecho.
+_EMIT_TRACE_HANDLERS = frozenset(
+    {
+        SimulationEventType.TRANSMISSION_STARTED.value,
+        SimulationEventType.TRANSMISSION_INTERRUPTED.value,
+    }
+)
+
 # Después del horizonte, PROFILE_HORIZON_SETTLED solo ejecuta estos tipos.
 # Cualquier otro tipo posterior se quita de la cola sin despacharlo.
 _SETTLING_TYPES = frozenset(
@@ -206,11 +216,26 @@ class SimulationEngine:
         No extrae nada del scheduler. ``details`` es una copia del payload.
         ``sequence_index`` es el largo de la traza almacenada en ese momento.
         Si el nivel no conserva el tipo, la entrada se devuelve y no se guarda,
-        así que no consume un índice. No despacha handlers.
+        así que no consume un índice. No crea ni extrae una acción del
+        scheduler. ``TRANSMISSION_STARTED`` y ``TRANSMISSION_INTERRUPTED``
+        sí despachan sus handlers, con una acción en el instante actual,
+        aunque el nivel no haya guardado la entrada. El resto de los tipos
+        no despacha handlers.
         """
         if event_type.strip() == "":
             raise ValueError("event_type no debe estar vacío")
-        return self._record_trace(event_type, payload, entity_id, self.now)
+        entry = self._record_trace(event_type, payload, entity_id, self.now)
+        if event_type in _EMIT_TRACE_HANDLERS:
+            action = ScheduledAction(
+                time=self.now,
+                tie_breaker=-1,
+                event_type=event_type,
+                payload=entry.details,
+                entity_id=entity_id,
+            )
+            for handler in list(self._handlers.get(event_type, ())):
+                handler(action)
+        return entry
 
     def step(self) -> SimulationTraceEntry | None:
         """Procesa la próxima acción y devuelve su entrada de traza.
