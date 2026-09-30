@@ -97,6 +97,7 @@ class SimulationEngine:
         self._handlers: dict[str, list[EventHandler]] = {}
         self._after_action: list[EventHandler] = []
         self._actions_processed = 0
+        self._next_submission_order = 0
         self._same_time: float | None = None
         self._same_time_count = 0
 
@@ -145,6 +146,17 @@ class SimulationEngine:
     def annotate_last_trace(self, extra: dict[str, Any]) -> None:
         """Incorpora claves en los detalles del último registro almacenado."""
         self._trace_sink.annotate_last(extra)
+
+    def allocate_submission_order(self) -> int:
+        """Clave monótona para ordenar una SyncUnit en la cola de transporte.
+        Empieza en 0 y aumenta en 1 con cada llamada. El contador es del
+        motor, no de un enlace. No depende del identificador de la unidad.
+        Una llamada ya consumida no se reutiliza, tampoco si quien llama
+        rechaza después esa presentación.
+        """
+        value = self._next_submission_order
+        self._next_submission_order += 1
+        return value
 
     def schedule(
         self,
