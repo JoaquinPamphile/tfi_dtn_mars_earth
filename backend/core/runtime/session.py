@@ -1,13 +1,20 @@
 """Sincronización de aplicación sobre el transporte ya existente.
 
-Agrupa eventos elegibles con la estrategia inyectada, crea el primer
-intento y presenta la SyncUnit al hop Marte → relé. Cuando la unidad
-llega a Tierra, toma el ACK, lo codifica y lo presenta al hop Tierra →
-relé. Cuando ese ACK llega a Marte, confirma los eventos.
+Agrupa eventos elegibles con la estrategia inyectada, crea el intento y
+presenta la SyncUnit al hop Marte → relé. Cuando la unidad llega a Tierra,
+toma el ACK, lo codifica y lo presenta al hop Tierra → relé. Cuando ese
+ACK llega a Marte, confirma los eventos y cancela el timeout de ese intento.
 
-No programa un timeout de ACK, no crea un segundo intento y no pide
-reparación de huecos. Si el ACK no vuelve, el evento puede quedar
-persistido en Tierra y pendiente en Marte.
+El timeout de ACK se mide desde ``last_submitted_at_sim``: el instante en
+que la unidad terminó de salir de Marte hacia el relé. Al vencer, el intento
+pasa a ``TIMED_OUT`` y se evalúa un retry de esa misma cohorte. La
+evaluación puede ocurrir en ese instante, si el contacto Marte → relé está
+vigente, o quedar programada para el próximo contacto. Un evento generado
+después no entra en esa cohorte.
+
+No pide reparación de huecos. Si no hay un contacto de retorno, el ACK
+puede quedar en la cola del transporte y el timeout dispara el retry del
+emisor.
 """
 
 from __future__ import annotations
@@ -26,6 +33,7 @@ from core.domain.attempt import (
     sync_group_id_for,
 )
 from core.domain.event import TelemetryEvent
+from core.domain.retry import RetryPolicy
 from core.domain.state import TelemetryEventState
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
@@ -50,12 +58,17 @@ _TERMINAL_ATTEMPT = TERMINAL_ATTEMPT_STATUSES
 
 
 class TelemetrySyncSession:
-    """Une Marte, Tierra y el transporte para el primer intento de cada grupo.
+    """Une Marte, Tierra y el transporte, incluido el retry del emisor.
 
     La unidad se crea en una oportunidad de sincronización: el contacto
     Marte → relé está vigente en el plan, sea porque acaba de abrirse o
     porque apareció telemetría pendiente mientras esa ventana contiene el
     reloj. Generar un evento fuera de esa ventana no arma la unidad.
+
+    Un retry no rearma el grupo con los pendientes globales. Conserva los
+    ``event_ids`` del intento anterior, en el mismo orden, con el mismo
+    ``sync_group_id`` y la misma estrategia. El ``attempt_id`` y el
+    ``attempt_number`` son nuevos.
     """
 
     def __init__(
@@ -66,6 +79,7 @@ class TelemetrySyncSession:
         transport: EmulatedTransport,
         contact_plan: ContactPlan,
         strategy: SyncStrategy,
+        retry_policy: RetryPolicy | None = None,
     ) -> None:
         self.mars = mars
         self.earth = earth
@@ -73,6 +87,9 @@ class TelemetrySyncSession:
         self.transport = transport
         self.contact_plan = contact_plan
         self.strategy = strategy
+        self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
+        self._timeout_scheduled: set[str] = set()
+        self._retry_eval_pending: set[str] = set()
         transport.register_delivery_handler(self.handle_delivery)
         engine.register_handler(
             SimulationEventType.CONTACT_OPEN.value,
@@ -86,31 +103,33 @@ class TelemetrySyncSession:
             SimulationEventType.TRANSMISSION_COMPLETED.value,
             self._on_transmission_completed,
         )
+        engine.register_handler(
+            SimulationEventType.ACK_TIMEOUT.value,
+            self._on_ack_timeout,
+        )
+        engine.register_handler(
+            SimulationEventType.RETRY_EVALUATION.value,
+            self._on_retry_evaluation,
+        )
 
     def submit_pending(self) -> int:
         """Planifica y presenta lo elegible si el contacto Marte → relé está vigente.
 
         Devuelve cuántas unidades presentó. Cero si la ventana no contiene
-        el reloj o si no hay eventos sin intento activo.
+        el reloj o si no hay eventos sin intento activo. Una cohorte ya
+        vencida se reintenta aparte de los eventos que todavía no tuvieron
+        intento.
         """
-        if self._mars_relay_available() is None:
-            return 0
-        eligible = unique_in_order(self.mars.eligible_sync_events())
-        if not eligible:
-            return 0
-        context = SyncPlanningContext(
-            simulation_time=self.engine.now,
-            source_id=self.mars.source_id,
-        )
-        return self._execute_plans(self.strategy.plan(eligible, context))
+        return self._plan_and_submit()
 
     def handle_delivery(self, delivery: TransportDelivery) -> None:
         """Recibe una llegada que el transporte ya produjo.
 
         En Tierra persiste la telemetría, emite los hechos de esa ingesta
         y presenta el ACK al mismo transporte. En Marte, si la unidad es
-        un ACK, lo aplica y cierra el intento. Una llegada al relé no se
-        atiende aquí.
+        un ACK, lo aplica, cierra el intento vigente y cancela su timeout.
+        Una llegada al relé no se atiende aquí. Un ACK repetido no abre
+        otro retry.
         """
         if delivery.event_type == SimulationEventType.ARRIVED_AT_EARTH_TRANSPORT.value:
             self._deliver_to_earth(delivery)
@@ -129,6 +148,180 @@ class TelemetrySyncSession:
 
     def _on_transmission_completed(self, action: ScheduledAction) -> None:
         self._observe_first_hop_complete(action.payload, action.time)
+
+    def _on_ack_timeout(self, action: ScheduledAction) -> None:
+        """Vence la espera de ACK de un intento y, si corresponde, ofrece el retry.
+
+        Un intento ya terminal no se toca. Si algún evento de la cohorte ya
+        está confirmado, el intento pasa a ``ACKNOWLEDGED`` y no hay retry.
+        Si la unidad de ese intento todavía sale de Marte, la acción no hace
+        nada más: no reprograma el timeout.
+        """
+        attempt_id = str(action.payload.get("attempt_id", ""))
+        self._timeout_scheduled.discard(attempt_id)
+        attempt = self.mars.get_sync_attempt(attempt_id)
+        if attempt is None:
+            return
+        if attempt.status in _TERMINAL_ATTEMPT:
+            return
+        if attempt.status not in {
+            SyncAttemptStatus.ACK_PENDING,
+            SyncAttemptStatus.IN_FLIGHT,
+            SyncAttemptStatus.DELIVERED_TO_EARTH,
+        }:
+            return
+        confirmed = False
+        for event_id in attempt.event_ids:
+            sync = self.mars.sync_state(event_id)
+            if sync is not None and sync.state is TelemetryEventState.CONFIRMED:
+                confirmed = True
+                break
+        if confirmed:
+            self._save_attempt_status(attempt, SyncAttemptStatus.ACKNOWLEDGED)
+            return
+        sync_unit_id = self.mars.sync_unit_id_for_attempt(attempt.attempt_id)
+        if sync_unit_id is not None and self._mars_transmitting(sync_unit_id):
+            return
+        self._save_attempt_status(attempt, SyncAttemptStatus.TIMED_OUT)
+        self._emit_attempt_trace(
+            SimulationEventType.RETRY_SCHEDULED.value,
+            attempt,
+            sync_unit_id,
+            extra={
+                "reason": "ack_timeout",
+                "last_submitted_at_sim": attempt.last_submitted_at_sim,
+                "ack_timeout_seconds": self.retry_policy.ack_timeout_seconds,
+            },
+        )
+        self._offer_retry(attempt.event_ids)
+
+    def _on_retry_evaluation(self, action: ScheduledAction) -> None:
+        """Reevalúa, en el instante programado, solo los eventos de esa acción."""
+        raw_ids = action.payload.get("event_ids")
+        event_ids = _parse_event_ids(raw_ids)
+        for event_id in event_ids:
+            self._retry_eval_pending.discard(str(event_id))
+        if not event_ids:
+            return
+        self._offer_retry(event_ids)
+
+    def _offer_retry(self, event_ids: Sequence[UUID]) -> None:
+        """Ofrece retry solo para estos eventos. No recorre el pendiente global.
+
+        Si el contacto Marte → relé está vigente, planifica en el acto. Si no,
+        deja ``RETRY_EVALUATION`` en el inicio del próximo contacto de ese
+        sentido. Sin contacto futuro, registra el hecho y no crea intento.
+        """
+        eligible: list[TelemetryEvent] = []
+        for event_id in event_ids:
+            sync = self.mars.sync_state(event_id)
+            if sync is None or sync.state is TelemetryEventState.CONFIRMED:
+                continue
+            if self.mars.active_sync_attempt_for_event(event_id) is not None:
+                continue
+            event = self.mars.get_event(event_id)
+            if event is not None:
+                eligible.append(event)
+        if not eligible:
+            return
+        now = self.engine.now
+        if self._mars_relay_available() is not None:
+            self._plan_and_submit()
+            return
+        next_contact = self._next_mars_relay_contact(now)
+        if next_contact is None:
+            self.engine.emit_trace(
+                SimulationEventType.RETRY_SCHEDULED.value,
+                {
+                    "event_ids": [str(event.event_id) for event in eligible],
+                    "reason": "no_future_forward_contact",
+                },
+            )
+            return
+        self._schedule_retry_evaluation(
+            [event.event_id for event in eligible],
+            next_contact.start_time_sim,
+        )
+
+    def _schedule_retry_evaluation(self, event_ids: Sequence[UUID], when: float) -> None:
+        """Programa una evaluación. Un evento que ya la tiene pendiente no se duplica."""
+        pending: list[UUID] = []
+        for event_id in event_ids:
+            key = str(event_id)
+            if key in self._retry_eval_pending:
+                continue
+            self._retry_eval_pending.add(key)
+            pending.append(event_id)
+        if not pending:
+            return
+        self.engine.schedule(
+            when,
+            SimulationEventType.RETRY_EVALUATION.value,
+            payload={"event_ids": [str(event_id) for event_id in pending]},
+            entity_id=str(pending[0]),
+        )
+
+    def _plan_and_submit(self) -> int:
+        """Separa cohortes de retry y eventos sin intento, y presenta ambos."""
+        if self._mars_relay_available() is None:
+            return 0
+        eligible = unique_in_order(self.mars.eligible_sync_events())
+        if not eligible:
+            return 0
+        retry_items, fresh = self._partition_retry_cohorts(eligible)
+        submitted = 0
+        if retry_items:
+            submitted += self._execute_plans(
+                [plan for plan, _parent in retry_items],
+                parents=[parent for _plan, parent in retry_items],
+            )
+        if not fresh:
+            return submitted
+        context = SyncPlanningContext(
+            simulation_time=self.engine.now,
+            source_id=self.mars.source_id,
+        )
+        submitted += self._execute_plans(self.strategy.plan(fresh, context))
+        return submitted
+
+    def _partition_retry_cohorts(
+        self, eligible: Sequence[TelemetryEvent]
+    ) -> tuple[list[tuple[SyncPlan, SyncAttempt]], list[TelemetryEvent]]:
+        """Conserva el grupo vencido. No le agrega eventos nuevos.
+
+        El intento anterior tiene que estar en ``TIMED_OUT`` o ``INTERRUPTED``.
+        Si falta algún miembro entre los elegibles, esa cohorte no se rearma
+        aquí. Los eventos que no quedaron en una cohorte siguen hacia la
+        estrategia.
+        """
+        by_id = {event.event_id: event for event in eligible}
+        claimed: set[UUID] = set()
+        retry_items: list[tuple[SyncPlan, SyncAttempt]] = []
+        for event in eligible:
+            if event.event_id in claimed:
+                continue
+            latest = self.mars.latest_sync_attempt_for_event(event.event_id)
+            if latest is None or latest.status not in {
+                SyncAttemptStatus.TIMED_OUT,
+                SyncAttemptStatus.INTERRUPTED,
+            }:
+                continue
+            if any(event_id not in by_id for event_id in latest.event_ids):
+                continue
+            cohort = tuple(by_id[event_id] for event_id in latest.event_ids)
+            retry_items.append(
+                (
+                    SyncPlan(
+                        event_ids=latest.event_ids,
+                        events=cohort,
+                        strategy_type=self.strategy.strategy_type,
+                    ),
+                    latest,
+                )
+            )
+            claimed.update(latest.event_ids)
+        fresh = [event for event in eligible if event.event_id not in claimed]
+        return retry_items, fresh
 
     def _deliver_to_earth(self, delivery: TransportDelivery) -> None:
         unit = delivery.sync_unit
@@ -164,6 +357,7 @@ class TelemetrySyncSession:
                 SyncAttemptStatus.REPAIR_REQUESTED,
             }:
                 self._save_attempt_status(attempt, SyncAttemptStatus.ACKNOWLEDGED)
+                self._cancel_ack_timeout(attempt.attempt_id)
             confirmed_details: dict[str, object] = {
                 "event_id": str(event_id),
                 "ack_id": ack.ack_id,
@@ -183,11 +377,15 @@ class TelemetrySyncSession:
                 entity_id=str(event_id),
             )
 
-    def _execute_plans(self, plans: Sequence[SyncPlan]) -> int:
+    def _execute_plans(
+        self,
+        plans: Sequence[SyncPlan],
+        parents: Sequence[SyncAttempt | None] | None = None,
+    ) -> int:
         submitted = 0
         now = self.engine.now
         claimed: set[UUID] = set()
-        for plan in plans:
+        for index, plan in enumerate(plans):
             if any(event_id in claimed for event_id in plan.event_ids):
                 continue
             if any(
@@ -195,10 +393,11 @@ class TelemetrySyncSession:
                 for event_id in plan.event_ids
             ):
                 continue
+            parent = None if parents is None else parents[index]
             group_id = sync_group_id_for(plan.event_ids)
-            if self.mars.latest_sync_attempt_for_group(group_id) is not None:
-                continue
-            attempt_number = 1
+            attempt_number, parent_attempt_id = self._lineage_for_plan(
+                group_id, parent
+            )
             attempt_id = attempt_id_for_group(plan.event_ids, attempt_number)
             attempt = SyncAttempt(
                 attempt_id=attempt_id,
@@ -209,7 +408,7 @@ class TelemetrySyncSession:
                 attempt_number=attempt_number,
                 status=SyncAttemptStatus.QUEUED,
                 sync_group_id=group_id,
-                parent_attempt_id=None,
+                parent_attempt_id=parent_attempt_id,
             )
             unit = encode_telemetry_events(
                 plan.events,
@@ -229,7 +428,7 @@ class TelemetrySyncSession:
                     "status": attempt.status.value,
                     "strategy": plan.strategy_type,
                     "sync_group_id": group_id,
-                    "parent_attempt_id": None,
+                    "parent_attempt_id": parent_attempt_id,
                 },
             )
             self.engine.emit_trace(
@@ -247,9 +446,31 @@ class TelemetrySyncSession:
                 entity_id=unit.sync_unit_id,
             )
             self.transport.submit(unit)
+            if attempt_number > 1:
+                self._emit_attempt_trace(
+                    SimulationEventType.RETRY_SUBMITTED.value,
+                    attempt,
+                    unit.sync_unit_id,
+                    extra={"status": attempt.status.value, "sync_group_id": group_id},
+                )
             claimed.update(plan.event_ids)
             submitted += 1
         return submitted
+
+    def _lineage_for_plan(
+        self, group_id: str, parent: SyncAttempt | None
+    ) -> tuple[int, str | None]:
+        """Número de intento dentro del grupo, no el máximo entre eventos sueltos.
+
+        El primer envío es 1. Un retry de esa cohorte suma uno al intento
+        padre y guarda su ``attempt_id``.
+        """
+        if parent is not None:
+            return parent.attempt_number + 1, parent.attempt_id
+        latest = self.mars.latest_sync_attempt_for_group(group_id)
+        if latest is None:
+            return 1, None
+        return latest.attempt_number + 1, latest.attempt_id
 
     def _emit_plan_created(self, plan: SyncPlan, sync_unit_id: str, group_id: str) -> None:
         first = plan.events[0]
@@ -318,6 +539,61 @@ class TelemetrySyncSession:
             updated = updated.model_copy(update={"status": SyncAttemptStatus.IN_FLIGHT})
         self.mars.save_sync_attempt(
             updated, self.mars.sync_unit_id_for_attempt(attempt.attempt_id)
+        )
+        self._schedule_ack_timeout(updated)
+
+    def _schedule_ack_timeout(self, attempt: SyncAttempt) -> None:
+        """Programa ``ACK_TIMEOUT`` una vez por intento, desde el último envío.
+
+        El instante es ``last_submitted_at_sim + ack_timeout_seconds``. Si
+        ese instante ya quedó atrás del reloj, la acción queda en el ahora.
+        Un segundo completado del mismo intento no mueve el timeout ya puesto.
+        """
+        if attempt.attempt_id in self._timeout_scheduled:
+            return
+        timeout_at = attempt.last_submitted_at_sim + self.retry_policy.ack_timeout_seconds
+        now = self.engine.now
+        if timeout_at < now:
+            timeout_at = now
+        sync_unit_id = self.mars.sync_unit_id_for_attempt(attempt.attempt_id)
+        payload: dict[str, object] = {
+            "attempt_id": attempt.attempt_id,
+            "event_ids": [str(event_id) for event_id in attempt.event_ids],
+            "last_submitted_at_sim": attempt.last_submitted_at_sim,
+            "ack_timeout_seconds": self.retry_policy.ack_timeout_seconds,
+            "timeout_reference": "last_submitted_at_sim",
+        }
+        if sync_unit_id is not None:
+            payload["sync_unit_id"] = sync_unit_id
+        self.engine.schedule(
+            timeout_at,
+            SimulationEventType.ACK_TIMEOUT.value,
+            payload=payload,
+            entity_id=attempt.attempt_id,
+        )
+        self._timeout_scheduled.add(attempt.attempt_id)
+
+    def _cancel_ack_timeout(self, attempt_id: str) -> None:
+        """Quita el ``ACK_TIMEOUT`` futuro de ese intento. Si ya corrió, no queda nada."""
+        self.engine.cancel(
+            lambda action: (
+                action.event_type == SimulationEventType.ACK_TIMEOUT.value
+                and action.payload.get("attempt_id") == attempt_id
+            )
+        )
+        self._timeout_scheduled.discard(attempt_id)
+
+    def _mars_transmitting(self, sync_unit_id: str) -> bool:
+        """Indica si esa unidad todavía está en vuelo saliendo de Marte."""
+        for unit in self.transport.in_flight():
+            if unit.sync_unit_id == sync_unit_id and unit.source_node is LogicalNode.MARS:
+                return True
+        return False
+
+    def _next_mars_relay_contact(self, time_sim: float) -> Contact | None:
+        """Próximo contacto Marte → relé cuyo inicio es posterior a ``time_sim``."""
+        return self.contact_plan.next_contact_after(
+            time_sim, LogicalNode.MARS, LogicalNode.RELAY
         )
 
     def _save_attempt_status(self, attempt: SyncAttempt, status: SyncAttemptStatus) -> None:
@@ -431,6 +707,13 @@ class TelemetrySyncSession:
             ack_details,
             entity_id=ack.ack_id,
         )
+
+
+def _parse_event_ids(raw: object) -> list[UUID]:
+    """Lee ``event_ids`` de una acción. Una carga que no es lista no aporta ids."""
+    if not isinstance(raw, list):
+        return []
+    return [UUID(str(item)) for item in raw]
 
 
 def _earth_event_details(

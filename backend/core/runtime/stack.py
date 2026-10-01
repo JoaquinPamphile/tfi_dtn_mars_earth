@@ -13,6 +13,7 @@ from typing import Any
 from core.contact.plan import ContactPlan
 from core.domain.event import TelemetryEvent
 from core.domain.priority import TelemetryPriority
+from core.domain.retry import RetryPolicy
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
 from core.relay.node import RelayNode
@@ -61,13 +62,15 @@ class SimulationStack:
         trace_level: TraceLevel = TraceLevel.FULL,
         mars: MarsNode | None = None,
         earth: EarthNode | None = None,
+        retry_policy: RetryPolicy | None = None,
     ) -> SimulationStack:
         """Arma el stack y programa el plan de contactos recibido.
 
         ``experiment_identity`` fija los ``event_id`` de la telemetría que
         genere este nodo de Marte. ``None`` deja que cada alta reciba un
         identificador nuevo. La estrategia, si no viene armada, sale de
-        ``strategy_type`` y ``batch_size_events``.
+        ``strategy_type`` y ``batch_size_events``. ``retry_policy`` ausente
+        usa el timeout de ACK por defecto.
         """
         resolved = (
             strategy
@@ -88,6 +91,7 @@ class SimulationStack:
             transport,
             contact_plan,
             resolved,
+            retry_policy=retry_policy,
         )
         schedule_contact_plan(engine, contact_plan)
         return cls(
