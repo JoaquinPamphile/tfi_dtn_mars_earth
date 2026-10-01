@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 from core.contact.plan import ContactPlan
 from core.domain.event import TelemetryEvent
@@ -16,6 +17,7 @@ from core.domain.priority import TelemetryPriority
 from core.domain.retry import RetryPolicy
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
+from core.recovery.controller import ReceiverDrivenRecoveryController
 from core.relay.node import RelayNode
 from core.runtime.contacts import schedule_contact_plan
 from core.runtime.session import TelemetrySyncSession
@@ -49,6 +51,7 @@ class SimulationStack:
     earth: EarthNode
     strategy: SyncStrategy
     session: TelemetrySyncSession
+    recovery: ReceiverDrivenRecoveryController | None = None
 
     @classmethod
     def build(
@@ -63,6 +66,9 @@ class SimulationStack:
         mars: MarsNode | None = None,
         earth: EarthNode | None = None,
         retry_policy: RetryPolicy | None = None,
+        gap_request_timeout_seconds: float | None = None,
+        sender_hold_event_ids: frozenset[UUID] | None = None,
+        sender_hold_sequences: frozenset[int] | None = None,
     ) -> SimulationStack:
         """Arma el stack y programa el plan de contactos recibido.
 
@@ -71,6 +77,12 @@ class SimulationStack:
         identificador nuevo. La estrategia, si no viene armada, sale de
         ``strategy_type`` y ``batch_size_events``. ``retry_policy`` ausente
         usa el timeout de ACK por defecto.
+
+        ``gap_request_timeout_seconds`` ausente deja apagada la recuperación
+        receiver-driven. Si viene, es el timeout del GapRequest, medido
+        desde que la unidad sale de Tierra, y no el timeout de ACK.
+        ``sender_hold_event_ids`` y ``sender_hold_sequences`` retienen
+        eventos del envío del emisor. No son opciones de la CLI.
         """
         resolved = (
             strategy
@@ -84,6 +96,15 @@ class SimulationStack:
             mars_node.bind_experiment_identity(experiment_identity)
         transport = EmulatedTransport(engine, contact_plan)
         relay = RelayNode(engine, transport)
+        recovery = None
+        if gap_request_timeout_seconds is not None:
+            recovery = ReceiverDrivenRecoveryController(
+                earth=earth_node,
+                mars=mars_node,
+                transport=transport,
+                engine=engine,
+                gap_request_timeout_seconds=gap_request_timeout_seconds,
+            )
         session = TelemetrySyncSession(
             mars_node,
             earth_node,
@@ -92,6 +113,9 @@ class SimulationStack:
             contact_plan,
             resolved,
             retry_policy=retry_policy,
+            recovery=recovery,
+            sender_hold_event_ids=sender_hold_event_ids,
+            sender_hold_sequences=sender_hold_sequences,
         )
         schedule_contact_plan(engine, contact_plan)
         return cls(
@@ -103,6 +127,7 @@ class SimulationStack:
             earth=earth_node,
             strategy=resolved,
             session=session,
+            recovery=recovery,
         )
 
     def generate(

@@ -12,9 +12,13 @@ evaluación puede ocurrir en ese instante, si el contacto Marte → relé está
 vigente, o quedar programada para el próximo contacto. Un evento generado
 después no entra en esa cohorte.
 
-No pide reparación de huecos. Si no hay un contacto de retorno, el ACK
-puede quedar en la cola del transporte y el timeout dispara el retry del
-emisor.
+Si no hay un contacto de retorno, el ACK puede quedar en la cola del
+transporte y el timeout dispara el retry del emisor.
+
+La reparación receiver-driven es opcional. Sin controlador no se observa
+un hueco ni se arma un GapRequest. Con controlador, una alta nueva en
+Tierra puede pedir los huecos internos no cubiertos, y un GapRequest que
+llega a Marte rearma esos eventos como unidades Individual.
 """
 
 from __future__ import annotations
@@ -37,6 +41,7 @@ from core.domain.retry import RetryPolicy
 from core.domain.state import TelemetryEventState
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
+from core.recovery.controller import ReceiverDrivenRecoveryController
 from core.runtime.ordering import unique_in_order
 from core.simulation.engine import SimulationEngine
 from core.simulation.scheduler import ScheduledAction
@@ -44,17 +49,21 @@ from core.sync.codec import (
     KIND_TELEMETRY_EVENTS,
     attempt_id_from_unit,
     decode_application_ack,
+    decode_telemetry_events,
     encode_application_ack,
     encode_telemetry_events,
     is_ack_unit,
+    is_gap_request_unit,
     is_telemetry_unit,
 )
+from core.sync.individual import IndividualSyncStrategy
 from core.sync.strategy import SyncPlan, SyncPlanningContext, SyncStrategy
 from core.sync.unit import SyncUnit
 from core.trace.types import SimulationEventType
 from core.transport.emulated import EmulatedTransport, TransportDelivery
 
 _TERMINAL_ATTEMPT = TERMINAL_ATTEMPT_STATUSES
+_RECEIVER_REPAIR_TRIGGER = "receiver_gap_request"
 
 
 class TelemetrySyncSession:
@@ -69,6 +78,11 @@ class TelemetrySyncSession:
     ``event_ids`` del intento anterior, en el mismo orden, con el mismo
     ``sync_group_id`` y la misma estrategia. El ``attempt_id`` y el
     ``attempt_number`` son nuevos.
+
+    ``recovery`` activa el pedido de huecos. ``sender_hold_event_ids`` y
+    ``sender_hold_sequences`` dejan eventos fuera del envío del emisor
+    para que un test pueda abrir un hueco interno sin un plan de fallos.
+    La reparación receiver-driven no usa ese filtro.
     """
 
     def __init__(
@@ -80,6 +94,9 @@ class TelemetrySyncSession:
         contact_plan: ContactPlan,
         strategy: SyncStrategy,
         retry_policy: RetryPolicy | None = None,
+        recovery: ReceiverDrivenRecoveryController | None = None,
+        sender_hold_event_ids: frozenset[UUID] | None = None,
+        sender_hold_sequences: frozenset[int] | None = None,
     ) -> None:
         self.mars = mars
         self.earth = earth
@@ -88,8 +105,17 @@ class TelemetrySyncSession:
         self.contact_plan = contact_plan
         self.strategy = strategy
         self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
+        self.recovery = recovery
+        self._sender_hold_event_ids = (
+            sender_hold_event_ids if sender_hold_event_ids is not None else frozenset()
+        )
+        self._sender_hold_sequences = (
+            sender_hold_sequences if sender_hold_sequences is not None else frozenset()
+        )
         self._timeout_scheduled: set[str] = set()
         self._retry_eval_pending: set[str] = set()
+        if self.recovery is not None:
+            self.recovery.bind_repair_submitter(self.submit_receiver_repair_events)
         transport.register_delivery_handler(self.handle_delivery)
         engine.register_handler(
             SimulationEventType.CONTACT_OPEN.value,
@@ -122,19 +148,123 @@ class TelemetrySyncSession:
         """
         return self._plan_and_submit()
 
+    def submit_receiver_repair_events(
+        self, events: Sequence[TelemetryEvent], request_id: str
+    ) -> tuple[TelemetryEvent, ...]:
+        """Presenta los eventos originales como unidades Individual de reparación.
+
+        No usa el filtro que retiene eventos en el envío del emisor. No
+        fabrica eventos. No apaga la guarda de intento activo que usa la
+        sincronización sender-driven.
+
+        Un evento confirmado se omite. Un intento Individual activo del
+        evento pedido pasa a ``REPAIR_REQUESTED`` y se le cancela el timeout
+        de ACK antes de crear el intento siguiente del linaje. Un intento
+        activo de varios eventos no se reemplaza.
+        """
+
+        unique = unique_in_order(events)
+        if not unique:
+            return ()
+        repairable: list[TelemetryEvent] = []
+        parents: list[SyncAttempt | None] = []
+        for event in unique:
+            sync = self.mars.sync_state(event.event_id)
+            if sync is not None and sync.state is TelemetryEventState.CONFIRMED:
+                continue
+            may_repair, parent = self._supersede_active_attempt_for_receiver_repair(
+                event, request_id
+            )
+            if not may_repair:
+                continue
+            repairable.append(event)
+            parents.append(parent)
+        if not repairable:
+            return ()
+        context = SyncPlanningContext(
+            simulation_time=self.engine.now,
+            source_id=self.mars.source_id,
+        )
+        plans = IndividualSyncStrategy().plan(repairable, context)
+        parent_by_event = {
+            event.event_id: parent
+            for event, parent in zip(repairable, parents, strict=True)
+        }
+        aligned_parents = [parent_by_event.get(plan.event_ids[0]) for plan in plans]
+        submitted = self._execute_plans(
+            plans,
+            parents=aligned_parents,
+            recovery_trigger=_RECEIVER_REPAIR_TRIGGER,
+            request_id=request_id,
+        )
+        if submitted == 0:
+            return ()
+        return tuple(repairable)
+
+    def _supersede_active_attempt_for_receiver_repair(
+        self, event: TelemetryEvent, request_id: str
+    ) -> tuple[bool, SyncAttempt | None]:
+        """Cierra un intento Individual activo para que la reparación pueda seguir.
+
+        Devuelve ``(puede_reparar, intento_padre)``. ``intento_padre`` es el
+        intento reemplazado, si había uno. Un intento vigente de varios
+        eventos no se reemplaza: la reparación Individual de un miembro de
+        Fixed Batch queda fuera de este corte, y la guarda del emisor sigue.
+        """
+
+        active = self.mars.active_sync_attempt_for_event(event.event_id)
+        if active is None:
+            return True, None
+        if len(active.event_ids) != 1:
+            return False, None
+        old_status = active.status
+        if old_status is SyncAttemptStatus.QUEUED:
+            sync_unit_id = self.mars.sync_unit_id_for_attempt(active.attempt_id)
+            if sync_unit_id is not None:
+                self.transport.withdraw(sync_unit_id)
+        self._cancel_ack_timeout(active.attempt_id)
+        self._save_attempt_status(active, SyncAttemptStatus.REPAIR_REQUESTED)
+        next_attempt_number = active.attempt_number + 1
+        self._emit_attempt_trace(
+            SimulationEventType.SYNC_ATTEMPT_REPAIR_REQUESTED.value,
+            active,
+            self.mars.sync_unit_id_for_attempt(active.attempt_id),
+            extra={
+                "request_id": request_id,
+                "event_id": str(event.event_id),
+                "sequence_number": event.sequence_number,
+                "old_attempt_id": active.attempt_id,
+                "old_status": old_status.value,
+                "next_attempt_number": next_attempt_number,
+                "next_attempt_id": attempt_id_for_group(
+                    active.event_ids, next_attempt_number
+                ),
+                "at_sim": self.engine.now,
+            },
+        )
+        return True, self.mars.get_sync_attempt(active.attempt_id)
+
     def handle_delivery(self, delivery: TransportDelivery) -> None:
         """Recibe una llegada que el transporte ya produjo.
 
         En Tierra persiste la telemetría, emite los hechos de esa ingesta
-        y presenta el ACK al mismo transporte. En Marte, si la unidad es
-        un ACK, lo aplica, cierra el intento vigente y cancela su timeout.
-        Una llegada al relé no se atiende aquí. Un ACK repetido no abre
-        otro retry.
+        y presenta el ACK al mismo transporte. Si hay controlador y la alta
+        es nueva, ese controlador puede crear un GapRequest. En Marte, un
+        GapRequest se atiende antes que un ACK: se buscan los eventos y, si
+        corresponde, se presenta la reparación. Un ACK cierra el intento
+        vigente y cancela su timeout. Una llegada al relé no se atiende
+        aquí. Un ACK repetido no abre otro retry.
         """
         if delivery.event_type == SimulationEventType.ARRIVED_AT_EARTH_TRANSPORT.value:
             self._deliver_to_earth(delivery)
             return
         if delivery.event_type == SimulationEventType.ARRIVED_AT_MARS_TRANSPORT.value:
+            if is_gap_request_unit(delivery.sync_unit):
+                if self.recovery is not None:
+                    self.recovery.handle_gap_request(
+                        delivery.sync_unit, delivery.time_sim
+                    )
+                return
             self._deliver_ack_to_mars(delivery)
 
     def _on_contact_open(self, action: ScheduledAction) -> None:
@@ -266,6 +396,18 @@ class TelemetrySyncSession:
         if self._mars_relay_available() is None:
             return 0
         eligible = unique_in_order(self.mars.eligible_sync_events())
+        if self._sender_hold_event_ids:
+            eligible = [
+                event
+                for event in eligible
+                if event.event_id not in self._sender_hold_event_ids
+            ]
+        if self._sender_hold_sequences:
+            eligible = [
+                event
+                for event in eligible
+                if event.sequence_number not in self._sender_hold_sequences
+            ]
         if not eligible:
             return 0
         retry_items, fresh = self._partition_retry_cohorts(eligible)
@@ -327,11 +469,14 @@ class TelemetrySyncSession:
         unit = delivery.sync_unit
         if not is_telemetry_unit(unit):
             return
+        events = decode_telemetry_events(unit)
         attempt = self._attempt_from_unit(unit)
         if attempt is not None and attempt.status not in _TERMINAL_ATTEMPT:
             self._save_attempt_status(attempt, SyncAttemptStatus.DELIVERED_TO_EARTH)
         ack = self.earth.ingest_sync_unit(unit, delivery.time_sim)
         self._emit_earth_ingest(unit, ack, delivery.time_sim)
+        if self.recovery is not None and ack.accepted_event_ids:
+            self.recovery.on_unique_persist(events, ack, delivery.time_sim)
         for event_id in ack.event_ids:
             self.mars.record_observability_state(
                 event_id,
@@ -381,6 +526,9 @@ class TelemetrySyncSession:
         self,
         plans: Sequence[SyncPlan],
         parents: Sequence[SyncAttempt | None] | None = None,
+        *,
+        recovery_trigger: str | None = None,
+        request_id: str | None = None,
     ) -> int:
         submitted = 0
         now = self.engine.now
@@ -420,33 +568,43 @@ class TelemetrySyncSession:
             )
             self._emit_plan_created(plan, unit.sync_unit_id, group_id)
             self.mars.save_sync_attempt(attempt, unit.sync_unit_id)
+            created_extra: dict[str, object] = {
+                "status": attempt.status.value,
+                "strategy": plan.strategy_type,
+                "sync_group_id": group_id,
+                "parent_attempt_id": parent_attempt_id,
+            }
+            if recovery_trigger is not None:
+                created_extra["recovery_trigger"] = recovery_trigger
+            if request_id is not None:
+                created_extra["request_id"] = request_id
             self._emit_attempt_trace(
                 SimulationEventType.SYNC_ATTEMPT_CREATED.value,
                 attempt,
                 unit.sync_unit_id,
-                extra={
-                    "status": attempt.status.value,
-                    "strategy": plan.strategy_type,
-                    "sync_group_id": group_id,
-                    "parent_attempt_id": parent_attempt_id,
-                },
+                extra=created_extra,
             )
+            unit_details: dict[str, object] = {
+                "sync_unit_id": unit.sync_unit_id,
+                "attempt_id": attempt.attempt_id,
+                "sync_group_id": group_id,
+                "event_ids": [str(event_id) for event_id in plan.event_ids],
+                "event_count": len(plan.event_ids),
+                "strategy": plan.strategy_type,
+                "payload_size_bytes": unit.payload_size_bytes,
+                "size_basis": "application_layer_serialized_sync_unit",
+            }
+            if recovery_trigger is not None:
+                unit_details["recovery_trigger"] = recovery_trigger
+            if request_id is not None:
+                unit_details["request_id"] = request_id
             self.engine.emit_trace(
                 SimulationEventType.SYNC_UNIT_CREATED.value,
-                {
-                    "sync_unit_id": unit.sync_unit_id,
-                    "attempt_id": attempt.attempt_id,
-                    "sync_group_id": group_id,
-                    "event_ids": [str(event_id) for event_id in plan.event_ids],
-                    "event_count": len(plan.event_ids),
-                    "strategy": plan.strategy_type,
-                    "payload_size_bytes": unit.payload_size_bytes,
-                    "size_basis": "application_layer_serialized_sync_unit",
-                },
+                unit_details,
                 entity_id=unit.sync_unit_id,
             )
             self.transport.submit(unit)
-            if attempt_number > 1:
+            if attempt_number > 1 and recovery_trigger is None:
                 self._emit_attempt_trace(
                     SimulationEventType.RETRY_SUBMITTED.value,
                     attempt,
