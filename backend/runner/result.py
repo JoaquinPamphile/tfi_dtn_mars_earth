@@ -27,8 +27,10 @@ class RunResult:
 
     ``attempts_total`` cuenta ``attempt_id`` distintos leídos con
     ``MarsNode.sync_attempts_for_event``. ``retry_count`` es
-    ``MarsNode.retry_attempts_total``. El resto sale de las consultas
-    públicas del motor, de Marte y de Tierra.
+    ``MarsNode.retry_attempts_total``. ``failures_injected`` cuenta
+    pérdidas silenciosas ya registradas en el runtime. Los huecos
+    observados, los cerrados y los pedidos salen de la traza pública.
+    El resto sale de las consultas públicas del motor, de Marte y de Tierra.
     """
 
     simulation_time: float
@@ -44,3 +46,8 @@ class RunResult:
     earth_gaps_count: int
     duplicates_received: int
     trace_entries: tuple[TraceLine, ...]
+    recovery_mode: str = "none"
+    failures_injected: int = 0
+    gaps_observed: int = 0
+    gaps_closed: int = 0
+    gap_requests: int = 0

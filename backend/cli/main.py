@@ -17,7 +17,8 @@ from core.sync.strategy import (
     UnknownSyncStrategyError,
 )
 from runner import execute_run
-from runner.demo import DEMO_DEFAULT_EVENTS, demo_run_config
+from runner.config import RECOVERY_MODES
+from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
 from runner.result import RunResult
 
 from cli.present import format_summary, format_trace, summary_json
@@ -32,6 +33,14 @@ Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
   --batch-size N                        Tamaño de lote. Obligatorio en fixed_batch.
   --events N                            Eventos a generar. Por defecto: 10.
+  --recovery {none,sender-driven,receiver-driven}
+                                        Recuperación. Por defecto: none.
+                                        sender-driven reintenta por timeout de ACK.
+                                        receiver-driven pide los huecos que Tierra observa.
+  --fault silent-loss                   Pierde en silencio la secuencia intermedia 1,
+                                        intento 1, hop RELAY_TO_EARTH.
+                                        Exige al menos 3 eventos y la estrategia individual.
+                                        Sigue siendo una demostración local.
   --json                                Resumen operativo en JSON.
   --show-trace                          Traza: tiempo, índice, tipo y entidad.
   -h, --help                            Muestra esta ayuda.
@@ -53,6 +62,8 @@ class _Opciones:
     strategy: str
     batch_size: int | None
     events: int
+    recovery: str
+    fault: str
     as_json: bool
     show_trace: bool
 
@@ -83,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
             strategy_type=opciones.strategy,
             batch_size_events=opciones.batch_size,
             event_count=opciones.events,
+            recovery=opciones.recovery,
+            fault=opciones.fault,
         )
         result = execute_run(config)
     except (UnknownSyncStrategyError, InvalidSyncStrategyConfigError, ValueError) as exc:
@@ -98,6 +111,8 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
     strategy = STRATEGY_TYPE_INDIVIDUAL
     batch_size: int | None = None
     events = DEMO_DEFAULT_EVENTS
+    recovery = "none"
+    fault = FAULT_NONE
     as_json = False
     show_trace = False
     batch_informado = False
@@ -125,6 +140,21 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
         elif token == "--events" or token.startswith("--events="):
             valor, index = _valor(tokens, index, "--events")
             events = _entero(valor, "--events")
+        elif token == "--recovery" or token.startswith("--recovery="):
+            valor, index = _valor(tokens, index, "--recovery")
+            if valor not in RECOVERY_MODES:
+                admitidas = ", ".join(RECOVERY_MODES)
+                raise _UsoError(
+                    f"recuperación no admitida: {valor}. Admitidas: {admitidas}."
+                )
+            recovery = valor
+        elif token == "--fault" or token.startswith("--fault="):
+            valor, index = _valor(tokens, index, "--fault")
+            if valor not in FAULT_MODES or valor == FAULT_NONE:
+                raise _UsoError(
+                    f"falla no admitida: {valor}. Admitida: silent-loss."
+                )
+            fault = valor
         else:
             raise _UsoError(f"argumento no reconocido: {token}")
         index += 1
@@ -138,6 +168,8 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
         strategy=strategy,
         batch_size=batch_size,
         events=events,
+        recovery=recovery,
+        fault=fault,
         as_json=as_json,
         show_trace=show_trace,
     )

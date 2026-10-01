@@ -16,6 +16,12 @@ su fin y reencola la misma unidad completa, con el mismo ``submission_order``.
 
 La entrega al receptor es un ``TransportDelivery`` hacia los handlers
 registrados. Este módulo no conoce nodos de aplicación ni reenvío.
+
+Una pérdida silenciosa, si el runtime de fallos coincide, reemplaza el
+arribo a Tierra por ``SILENT_FORWARD_DELIVERY_DROPPED`` en el mismo
+instante en que la propagación habría entregado la unidad. La
+serialización y la propagación ya terminaron. No es una transmisión
+interrumpida.
 """
 
 from collections.abc import Callable
@@ -24,6 +30,8 @@ from dataclasses import dataclass, field
 
 from core.contact.contact import Contact, LogicalNode
 from core.contact.plan import ContactPlan
+from core.failure.runtime import FailureRuntime, SilentForwardDeliveryDropRecord
+from core.failure.silent import FORWARD_HOP_RELAY_TO_EARTH
 from core.simulation.engine import SimulationEngine
 from core.simulation.scheduler import ScheduledAction
 from core.sync.unit import SyncUnit
@@ -83,6 +91,7 @@ class EmulatedTransport:
         self._next_attempt_seq = 0
         self._pending_deliveries: list[TransportDelivery] = []
         self._delivery_handlers: list[DeliveryHandler] = []
+        self._failures = FailureRuntime()
         engine.register_handler(
             SimulationEventType.CONTACT_OPEN.value, self._on_contact_open
         )
@@ -102,6 +111,18 @@ class EmulatedTransport:
         engine.register_handler(
             SimulationEventType.ARRIVED_AT_MARS_TRANSPORT.value, self._on_arrival
         )
+        engine.register_handler(
+            SimulationEventType.SILENT_FORWARD_DELIVERY_DROPPED.value,
+            self._on_silent_forward_delivery_dropped,
+        )
+
+    def bind_failures(self, failures: FailureRuntime) -> None:
+        """Usa el runtime de la corrida para suprimir entregas hacia Tierra.
+
+        Un plan vacío no cambia los arribos. El objeto recibido no se copia:
+        los contadores quedan en ese mismo runtime.
+        """
+        self._failures = failures
 
     def submit(self, unit: SyncUnit) -> None:
         """Presenta una SyncUnit a la cola de su enlace dirigido.
@@ -310,6 +331,23 @@ class EmulatedTransport:
             link.current_attempt = None
         link.transmitting = None
         arrival_time = float(action.payload["arrival_time_sim"])
+        if destination is LogicalNode.EARTH:
+            hit = self._silent_loss_hit(attempt.unit)
+            if hit is not None:
+                self._engine.schedule(
+                    time=arrival_time,
+                    event_type=SimulationEventType.SILENT_FORWARD_DELIVERY_DROPPED.value,
+                    payload=_silent_drop_payload(
+                        attempt.unit,
+                        action.payload,
+                        arrival_time=arrival_time,
+                        occurrence_number=hit.occurrence_number,
+                        failure_id=hit.failure.failure_id,
+                    ),
+                    entity_id=unit_id,
+                )
+                self._try_transmit(source, destination)
+                return
         self._engine.schedule(
             time=arrival_time,
             event_type=_arrival_event_type(destination),
@@ -370,6 +408,82 @@ class EmulatedTransport:
         self._next_attempt_seq += 1
         return f"tx-{sync_unit_id}-{self._next_attempt_seq}"
 
+    def _silent_loss_hit(self, unit: SyncUnit):
+        """Coincidencia de pérdida silenciosa en el hop relé → Tierra.
+
+        La consulta consume una ocurrencia solo si la identidad lógica
+        coincide. Otro hop, otro intento o un lote de varios eventos no
+        entran.
+        """
+        identity = _telemetry_identity(unit)
+        if identity is None:
+            return None
+        source_id, _event_id, sequence_number, attempt_number, event_count = identity
+        if unit.source_node is not LogicalNode.RELAY:
+            return None
+        if unit.destination_node is not LogicalNode.EARTH:
+            return None
+        return self._failures.consume_silent_forward_delivery_loss(
+            source_id=source_id,
+            sequence_number=sequence_number,
+            telemetry_attempt_number=attempt_number,
+            hop=FORWARD_HOP_RELAY_TO_EARTH,
+            payload_kind=_payload_kind(unit),
+            event_count=event_count,
+        )
+
+    def _on_silent_forward_delivery_dropped(self, action: ScheduledAction) -> None:
+        """Entrega suprimida: el hop ya gastó capacidad y demora.
+
+        No reconstruye la unidad si ya no está en vuelo. Los handlers
+        reciben un ``TransportDelivery`` con este tipo, no un arribo de
+        aplicación.
+        """
+        unit_id = str(action.entity_id)
+        unit = self._in_flight.pop(unit_id, None)
+        if unit is None:
+            return
+        identity = _telemetry_identity(unit)
+        self._failures.record_silent_forward_delivery_drop(
+            SilentForwardDeliveryDropRecord(
+                failure_id=str(action.payload.get("failure_id", "")),
+                occurrence_number=int(action.payload.get("occurrence_number", 1)),
+                source_id=(
+                    identity[0]
+                    if identity is not None
+                    else str(action.payload.get("source_id", ""))
+                ),
+                event_id=(
+                    identity[1]
+                    if identity is not None
+                    else str(action.payload.get("event_id", ""))
+                ),
+                sequence_number=(
+                    identity[2]
+                    if identity is not None
+                    else int(action.payload.get("sequence_number", -1))
+                ),
+                telemetry_attempt_number=(
+                    identity[3]
+                    if identity is not None
+                    else int(action.payload.get("attempt_number", 1))
+                ),
+                hop=str(action.payload.get("hop", FORWARD_HOP_RELAY_TO_EARTH)),
+                lost_at_sim=self._engine.now,
+                payload_size_bytes=unit.payload_size_bytes,
+                sync_unit_id=unit.sync_unit_id,
+            )
+        )
+        delivery = TransportDelivery(
+            time_sim=self._engine.now,
+            event_type=action.event_type,
+            sync_unit=unit,
+            contact_id=str(action.payload["contact_id"]),
+        )
+        self._pending_deliveries.append(delivery)
+        for handler in list(self._delivery_handlers):
+            handler(delivery)
+
     def _on_arrival(self, action: ScheduledAction) -> None:
         unit_id = str(action.entity_id)
         unit = self._in_flight.pop(unit_id, None)
@@ -403,6 +517,85 @@ def _arrival_event_type(destination: LogicalNode) -> str:
     if destination is LogicalNode.MARS:
         return SimulationEventType.ARRIVED_AT_MARS_TRANSPORT.value
     raise RuntimeError(f"el transporte emulado no entrega en {destination.value}")
+
+
+def _telemetry_identity(
+    unit: SyncUnit,
+) -> tuple[str, str, int, int, int] | None:
+    """Identidad lógica de telemetría en la carga, si está completa.
+
+    Devuelve ``(source_id, event_id, sequence_number, attempt_number, event_count)``.
+    """
+    events = unit.payload.get("events")
+    if not isinstance(events, list) or not events:
+        return None
+    first = events[0]
+    if not isinstance(first, dict):
+        return None
+    source_id = first.get("source_id")
+    event_id = first.get("event_id")
+    sequence = first.get("sequence_number")
+    if source_id is None or event_id is None or sequence is None:
+        return None
+    return (
+        str(source_id),
+        str(event_id),
+        int(sequence),
+        _attempt_number(unit),
+        len(events),
+    )
+
+
+def _silent_drop_payload(
+    unit: SyncUnit,
+    tx_payload: dict[str, object],
+    *,
+    arrival_time: float,
+    occurrence_number: int,
+    failure_id: str,
+) -> dict[str, object]:
+    """Carga del hecho de pérdida. No copia la telemetría ni el payload."""
+    identity = _telemetry_identity(unit)
+    source_id = identity[0] if identity is not None else ""
+    event_id = identity[1] if identity is not None else ""
+    sequence_number = identity[2] if identity is not None else -1
+    attempt_number = identity[3] if identity is not None else _attempt_number(unit)
+    attempt_id = unit.payload.get("attempt_id")
+    payload: dict[str, object] = {
+        "failure_id": failure_id,
+        "kind": "silent_forward_delivery_loss",
+        "source_id": source_id,
+        "event_id": event_id,
+        "sequence_number": sequence_number,
+        "sync_unit_id": unit.sync_unit_id,
+        "attempt_number": attempt_number,
+        "hop": FORWARD_HOP_RELAY_TO_EARTH,
+        "would_have_arrived_at_sim": arrival_time,
+        "occurrence_number": occurrence_number,
+        "source_node": unit.source_node.value,
+        "destination_node": unit.destination_node.value,
+        "contact_id": tx_payload.get("contact_id"),
+        "payload_size_bytes": unit.payload_size_bytes,
+        "event_ids": [str(item) for item in unit.event_ids],
+        "created_at_sim": unit.created_at_sim,
+        "submission_order": unit.submission_order,
+    }
+    if attempt_id is not None:
+        payload["sync_attempt_id"] = attempt_id
+        payload["attempt_id"] = attempt_id
+    return payload
+
+
+def _payload_kind(unit: SyncUnit) -> str | None:
+    raw = unit.payload.get("kind")
+    return str(raw) if raw is not None else None
+
+
+def _attempt_number(unit: SyncUnit) -> int:
+    raw = unit.payload.get("attempt_number")
+    if raw is None:
+        return 1
+    return int(raw)
 
 
 def _unit_payload(unit: SyncUnit) -> dict[str, object]:

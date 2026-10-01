@@ -15,6 +15,8 @@ from core.contact.plan import ContactPlan
 from core.domain.event import TelemetryEvent
 from core.domain.priority import TelemetryPriority
 from core.domain.retry import RetryPolicy
+from core.failure.plan import FailurePlan
+from core.failure.runtime import FailureRuntime
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
 from core.recovery.controller import ReceiverDrivenRecoveryController
@@ -51,6 +53,7 @@ class SimulationStack:
     earth: EarthNode
     strategy: SyncStrategy
     session: TelemetrySyncSession
+    failures: FailureRuntime
     recovery: ReceiverDrivenRecoveryController | None = None
 
     @classmethod
@@ -69,6 +72,7 @@ class SimulationStack:
         gap_request_timeout_seconds: float | None = None,
         sender_hold_event_ids: frozenset[UUID] | None = None,
         sender_hold_sequences: frozenset[int] | None = None,
+        failures: FailurePlan | FailureRuntime | None = None,
     ) -> SimulationStack:
         """Arma el stack y programa el plan de contactos recibido.
 
@@ -83,6 +87,10 @@ class SimulationStack:
         desde que la unidad sale de Tierra, y no el timeout de ACK.
         ``sender_hold_event_ids`` y ``sender_hold_sequences`` retienen
         eventos del envío del emisor. No son opciones de la CLI.
+
+        ``failures`` ausente deja un runtime vacío: el round trip no cambia.
+        Un ``FailurePlan`` se envuelve sin copiar sus definiciones a otro
+        objeto mutable. Un ``FailureRuntime`` se usa tal cual.
         """
         resolved = (
             strategy
@@ -95,6 +103,8 @@ class SimulationStack:
         if experiment_identity is not None:
             mars_node.bind_experiment_identity(experiment_identity)
         transport = EmulatedTransport(engine, contact_plan)
+        failure_runtime = _resolve_failures(failures)
+        transport.bind_failures(failure_runtime)
         relay = RelayNode(engine, transport)
         recovery = None
         if gap_request_timeout_seconds is not None:
@@ -127,6 +137,7 @@ class SimulationStack:
             earth=earth_node,
             strategy=resolved,
             session=session,
+            failures=failure_runtime,
             recovery=recovery,
         )
 
@@ -177,3 +188,12 @@ class SimulationStack:
     ) -> int:
         """Ejecuta el motor con la política recibida. Por defecto, hasta vaciar la cola."""
         return self.engine.run(policy, horizon_seconds)
+
+
+def _resolve_failures(failures: FailurePlan | FailureRuntime | None) -> FailureRuntime:
+    """Devuelve el runtime de la corrida sin mutar un plan congelado."""
+    if isinstance(failures, FailureRuntime):
+        return failures
+    if isinstance(failures, FailurePlan):
+        return FailureRuntime(failures)
+    return FailureRuntime()

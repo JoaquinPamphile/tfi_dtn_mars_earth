@@ -11,6 +11,7 @@ from core.mars.node import MarsNode
 from core.runtime.stack import SimulationStack
 from core.state.earth import FastEarthStateRepository
 from core.state.mars import FastMarsStateRepository
+from core.trace.types import SimulationEventType
 from runner.config import RunConfig
 from runner.result import RunResult, TraceLine
 
@@ -31,6 +32,8 @@ def execute_run(config: RunConfig) -> RunResult:
         mars=mars,
         earth=earth,
         retry_policy=RetryPolicy(ack_timeout_seconds=config.ack_timeout_seconds),
+        gap_request_timeout_seconds=config.gap_request_timeout_seconds,
+        failures=config.failure_plan,
     )
     stack.generate_many(
         config.event_count,
@@ -40,10 +43,10 @@ def execute_run(config: RunConfig) -> RunResult:
         generated_at_sim=config.generated_at_sim,
     )
     stack.run(config.stop_policy, config.horizon_seconds)
-    return _collect(stack)
+    return _collect(stack, config.recovery_mode)
 
 
-def _collect(stack: SimulationStack) -> RunResult:
+def _collect(stack: SimulationStack, recovery_mode: str) -> RunResult:
     earth_status = stack.earth.status()
     trace = tuple(
         TraceLine(
@@ -68,7 +71,16 @@ def _collect(stack: SimulationStack) -> RunResult:
         earth_gaps_count=earth_status.gaps_count,
         duplicates_received=earth_status.duplicates_received,
         trace_entries=trace,
+        recovery_mode=recovery_mode,
+        failures_injected=len(stack.failures.silent_forward_delivery_drops()),
+        gaps_observed=_count(trace, SimulationEventType.GAP_OBSERVED.value),
+        gaps_closed=_count(trace, SimulationEventType.GAP_CLOSED.value),
+        gap_requests=_count(trace, SimulationEventType.GAP_REQUEST_CREATED.value),
     )
+
+
+def _count(trace: tuple[TraceLine, ...], event_type: str) -> int:
+    return sum(1 for entry in trace if entry.event_type == event_type)
 
 
 def _attempts_total(mars: MarsNode) -> int:

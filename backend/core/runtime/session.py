@@ -254,7 +254,13 @@ class TelemetrySyncSession:
         corresponde, se presenta la reparación. Un ACK cierra el intento
         vigente y cancela su timeout. Una llegada al relé no se atiende
         aquí. Un ACK repetido no abre otro retry.
+
+        ``SILENT_FORWARD_DELIVERY_DROPPED`` no entra a Tierra: no persiste,
+        no genera ACK y no cambia el intento. El relé suelta la custodia
+        por su cuenta.
         """
+        if delivery.event_type == SimulationEventType.SILENT_FORWARD_DELIVERY_DROPPED.value:
+            return
         if delivery.event_type == SimulationEventType.ARRIVED_AT_EARTH_TRANSPORT.value:
             self._deliver_to_earth(delivery)
             return
