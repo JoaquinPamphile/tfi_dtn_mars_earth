@@ -4,3 +4,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     image: tfi-dtn-mars-earth-test
+
+  # Demostración local del motor: docker compose run --rm simulator run
+  simulator:
+    image: tfi-dtn-mars-earth-test
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ["python", "-m", "cli"]

@@ -1,0 +1,51 @@
+"""Configuración mínima de una corrida headless.
+
+No carga YAML y no describe una campaña ni un experimento.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from core.contact.plan import ContactPlan
+from core.domain.priority import TelemetryPriority
+from core.stopping.policy import StopPolicy
+
+
+@dataclass(frozen=True, slots=True)
+class RunConfig:
+    """Parámetros con los que se arma y se ejecuta una corrida.
+
+    El plan de contactos y la política de parada llegan ya construidos.
+    ``horizon_seconds`` en ``None`` sigue la regla del motor: se vacía
+    el scheduler.
+    """
+
+    experiment_identity: str
+    source_id: str
+    strategy_type: str
+    batch_size_events: int | None
+    event_count: int
+    generated_at_sim: float
+    ack_timeout_seconds: float
+    stop_policy: StopPolicy
+    contact_plan: ContactPlan
+    event_type: str = "medicion"
+    priority: TelemetryPriority = TelemetryPriority.NORMAL
+    horizon_seconds: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.experiment_identity.strip() == "":
+            raise ValueError("experiment_identity no debe estar vacío")
+        if self.source_id.strip() == "":
+            raise ValueError("source_id no debe estar vacío")
+        if self.event_type.strip() == "":
+            raise ValueError("event_type no debe estar vacío")
+        if self.event_count < 1:
+            raise ValueError("la cantidad de eventos debe ser al menos 1")
+        if self.generated_at_sim < 0:
+            raise ValueError("generated_at_sim no debe ser negativo")
+        if self.ack_timeout_seconds <= 0:
+            raise ValueError("el timeout de ACK debe ser mayor que 0")
+        if self.horizon_seconds is not None and self.horizon_seconds <= 0:
+            raise ValueError("el horizonte debe ser mayor que 0")
