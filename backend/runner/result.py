@@ -1,11 +1,14 @@
 """Resumen operativo de una corrida ya terminada.
 
-No calcula métricas de E1, E2 ni E3.
+Las métricas científicas viajan en ``scientific_metrics``. Este módulo
+no las calcula.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from core.metrics.run import ScientificRunMetrics
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,3 +54,4 @@ class RunResult:
     gaps_observed: int = 0
     gaps_closed: int = 0
     gap_requests: int = 0
+    scientific_metrics: ScientificRunMetrics | None = None

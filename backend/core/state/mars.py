@@ -168,6 +168,16 @@ class FastMarsStateRepository:
         """Mayor instante de confirmación de la fuente, o ``None`` si no hubo."""
         return self._source.get(source_id, _SourceIndex()).max_confirmed_at_sim
 
+    def confirmed_at_sim(self, event_id: UUID) -> float | None:
+        """Instante de la primera confirmación, o ``None`` si no está confirmado.
+
+        Una repetición posterior del mismo id no mueve ese instante.
+        """
+        for row in self._history.get(event_id, ()):
+            if row.state is TelemetryEventState.CONFIRMED:
+                return row.at_sim
+        return None
+
     def pending_count(self, source_id: str) -> int:
         """Eventos cuyo outbox todavía no está confirmado."""
         return self._source.get(source_id, _SourceIndex()).pending

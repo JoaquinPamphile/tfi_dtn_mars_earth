@@ -133,6 +133,10 @@ class MarsNode:
         """Mayor instante de confirmación de esta fuente, o ``None`` si no hubo."""
         return self._repository.max_confirmed_at_sim(self._source_id)
 
+    def confirmed_at_sim(self, event_id: UUID) -> float | None:
+        """Instante de la primera confirmación de ese evento, o ``None``."""
+        return self._repository.confirmed_at_sim(event_id)
+
     def pending_count(self) -> int:
         """Eventos de esta fuente cuyo outbox todavía no está confirmado."""
         return self._repository.pending_count(self._source_id)

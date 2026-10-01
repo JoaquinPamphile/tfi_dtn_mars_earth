@@ -24,6 +24,7 @@ llega a Marte rearma esos eventos como unidades Individual.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from uuid import UUID
 
 from core.contact.contact import Contact, LogicalNode
@@ -64,6 +65,36 @@ from core.transport.emulated import EmulatedTransport, TransportDelivery
 
 _TERMINAL_ATTEMPT = TERMINAL_ATTEMPT_STATUSES
 _RECEIVER_REPAIR_TRIGGER = "receiver_gap_request"
+
+
+@dataclass(frozen=True, slots=True)
+class SenderAckTimeoutRecord:
+    """Timeout de ACK que dejó un intento en ``TIMED_OUT``.
+
+    ``at_sim`` es el instante de simulación en que venció la espera.
+    No es el instante de la pérdida ni el de la confirmación en Marte.
+    """
+
+    attempt_id: str
+    event_ids: tuple[str, ...]
+    at_sim: float
+
+
+@dataclass(frozen=True, slots=True)
+class CreatedSyncByteCounters:
+    """Bytes canónicos de las SyncUnit que la sesión ya creó.
+
+    ``sync_units_created`` cuenta solo unidades de telemetría, reintentos
+    incluidos. Los bytes de ACK van aparte. Un ``attempt_number`` mayor
+    que 1 entra en los bytes de reintento creados, sea retry del emisor
+    o reparación pedida por el receptor. No multiplican hops.
+    """
+
+    telemetry_syncunit_bytes_created: int
+    telemetry_initial_syncunit_bytes_created: int
+    telemetry_retry_syncunit_bytes_created: int
+    ack_syncunit_bytes_created: int
+    sync_units_created: int
 
 
 class TelemetrySyncSession:
@@ -114,6 +145,12 @@ class TelemetrySyncSession:
         )
         self._timeout_scheduled: set[str] = set()
         self._retry_eval_pending: set[str] = set()
+        self._sync_units_created = 0
+        self._telemetry_syncunit_bytes_created = 0
+        self._telemetry_initial_syncunit_bytes_created = 0
+        self._telemetry_retry_syncunit_bytes_created = 0
+        self._ack_syncunit_bytes_created = 0
+        self._sender_ack_timeouts: list[SenderAckTimeoutRecord] = []
         if self.recovery is not None:
             self.recovery.bind_repair_submitter(self.submit_receiver_repair_events)
         transport.register_delivery_handler(self.handle_delivery)
@@ -137,6 +174,33 @@ class TelemetrySyncSession:
             SimulationEventType.RETRY_EVALUATION.value,
             self._on_retry_evaluation,
         )
+
+    def created_sync_byte_counters(self) -> CreatedSyncByteCounters:
+        """Contadores de unidades ya creadas. No lee la traza."""
+        return CreatedSyncByteCounters(
+            telemetry_syncunit_bytes_created=self._telemetry_syncunit_bytes_created,
+            telemetry_initial_syncunit_bytes_created=(
+                self._telemetry_initial_syncunit_bytes_created
+            ),
+            telemetry_retry_syncunit_bytes_created=(
+                self._telemetry_retry_syncunit_bytes_created
+            ),
+            ack_syncunit_bytes_created=self._ack_syncunit_bytes_created,
+            sync_units_created=self._sync_units_created,
+        )
+
+    def sender_ack_timeouts(self) -> tuple[SenderAckTimeoutRecord, ...]:
+        """Timeouts de ACK que pasaron un intento a ``TIMED_OUT``, en orden."""
+        return tuple(self._sender_ack_timeouts)
+
+    def _note_telemetry_unit_created(self, payload_size_bytes: int, attempt_number: int) -> None:
+        """Suma la unidad de telemetría recién creada. No cuenta hops ni ACK."""
+        self._sync_units_created += 1
+        self._telemetry_syncunit_bytes_created += payload_size_bytes
+        if attempt_number > 1:
+            self._telemetry_retry_syncunit_bytes_created += payload_size_bytes
+        else:
+            self._telemetry_initial_syncunit_bytes_created += payload_size_bytes
 
     def submit_pending(self) -> int:
         """Planifica y presenta lo elegible si el contacto Marte → relé está vigente.
@@ -319,6 +383,13 @@ class TelemetrySyncSession:
         if sync_unit_id is not None and self._mars_transmitting(sync_unit_id):
             return
         self._save_attempt_status(attempt, SyncAttemptStatus.TIMED_OUT)
+        self._sender_ack_timeouts.append(
+            SenderAckTimeoutRecord(
+                attempt_id=attempt.attempt_id,
+                event_ids=tuple(str(event_id) for event_id in attempt.event_ids),
+                at_sim=self.engine.now,
+            )
+        )
         self._emit_attempt_trace(
             SimulationEventType.RETRY_SCHEDULED.value,
             attempt,
@@ -493,6 +564,7 @@ class TelemetrySyncSession:
         if attempt is not None and attempt.status not in _TERMINAL_ATTEMPT:
             self._save_attempt_status(attempt, SyncAttemptStatus.ACK_PENDING)
         ack_unit = encode_application_ack(ack, delivery.time_sim)
+        self._ack_syncunit_bytes_created += ack_unit.payload_size_bytes
         self.transport.submit(ack_unit)
 
     def _deliver_ack_to_mars(self, delivery: TransportDelivery) -> None:
@@ -609,6 +681,7 @@ class TelemetrySyncSession:
                 unit_details,
                 entity_id=unit.sync_unit_id,
             )
+            self._note_telemetry_unit_created(unit.payload_size_bytes, attempt_number)
             self.transport.submit(unit)
             if attempt_number > 1 and recovery_trigger is None:
                 self._emit_attempt_trace(

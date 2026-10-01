@@ -14,6 +14,7 @@ from core.state.mars import FastMarsStateRepository
 from core.trace.types import SimulationEventType
 from runner.config import RunConfig
 from runner.result import RunResult, TraceLine
+from runner.scientific import collect_scientific_metrics
 
 
 def execute_run(config: RunConfig) -> RunResult:
@@ -76,6 +77,7 @@ def _collect(stack: SimulationStack, recovery_mode: str) -> RunResult:
         gaps_observed=_count(trace, SimulationEventType.GAP_OBSERVED.value),
         gaps_closed=_count(trace, SimulationEventType.GAP_CLOSED.value),
         gap_requests=_count(trace, SimulationEventType.GAP_REQUEST_CREATED.value),
+        scientific_metrics=collect_scientific_metrics(stack, recovery_mode),
     )
 
 

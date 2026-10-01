@@ -21,7 +21,7 @@ from runner.config import RECOVERY_MODES
 from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
 from runner.result import RunResult
 
-from cli.present import format_summary, format_trace, summary_json
+from cli.present import format_scientific_summary, format_summary, format_trace, summary_json
 
 AYUDA = """\
 Uso: python -m cli run [opciones]
@@ -43,6 +43,8 @@ Opciones:
                                         Sigue siendo una demostración local.
   --json                                Resumen operativo en JSON.
   --show-trace                          Traza: tiempo, índice, tipo y entidad.
+  --scientific-summary                  Métricas científicas de esta corrida.
+                                        Con --json se agregan al objeto.
   -h, --help                            Muestra esta ayuda.
 """
 
@@ -66,6 +68,7 @@ class _Opciones:
     fault: str
     as_json: bool
     show_trace: bool
+    scientific_summary: bool
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -115,6 +118,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
     fault = FAULT_NONE
     as_json = False
     show_trace = False
+    scientific_summary = False
     batch_informado = False
     index = 0
     while index < len(tokens):
@@ -125,6 +129,8 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
             as_json = True
         elif token == "--show-trace":
             show_trace = True
+        elif token == "--scientific-summary":
+            scientific_summary = True
         elif token == "--strategy" or token.startswith("--strategy="):
             valor, index = _valor(tokens, index, "--strategy")
             if valor not in _ESTRATEGIAS:
@@ -172,6 +178,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
         fault=fault,
         as_json=as_json,
         show_trace=show_trace,
+        scientific_summary=scientific_summary,
     )
 
 
@@ -197,9 +204,18 @@ def _entero(valor: str, flag: str) -> int:
 
 def _emitir(result: RunResult, opciones: _Opciones) -> None:
     if opciones.as_json:
-        print(summary_json(result, include_trace=opciones.show_trace))
+        print(
+            summary_json(
+                result,
+                include_trace=opciones.show_trace,
+                include_scientific=opciones.scientific_summary,
+            )
+        )
         return
     print(format_summary(result))
+    if opciones.scientific_summary:
+        print()
+        print(format_scientific_summary(result))
     if opciones.show_trace:
         print()
         print(format_trace(result))

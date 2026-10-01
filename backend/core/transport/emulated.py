@@ -36,6 +36,7 @@ from core.simulation.engine import SimulationEngine
 from core.simulation.scheduler import ScheduledAction
 from core.sync.unit import SyncUnit
 from core.trace.types import SimulationEventType
+from core.transport.accounting import ForcedContactCut, HopTransmissionRecord
 from core.transport.capacity import (
     fits,
     transmission_seconds,
@@ -92,6 +93,8 @@ class EmulatedTransport:
         self._pending_deliveries: list[TransportDelivery] = []
         self._delivery_handlers: list[DeliveryHandler] = []
         self._failures = FailureRuntime()
+        self._hop_records: list[HopTransmissionRecord] = []
+        self._forced_cuts: list[ForcedContactCut] = []
         engine.register_handler(
             SimulationEventType.CONTACT_OPEN.value, self._on_contact_open
         )
@@ -206,15 +209,38 @@ class EmulatedTransport:
         except KeyError:
             return
         link = self._link(contact.source, contact.destination)
+        applied = False
         if (
             link.current_attempt is not None
             and link.current_attempt.valid
             and link.current_attempt.contact_id == contact_id
         ):
             self._interrupt_attempt(link, failure_id)
+            applied = True
         if link.open_contact is not None and link.open_contact.contact_id == contact_id:
             link.open_contact = None
             link.queue.release_contact()
+            applied = True
+        if applied:
+            self._forced_cuts.append(
+                ForcedContactCut(
+                    contact_id=contact_id,
+                    cut_at_sim=self._engine.now,
+                    triggered=True,
+                )
+            )
+
+    def hop_records(self) -> tuple[HopTransmissionRecord, ...]:
+        """Hops ya serializados o interrumpidos, en el orden en que terminaron.
+
+        No incluye una serialización que sigue en curso. La propagación
+        no agrega otro registro.
+        """
+        return tuple(self._hop_records)
+
+    def forced_contact_cuts(self) -> tuple[ForcedContactCut, ...]:
+        """Cortes de contacto ya aplicados, en el orden en que ocurrieron."""
+        return tuple(self._forced_cuts)
 
     def queued(self) -> tuple[SyncUnit, ...]:
         """Unidades que esperan, en orden ``(created_at_sim, submission_order)``."""
@@ -323,6 +349,12 @@ class EmulatedTransport:
         )
         if attempt is None or not attempt.valid:
             return
+        self._remember_hop(
+            attempt,
+            bytes_transmitted=attempt.payload_size_bytes,
+            interrupted=False,
+            completed=True,
+        )
         unit_id = str(action.entity_id)
         source = LogicalNode(action.payload["source_node"])
         destination = LogicalNode(action.payload["destination_node"])
@@ -398,10 +430,43 @@ class EmulatedTransport:
         attempt_id = unit.payload.get("attempt_id")
         if attempt_id is not None:
             interrupted_details["attempt_id"] = attempt_id
+        self._remember_hop(
+            attempt,
+            bytes_transmitted=bytes_sent,
+            interrupted=True,
+            completed=False,
+        )
         self._engine.emit_trace(
             SimulationEventType.TRANSMISSION_INTERRUPTED.value,
             interrupted_details,
             entity_id=unit.sync_unit_id,
+        )
+
+    def _remember_hop(
+        self,
+        attempt: TransmissionAttempt,
+        *,
+        bytes_transmitted: int,
+        interrupted: bool,
+        completed: bool,
+    ) -> None:
+        """Anota el hop. No cambia la unidad ni la cola."""
+        unit = attempt.unit
+        self._hop_records.append(
+            HopTransmissionRecord(
+                transmission_id=attempt.transmission_id,
+                contact_id=attempt.contact_id,
+                source_node=unit.source_node.value,
+                destination_node=unit.destination_node.value,
+                bytes_transmitted=bytes_transmitted,
+                payload_kind=_payload_kind(unit),
+                attempt_number=_attempt_number(unit),
+                interrupted=interrupted,
+                completed=completed,
+                event_ids=tuple(str(event_id) for event_id in unit.event_ids),
+                gap_request_id=_gap_request_id(unit),
+                end_time_sim=self._engine.now,
+            )
         )
 
     def _new_transmission_id(self, sync_unit_id: str) -> str:
@@ -584,6 +649,17 @@ def _silent_drop_payload(
         payload["sync_attempt_id"] = attempt_id
         payload["attempt_id"] = attempt_id
     return payload
+
+
+def _gap_request_id(unit: SyncUnit) -> str | None:
+    """Identificador lógico del GapRequest, si la carga lo trae."""
+    raw = unit.payload.get("gap_request")
+    if not isinstance(raw, dict):
+        return None
+    request_id = raw.get("request_id")
+    if request_id is None:
+        return None
+    return str(request_id)
 
 
 def _payload_kind(unit: SyncUnit) -> str | None:
