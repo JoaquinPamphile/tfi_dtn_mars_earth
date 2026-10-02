@@ -24,7 +24,11 @@ class GeneratedTelemetry:
 
 @dataclass(frozen=True, slots=True)
 class ScientificRunResult:
-    """Salida de ``execute_scientific_run``. No agrega varias corridas."""
+    """Salida de ``execute_scientific_run``. No agrega varias corridas.
+
+    ``trace_entry_count`` cuenta registros de traza ya emitidos. Es un
+    diagnóstico de ejecución, no una métrica científica.
+    """
 
     scenario_id: str
     workload_id: str
@@ -44,6 +48,7 @@ class ScientificRunResult:
     events_persisted_earth: int
     events_confirmed_mars: int
     metrics: ScientificRunMetrics
+    trace_entry_count: int
 
     @property
     def events_generated(self) -> int:

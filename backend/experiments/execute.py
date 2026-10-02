@@ -70,4 +70,5 @@ def execute_scientific_run(spec: ScientificRunSpec) -> ScientificRunResult:
         events_persisted_earth=earth.status().persisted_unique,
         events_confirmed_mars=mars.confirmed_count(),
         metrics=metrics,
+        trace_entry_count=len(stack.engine.trace),
     )
