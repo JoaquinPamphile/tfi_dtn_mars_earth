@@ -45,6 +45,11 @@ class MarsNode:
         """Identificador de la fuente que este nodo registra."""
         return self._source_id
 
+    @property
+    def schema_version(self) -> int:
+        """Versión de esquema que este nodo escribe en cada alta."""
+        return self._schema_version
+
     def close(self) -> None:
         """Cierra el repositorio inyectado. No borra el estado."""
         self._repository.close()

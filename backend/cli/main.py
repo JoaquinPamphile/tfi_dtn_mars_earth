@@ -16,6 +16,9 @@ from core.sync.strategy import (
     InvalidSyncStrategyConfigError,
     UnknownSyncStrategyError,
 )
+from experiments.controlled import controlled_local_run_spec
+from experiments.execute import execute_scientific_run
+from experiments.report import format_scientific_run
 from runner import execute_run
 from runner.config import RECOVERY_MODES
 from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
@@ -24,10 +27,15 @@ from runner.result import RunResult
 from cli.present import format_scientific_summary, format_summary, format_trace, summary_json
 
 AYUDA = """\
-Uso: python -m cli run [opciones]
+Uso:
+  python -m cli run [opciones]
+  python -m cli scientific-run
 
-Ejecuta una corrida headless de demostración del motor.
+run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
+
+scientific-run ejecuta la corrida controlada local por defecto.
+Es una sola corrida, con escenario y workload explícitos.
 
 Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -83,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     if argumentos[0] in {"-h", "--help", "help"}:
         print(AYUDA, end="")
         return 0
+    if argumentos[0] == "scientific-run":
+        return _comando_scientific(argumentos[1:])
     if argumentos[0] != "run":
         print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
@@ -108,6 +118,24 @@ def main(argv: list[str] | None = None) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     _emitir(result, opciones)
+    if result.engine_status != SimulationStatus.COMPLETED.value:
+        return 1
+    return 0
+
+
+def _comando_scientific(tokens: list[str]) -> int:
+    """Ejecuta la especificación controlada local. No acepta una campaña."""
+    if tokens:
+        if tokens == ["-h"] or tokens == ["--help"]:
+            print(AYUDA, end="")
+            return 0
+        print(
+            "scientific-run no admite argumentos: usa la corrida controlada local",
+            file=sys.stderr,
+        )
+        return 2
+    result = execute_scientific_run(controlled_local_run_spec())
+    print(format_scientific_run(result))
     if result.engine_status != SimulationStatus.COMPLETED.value:
         return 1
     return 0

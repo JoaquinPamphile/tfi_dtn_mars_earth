@@ -12,6 +12,7 @@ from core.metrics.run import RunMetricsInput, ScientificRunMetrics, compute_run_
 from core.metrics.traffic import CreatedByteCounters
 from core.recovery.policy import RecoveryPolicy
 from core.runtime.stack import SimulationStack
+from core.trace.types import SimulationEventType
 
 
 def collect_scientific_metrics(
@@ -52,7 +53,7 @@ def collect_scientific_metrics(
             max_earth_generated_at_sim=stack.earth.max_generated_at_sim(),
             max_generated_at_sim=mars_status.max_generated_at_sim,
             last_confirmed_at_sim=mars_status.max_confirmed_at_sim,
-            future_telemetry_generation_scheduled=False,
+            future_telemetry_generation_scheduled=_future_generation_scheduled(stack),
             continuous_generation_active=False,
             freshness_samples=tuple(
                 FreshnessSample(
@@ -103,3 +104,14 @@ def collect_scientific_metrics(
             recovery_policy=RecoveryPolicy(recovery_mode).metrics_name(),
         )
     )
+
+
+def _future_generation_scheduled(stack: SimulationStack) -> bool:
+    """Hay una generación de telemetría todavía en el scheduler.
+
+    Después de ``engine.run`` la carga abierta solo sigue pendiente si
+    quedó una acción de generación. El colector no mantiene un perfil vivo.
+    """
+    generated = SimulationEventType.TELEMETRY_GENERATED.value
+    burst = SimulationEventType.TELEMETRY_BURST_GENERATED.value
+    return stack.engine.has_scheduled(generated) or stack.engine.has_scheduled(burst)

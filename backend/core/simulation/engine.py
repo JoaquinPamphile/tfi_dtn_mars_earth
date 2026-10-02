@@ -148,6 +148,10 @@ class SimulationEngine:
         """Próxima acción sin extraerla, o ``None`` si el scheduler está vacío."""
         return self._scheduler.peek()
 
+    def has_scheduled(self, event_type: str) -> bool:
+        """Indica si queda alguna acción de ese tipo en el scheduler."""
+        return self._scheduler.has_event_type(event_type)
+
     def skip_next(self) -> ScheduledAction | None:
         """Quita la próxima acción sin ejecutarla, sin traza y sin mover el reloj."""
         self._ensure_not_terminal()
