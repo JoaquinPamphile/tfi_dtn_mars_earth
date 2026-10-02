@@ -35,8 +35,11 @@ Opciones:
   --events N                            Eventos a generar. Por defecto: 10.
   --recovery {none,sender-driven,receiver-driven}
                                         Recuperación. Por defecto: none.
-                                        sender-driven reintenta por timeout de ACK.
-                                        receiver-driven pide los huecos que Tierra observa.
+                                        none no programa timeout de ACK ni GapRequest.
+                                        sender-driven reintenta por timeout de ACK
+                                        y no pide huecos.
+                                        receiver-driven pide los huecos que Tierra observa
+                                        y no reintenta por timeout de ACK.
   --fault silent-loss                   Pierde en silencio la secuencia intermedia 1,
                                         intento 1, hop RELAY_TO_EARTH.
                                         Exige al menos 3 eventos y la estrategia individual.

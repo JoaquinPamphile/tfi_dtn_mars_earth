@@ -34,6 +34,7 @@ def execute_run(config: RunConfig) -> RunResult:
         earth=earth,
         retry_policy=RetryPolicy(ack_timeout_seconds=config.ack_timeout_seconds),
         gap_request_timeout_seconds=config.gap_request_timeout_seconds,
+        recovery_policy=config.recovery_policy,
         failures=config.failure_plan,
     )
     stack.generate_many(

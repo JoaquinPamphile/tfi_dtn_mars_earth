@@ -18,14 +18,10 @@ from core.failure.silent import (
     silent_forward_delivery_loss_failure_id,
 )
 from core.mars.node import DEFAULT_SOURCE_ID
+from core.recovery.policy import RecoveryPolicy
 from core.stopping.policy import StopPolicy
 from core.sync.strategy import STRATEGY_TYPE_INDIVIDUAL
-from runner.config import (
-    RECOVERY_NONE,
-    RECOVERY_RECEIVER_DRIVEN,
-    RECOVERY_SENDER_DRIVEN,
-    RunConfig,
-)
+from runner.config import RunConfig
 
 DEMO_SCENARIO_ID = "demo-local-motor"
 DEMO_RECOVERY_SCENARIO_ID = "demo-local-recuperacion"
@@ -47,7 +43,6 @@ DEMO_CONTACT_START_S = 10.0
 DEMO_CONTACT_END_S = 500.0
 DEMO_RECOVERY_CONTACT_END_S = 800.0
 DEMO_RECOVERY_SENDER_ACK_TIMEOUT_S = 40.0
-DEMO_RECOVERY_RECEIVER_ACK_TIMEOUT_S = 100_000.0
 DEMO_RECOVERY_GAP_TIMEOUT_S = 200.0
 DEMO_DATA_RATE_BPS = 8_000_000
 DEMO_PROPAGATION_DELAY_S = 1.0
@@ -137,7 +132,7 @@ def demo_run_config(
     strategy_type: str = STRATEGY_TYPE_INDIVIDUAL,
     batch_size_events: int | None = None,
     event_count: int = DEMO_DEFAULT_EVENTS,
-    recovery: str = RECOVERY_NONE,
+    recovery: str = RecoveryPolicy.NONE.value,
     fault: str = FAULT_NONE,
 ) -> RunConfig:
     """Arma la demostración local con la estrategia y la cantidad pedidas.
@@ -147,15 +142,19 @@ def demo_run_config(
     ``event_id`` siguen siendo deterministas.
 
     Sin ``fault`` ni un ``recovery`` distinto de ``none``, el plan y el
-    timeout son los de la demostración normal. ``silent-loss`` pierde la
-    secuencia 1 y, si hay recuperación, usa ventanas que alcanzan para
-    cerrar el retry o la reparación.
+    timeout de ACK son los de la demostración normal. El timeout no apaga
+    ningún mecanismo: eso lo decide ``RecoveryPolicy``. ``silent-loss``
+    pierde la secuencia 1. Si la política recupera, usa ventanas que
+    alcanzan para cerrar el retry o la reparación. Sender-driven, en ese
+    caso, acorta el timeout de ACK para que el reintento entre en la ventana.
     """
-    if recovery not in (RECOVERY_NONE, RECOVERY_SENDER_DRIVEN, RECOVERY_RECEIVER_DRIVEN):
+    try:
+        policy = RecoveryPolicy(recovery)
+    except ValueError:
         raise ValueError(
             "recuperación no admitida: "
             f"{recovery}. Admitidas: none, sender-driven, receiver-driven."
-        )
+        ) from None
     if fault not in FAULT_MODES:
         raise ValueError(f"falla no admitida: {fault}. Admitida: {FAULT_SILENT_LOSS}.")
     if fault == FAULT_SILENT_LOSS and event_count < DEMO_SILENT_LOSS_MIN_EVENTS:
@@ -172,17 +171,15 @@ def demo_run_config(
     ack_timeout_seconds = DEFAULT_ACK_TIMEOUT_SECONDS
     gap_request_timeout_seconds = None
     failure_plan = None
-    if recovery == RECOVERY_RECEIVER_DRIVEN:
+    if policy.receiver_driven_enabled:
         gap_request_timeout_seconds = DEMO_RECOVERY_GAP_TIMEOUT_S
     if fault == FAULT_SILENT_LOSS:
         failure_plan = demo_silent_loss_plan()
-        if recovery != RECOVERY_NONE:
+        if policy is not RecoveryPolicy.NONE:
             scenario_id = DEMO_RECOVERY_SCENARIO_ID
             contact_plan = recovery_demo_contact_plan()
-            if recovery == RECOVERY_SENDER_DRIVEN:
-                ack_timeout_seconds = DEMO_RECOVERY_SENDER_ACK_TIMEOUT_S
-            else:
-                ack_timeout_seconds = DEMO_RECOVERY_RECEIVER_ACK_TIMEOUT_S
+        if policy.sender_driven_enabled:
+            ack_timeout_seconds = DEMO_RECOVERY_SENDER_ACK_TIMEOUT_S
     return RunConfig(
         experiment_identity=make_experiment_identity(scenario_id, DEMO_SEED),
         source_id=DEFAULT_SOURCE_ID,
@@ -194,7 +191,7 @@ def demo_run_config(
         stop_policy=StopPolicy.UNTIL_IDLE,
         contact_plan=contact_plan,
         event_type=DEMO_EVENT_TYPE,
-        recovery_mode=recovery,
+        recovery_policy=policy,
         gap_request_timeout_seconds=gap_request_timeout_seconds,
         failure_plan=failure_plan,
     )

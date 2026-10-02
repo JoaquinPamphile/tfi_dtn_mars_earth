@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
 
 from core.contact.plan import ContactPlan
 from core.domain.event import TelemetryEvent
@@ -20,6 +19,7 @@ from core.failure.runtime import FailureRuntime
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
 from core.recovery.controller import ReceiverDrivenRecoveryController
+from core.recovery.policy import RecoveryPolicy
 from core.relay.node import RelayNode
 from core.runtime.contacts import schedule_contact_plan
 from core.runtime.session import TelemetrySyncSession
@@ -70,8 +70,7 @@ class SimulationStack:
         earth: EarthNode | None = None,
         retry_policy: RetryPolicy | None = None,
         gap_request_timeout_seconds: float | None = None,
-        sender_hold_event_ids: frozenset[UUID] | None = None,
-        sender_hold_sequences: frozenset[int] | None = None,
+        recovery_policy: RecoveryPolicy = RecoveryPolicy.NONE,
         failures: FailurePlan | FailureRuntime | None = None,
     ) -> SimulationStack:
         """Arma el stack y programa el plan de contactos recibido.
@@ -80,13 +79,16 @@ class SimulationStack:
         genere este nodo de Marte. ``None`` deja que cada alta reciba un
         identificador nuevo. La estrategia, si no viene armada, sale de
         ``strategy_type`` y ``batch_size_events``. ``retry_policy`` ausente
-        usa el timeout de ACK por defecto.
+        usa el timeout de ACK por defecto. Ese timeout solo se programa si
+        ``recovery_policy`` enciende sender-driven.
 
-        ``gap_request_timeout_seconds`` ausente deja apagada la recuperación
-        receiver-driven. Si viene, es el timeout del GapRequest, medido
-        desde que la unidad sale de Tierra, y no el timeout de ACK.
-        ``sender_hold_event_ids`` y ``sender_hold_sequences`` retienen
-        eventos del envío del emisor. No son opciones de la CLI.
+        ``recovery_policy`` decide los mecanismos. ``NONE`` no programa
+        timeout de ACK ni crea el controlador de huecos.
+        ``SENDER_DRIVEN`` programa el timeout de ACK y no crea GapRequest.
+        ``RECEIVER_DRIVEN`` crea el controlador y no programa timeout de
+        ACK. En ese modo ``gap_request_timeout_seconds`` es obligatorio:
+        es el timeout del GapRequest, medido desde que la unidad sale de
+        Tierra. Un valor ausente no apaga el mecanismo; es un error.
 
         ``failures`` ausente deja un runtime vacío: el round trip no cambia.
         Un ``FailurePlan`` se envuelve sin copiar sus definiciones a otro
@@ -107,7 +109,11 @@ class SimulationStack:
         transport.bind_failures(failure_runtime)
         relay = RelayNode(engine, transport)
         recovery = None
-        if gap_request_timeout_seconds is not None:
+        if recovery_policy.receiver_driven_enabled:
+            if gap_request_timeout_seconds is None:
+                raise ValueError(
+                    "receiver-driven requiere gap_request_timeout_seconds"
+                )
             recovery = ReceiverDrivenRecoveryController(
                 earth=earth_node,
                 mars=mars_node,
@@ -124,8 +130,7 @@ class SimulationStack:
             resolved,
             retry_policy=retry_policy,
             recovery=recovery,
-            sender_hold_event_ids=sender_hold_event_ids,
-            sender_hold_sequences=sender_hold_sequences,
+            sender_driven=recovery_policy.sender_driven_enabled,
         )
         schedule_contact_plan(engine, contact_plan)
         return cls(

@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from core.contact.plan import ContactPlan
 from core.domain.priority import TelemetryPriority
 from core.failure.plan import FailurePlan
+from core.recovery.policy import RecoveryPolicy
 from core.stopping.policy import StopPolicy
 
-RECOVERY_NONE = "none"
-RECOVERY_SENDER_DRIVEN = "sender-driven"
-RECOVERY_RECEIVER_DRIVEN = "receiver-driven"
+RECOVERY_NONE = RecoveryPolicy.NONE.value
+RECOVERY_SENDER_DRIVEN = RecoveryPolicy.SENDER_DRIVEN.value
+RECOVERY_RECEIVER_DRIVEN = RecoveryPolicy.RECEIVER_DRIVEN.value
 RECOVERY_MODES = (
     RECOVERY_NONE,
     RECOVERY_SENDER_DRIVEN,
@@ -43,9 +44,14 @@ class RunConfig:
     event_type: str = "medicion"
     priority: TelemetryPriority = TelemetryPriority.NORMAL
     horizon_seconds: float | None = None
-    recovery_mode: str = RECOVERY_NONE
+    recovery_policy: RecoveryPolicy = RecoveryPolicy.NONE
     gap_request_timeout_seconds: float | None = None
     failure_plan: FailurePlan | None = None
+
+    @property
+    def recovery_mode(self) -> str:
+        """Valor de consola de la política. No decide qué mecanismo corre."""
+        return self.recovery_policy.value
 
     def __post_init__(self) -> None:
         if self.experiment_identity.strip() == "":
@@ -62,11 +68,16 @@ class RunConfig:
             raise ValueError("el timeout de ACK debe ser mayor que 0")
         if self.horizon_seconds is not None and self.horizon_seconds <= 0:
             raise ValueError("el horizonte debe ser mayor que 0")
-        if self.recovery_mode not in RECOVERY_MODES:
+        if not isinstance(self.recovery_policy, RecoveryPolicy):
             admitidos = ", ".join(RECOVERY_MODES)
             raise ValueError(
-                f"recuperación no admitida: {self.recovery_mode}. Admitidas: {admitidos}."
+                "recuperación no admitida: "
+                f"{self.recovery_policy}. Admitidas: {admitidos}."
             )
+        if self.recovery_policy.receiver_driven_enabled and (
+            self.gap_request_timeout_seconds is None
+        ):
+            raise ValueError("receiver-driven requiere el timeout del GapRequest")
         if (
             self.gap_request_timeout_seconds is not None
             and self.gap_request_timeout_seconds <= 0

@@ -5,20 +5,25 @@ presenta la SyncUnit al hop Marte → relé. Cuando la unidad llega a Tierra,
 toma el ACK, lo codifica y lo presenta al hop Tierra → relé. Cuando ese
 ACK llega a Marte, confirma los eventos y cancela el timeout de ese intento.
 
-El timeout de ACK se mide desde ``last_submitted_at_sim``: el instante en
-que la unidad terminó de salir de Marte hacia el relé. Al vencer, el intento
-pasa a ``TIMED_OUT`` y se evalúa un retry de esa misma cohorte. La
-evaluación puede ocurrir en ese instante, si el contacto Marte → relé está
-vigente, o quedar programada para el próximo contacto. Un evento generado
-después no entra en esa cohorte.
+El timeout de ACK, solo si sender-driven está encendido, se mide desde
+``last_submitted_at_sim``: el instante en que la unidad terminó de salir de
+Marte hacia el relé. Al vencer, el intento pasa a ``TIMED_OUT`` y se evalúa
+un retry de esa misma cohorte. La evaluación puede ocurrir en ese instante,
+si el contacto Marte → relé está vigente, o quedar programada para el
+próximo contacto. Un evento generado después no entra en esa cohorte.
 
-Si no hay un contacto de retorno, el ACK puede quedar en la cola del
-transporte y el timeout dispara el retry del emisor.
+Si sender-driven está apagado, ese timeout no se programa. Un evento cuyo
+ACK no vuelve queda pendiente en Marte. Tierra puede registrar el hueco
+cuando llega una secuencia posterior, sin que eso cree un retry.
 
-La reparación receiver-driven es opcional. Sin controlador no se observa
-un hueco ni se arma un GapRequest. Con controlador, una alta nueva en
-Tierra puede pedir los huecos internos no cubiertos, y un GapRequest que
-llega a Marte rearma esos eventos como unidades Individual.
+Si no hay un contacto de retorno y sender-driven está encendido, el ACK
+puede quedar en la cola del transporte y el timeout dispara el retry.
+
+La reparación receiver-driven es opcional. Sin controlador no se arma un
+GapRequest. Con controlador, una alta nueva en Tierra puede pedir los
+huecos internos no cubiertos, y un GapRequest que llega a Marte rearma
+esos eventos como unidades Individual. La detección de huecos del
+repositorio de Tierra no depende de este controlador.
 """
 
 from __future__ import annotations
@@ -110,10 +115,10 @@ class TelemetrySyncSession:
     ``sync_group_id`` y la misma estrategia. El ``attempt_id`` y el
     ``attempt_number`` son nuevos.
 
-    ``recovery`` activa el pedido de huecos. ``sender_hold_event_ids`` y
-    ``sender_hold_sequences`` dejan eventos fuera del envío del emisor
-    para que un test pueda abrir un hueco interno sin un plan de fallos.
-    La reparación receiver-driven no usa ese filtro.
+    ``sender_driven`` enciende el timeout de ACK y el retry de esa cohorte.
+    Apagado, no se programa ``ACK_TIMEOUT``, no se evalúa un retry y no se
+    crea un reintento del emisor. ``recovery`` enciende el pedido de huecos.
+    Sin controlador no hay GapRequest.
     """
 
     def __init__(
@@ -126,8 +131,7 @@ class TelemetrySyncSession:
         strategy: SyncStrategy,
         retry_policy: RetryPolicy | None = None,
         recovery: ReceiverDrivenRecoveryController | None = None,
-        sender_hold_event_ids: frozenset[UUID] | None = None,
-        sender_hold_sequences: frozenset[int] | None = None,
+        sender_driven: bool = False,
     ) -> None:
         self.mars = mars
         self.earth = earth
@@ -137,12 +141,7 @@ class TelemetrySyncSession:
         self.strategy = strategy
         self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
         self.recovery = recovery
-        self._sender_hold_event_ids = (
-            sender_hold_event_ids if sender_hold_event_ids is not None else frozenset()
-        )
-        self._sender_hold_sequences = (
-            sender_hold_sequences if sender_hold_sequences is not None else frozenset()
-        )
+        self.sender_driven = sender_driven
         self._timeout_scheduled: set[str] = set()
         self._retry_eval_pending: set[str] = set()
         self._sync_units_created = 0
@@ -217,9 +216,8 @@ class TelemetrySyncSession:
     ) -> tuple[TelemetryEvent, ...]:
         """Presenta los eventos originales como unidades Individual de reparación.
 
-        No usa el filtro que retiene eventos en el envío del emisor. No
-        fabrica eventos. No apaga la guarda de intento activo que usa la
-        sincronización sender-driven.
+        No fabrica eventos. No apaga la guarda de intento activo: un intento
+        vigente de varios eventos no se reemplaza.
 
         Un evento confirmado se omite. Un intento Individual activo del
         evento pedido pasa a ``REPAIR_REQUESTED`` y se le cancela el timeout
@@ -355,8 +353,11 @@ class TelemetrySyncSession:
         Un intento ya terminal no se toca. Si algún evento de la cohorte ya
         está confirmado, el intento pasa a ``ACKNOWLEDGED`` y no hay retry.
         Si la unidad de ese intento todavía sale de Marte, la acción no hace
-        nada más: no reprograma el timeout.
+        nada más: no reprograma el timeout. Con sender-driven apagado no
+        hay timeout programado; si igual llega la acción, no cambia el intento.
         """
+        if not self.sender_driven:
+            return
         attempt_id = str(action.payload.get("attempt_id", ""))
         self._timeout_scheduled.discard(attempt_id)
         attempt = self.mars.get_sync_attempt(attempt_id)
@@ -404,6 +405,8 @@ class TelemetrySyncSession:
 
     def _on_retry_evaluation(self, action: ScheduledAction) -> None:
         """Reevalúa, en el instante programado, solo los eventos de esa acción."""
+        if not self.sender_driven:
+            return
         raw_ids = action.payload.get("event_ids")
         event_ids = _parse_event_ids(raw_ids)
         for event_id in event_ids:
@@ -418,7 +421,10 @@ class TelemetrySyncSession:
         Si el contacto Marte → relé está vigente, planifica en el acto. Si no,
         deja ``RETRY_EVALUATION`` en el inicio del próximo contacto de ese
         sentido. Sin contacto futuro, registra el hecho y no crea intento.
+        Con sender-driven apagado no crea intento ni programa la evaluación.
         """
+        if not self.sender_driven:
+            return
         eligible: list[TelemetryEvent] = []
         for event_id in event_ids:
             sync = self.mars.sync_state(event_id)
@@ -473,21 +479,18 @@ class TelemetrySyncSession:
         if self._mars_relay_available() is None:
             return 0
         eligible = unique_in_order(self.mars.eligible_sync_events())
-        if self._sender_hold_event_ids:
+        if not self.sender_driven:
             eligible = [
                 event
                 for event in eligible
-                if event.event_id not in self._sender_hold_event_ids
-            ]
-        if self._sender_hold_sequences:
-            eligible = [
-                event
-                for event in eligible
-                if event.sequence_number not in self._sender_hold_sequences
+                if not self._is_sender_retry_candidate(event)
             ]
         if not eligible:
             return 0
-        retry_items, fresh = self._partition_retry_cohorts(eligible)
+        if self.sender_driven:
+            retry_items, fresh = self._partition_retry_cohorts(eligible)
+        else:
+            retry_items, fresh = [], list(eligible)
         submitted = 0
         if retry_items:
             submitted += self._execute_plans(
@@ -779,13 +782,27 @@ class TelemetrySyncSession:
         )
         self._schedule_ack_timeout(updated)
 
+    def _is_sender_retry_candidate(self, event: TelemetryEvent) -> bool:
+        """El último intento ya venció o se interrumpió y solo lo retoma el emisor."""
+        latest = self.mars.latest_sync_attempt_for_event(event.event_id)
+        if latest is None:
+            return False
+        return latest.status in {
+            SyncAttemptStatus.TIMED_OUT,
+            SyncAttemptStatus.INTERRUPTED,
+        }
+
     def _schedule_ack_timeout(self, attempt: SyncAttempt) -> None:
         """Programa ``ACK_TIMEOUT`` una vez por intento, desde el último envío.
 
         El instante es ``last_submitted_at_sim + ack_timeout_seconds``. Si
         ese instante ya quedó atrás del reloj, la acción queda en el ahora.
         Un segundo completado del mismo intento no mueve el timeout ya puesto.
+        Con sender-driven apagado no programa nada: el timeout configurado
+        no se usa para dejar el mecanismo dormido.
         """
+        if not self.sender_driven:
+            return
         if attempt.attempt_id in self._timeout_scheduled:
             return
         timeout_at = attempt.last_submitted_at_sim + self.retry_policy.ack_timeout_seconds

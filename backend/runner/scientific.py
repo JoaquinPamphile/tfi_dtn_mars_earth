@@ -10,12 +10,8 @@ from core.metrics.delivery import FreshnessSample
 from core.metrics.recovery import PersistenceObservation, SenderTimeoutObservation
 from core.metrics.run import RunMetricsInput, ScientificRunMetrics, compute_run_metrics
 from core.metrics.traffic import CreatedByteCounters
+from core.recovery.policy import RecoveryPolicy
 from core.runtime.stack import SimulationStack
-
-_POLICIES = {
-    "sender-driven": "SENDER_DRIVEN",
-    "receiver-driven": "RECEIVER_DRIVEN",
-}
 
 
 def collect_scientific_metrics(
@@ -104,6 +100,6 @@ def collect_scientific_metrics(
             issued_gap_requests=issued,
             gap_request_attempts=gap_attempts,
             receiver_repairs=repairs,
-            recovery_policy=_POLICIES.get(recovery_mode),
+            recovery_policy=RecoveryPolicy(recovery_mode).metrics_name(),
         )
     )
