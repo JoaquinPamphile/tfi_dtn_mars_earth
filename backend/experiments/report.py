@@ -1,7 +1,8 @@
-"""Texto de una corrida científica ya terminada. No ejecuta el motor."""
+"""Texto de una corrida o campaña ya terminada. No ejecuta el motor."""
 
 from __future__ import annotations
 
+from experiments.campaign import CampaignResult
 from experiments.result import ScientificRunResult
 
 
@@ -52,6 +53,33 @@ def format_scientific_run(result: ScientificRunResult) -> str:
     for etiqueta, valor in filas:
         lineas.append(f"{etiqueta + ':':<{ancho + 1}}  {valor}")
     return "\n".join(lineas)
+
+
+def format_campaign(result: CampaignResult) -> str:
+    """Corridas en el orden de la campaña, con identidad y conteos de cada una."""
+    lineas = [
+        f"Campaña: {result.campaign_id}",
+        f"Identidad: {result.campaign_identity}",
+        f"Corridas: {result.run_count}",
+        f"Completadas: {result.completed_count}",
+    ]
+    if result.failed_count:
+        lineas.append(f"Fallidas: {result.failed_count}")
+    lineas.append("")
+    for run in result.runs:
+        lineas.append(f"[{run.index + 1}] {run.label}")
+        if run.result is None:
+            lineas.append("Estado: falló")
+            lineas.append(f"Tipo: {run.error_type}")
+            lineas.append(f"Mensaje: {run.error_message}")
+        else:
+            lineas.append(f"Identidad de dataset: {run.result.dataset_identity}")
+            lineas.append(f"Identidad de ejecución: {run.result.execution_identity}")
+            lineas.append(f"Generados: {run.result.events_generated}")
+            lineas.append(f"Persistidos: {run.result.events_persisted_earth}")
+            lineas.append(f"Confirmados: {run.result.events_confirmed_mars}")
+        lineas.append("")
+    return "\n".join(lineas).rstrip("\n")
 
 
 def _numero(value: float) -> str:

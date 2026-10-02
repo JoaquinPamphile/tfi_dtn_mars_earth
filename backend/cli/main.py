@@ -16,9 +16,10 @@ from core.sync.strategy import (
     InvalidSyncStrategyConfigError,
     UnknownSyncStrategyError,
 )
+from experiments.campaign import controlled_development_campaign, execute_campaign
 from experiments.controlled import controlled_local_run_spec
 from experiments.execute import execute_scientific_run
-from experiments.report import format_scientific_run
+from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
 from runner.config import RECOVERY_MODES
 from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
@@ -30,12 +31,17 @@ AYUDA = """\
 Uso:
   python -m cli run [opciones]
   python -m cli scientific-run
+  python -m cli scientific-campaign
 
 run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
 
 scientific-run ejecuta la corrida controlada local por defecto.
 Es una sola corrida, con escenario y workload explícitos.
+
+scientific-campaign ejecuta la campaña controlada de desarrollo.
+Son dos corridas en orden, con el mismo escenario, el mismo workload
+y la misma semilla. No es evidencia científica.
 
 Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -93,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if argumentos[0] == "scientific-run":
         return _comando_scientific(argumentos[1:])
+    if argumentos[0] == "scientific-campaign":
+        return _comando_campaign(argumentos[1:])
     if argumentos[0] != "run":
         print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
@@ -137,6 +145,33 @@ def _comando_scientific(tokens: list[str]) -> int:
     result = execute_scientific_run(controlled_local_run_spec())
     print(format_scientific_run(result))
     if result.engine_status != SimulationStatus.COMPLETED.value:
+        return 1
+    return 0
+
+
+def _comando_campaign(tokens: list[str]) -> int:
+    """Ejecuta la campaña controlada de desarrollo. No acepta una grilla."""
+    if tokens:
+        if tokens == ["-h"] or tokens == ["--help"]:
+            print(AYUDA, end="")
+            return 0
+        print(
+            "scientific-campaign no admite argumentos: usa la campaña controlada de desarrollo",
+            file=sys.stderr,
+        )
+        return 2
+    result = execute_campaign(controlled_development_campaign())
+    print("Campaña científica controlada de desarrollo.")
+    print("No es evidencia científica.")
+    print()
+    print("Campaña científica controlada")
+    print()
+    print(format_campaign(result))
+    incompleta = any(
+        run.result is None or run.result.engine_status != SimulationStatus.COMPLETED.value
+        for run in result.runs
+    )
+    if incompleta:
         return 1
     return 0
 
