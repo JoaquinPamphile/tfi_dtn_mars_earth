@@ -9,6 +9,7 @@ from experiments.campaign import (
     execute_campaign,
 )
 from experiments.e1 import E1Result, build_e1_campaign, e1_result
+from experiments.e2 import E2Result, build_e2_campaign, e2_result
 from experiments.controlled import controlled_local_run_spec
 from experiments.execute import execute_scientific_run
 from experiments.offered_load import (
@@ -27,14 +28,17 @@ __all__ = [
     "CampaignRunSpec",
     "CampaignSpec",
     "E1Result",
+    "E2Result",
     "Scenario",
     "ScientificRunResult",
     "ScientificRunSpec",
     "Workload",
     "build_e1_campaign",
+    "build_e2_campaign",
     "controlled_development_campaign",
     "controlled_local_run_spec",
     "e1_result",
+    "e2_result",
     "execute_campaign",
     "execute_scientific_run",
     "offered_load_event_count",

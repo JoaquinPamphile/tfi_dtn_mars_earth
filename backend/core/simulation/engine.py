@@ -329,7 +329,9 @@ class SimulationEngine:
         ``PROFILE_HORIZON_SETTLED`` ejecuta hasta el horizonte inclusive y,
         después, solo los tipos de asentamiento. El resto posterior se
         descarta sin despacho, sin traza y sin mover el reloj por ese descarte.
-        Lo descartado no entra en el conteo devuelto.
+        Lo descartado no entra en el conteo devuelto. Si hubo trabajo, al
+        vaciar la cola el estado queda ``COMPLETED``. Una cola vacía desde
+        el inicio no cambia el estado ``CREATED``.
         """
         effective = resolve_stop_policy(policy, horizon_seconds)
         before = self._actions_processed
@@ -357,10 +359,12 @@ class SimulationEngine:
         self._status = SimulationStatus.STOPPED
 
     def _run_until_settled(self, horizon_seconds: float) -> None:
+        did_work = False
         while True:
             peek = self.peek_action()
             if peek is None:
                 break
+            did_work = True
             if peek.time <= horizon_seconds:
                 self.step()
                 continue
@@ -368,6 +372,8 @@ class SimulationEngine:
                 self.step()
                 continue
             self.skip_next()
+        if did_work and self._status is not SimulationStatus.FAILED:
+            self._status = SimulationStatus.COMPLETED
 
     def _process(self, action: ScheduledAction) -> SimulationTraceEntry:
         self._clock.advance_to(action.time)

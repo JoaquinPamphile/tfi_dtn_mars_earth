@@ -20,6 +20,7 @@ from core.sync.strategy import (
 from experiments.campaign import controlled_development_campaign, execute_campaign
 from experiments.controlled import controlled_local_run_spec
 from experiments.e1 import build_e1_campaign, e1_result, e1_result_json, format_e1
+from experiments.e2 import build_e2_campaign, e2_result, e2_result_json, format_e2
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
@@ -35,6 +36,7 @@ Uso:
   python -m cli scientific-run
   python -m cli scientific-campaign
   python -m cli e1 [--json]
+  python -m cli e2 [--json]
 
 run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
@@ -49,6 +51,11 @@ y la misma semilla. No es evidencia científica.
 e1 ejecuta E1 — Granularidad de sincronización.
 Son cuatro corridas, en el orden oficial: individual, lote fijo 10,
 lote fijo 25 y lote fijo 50. --json imprime la comparación estructurada.
+No escribe archivos.
+
+e2 ejecuta E2 — Efecto de la carga ofrecida.
+Son doce corridas: seis fracciones de carga y, en cada una, Individual
+y lote fijo 25. --json imprime la vista estructurada.
 No escribe archivos.
 
 Opciones:
@@ -111,6 +118,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_campaign(argumentos[1:])
     if argumentos[0] == "e1":
         return _comando_e1(argumentos[1:])
+    if argumentos[0] == "e2":
+        return _comando_e2(argumentos[1:])
     if argumentos[0] != "run":
         print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
@@ -183,6 +192,30 @@ def _comando_campaign(tokens: list[str]) -> int:
     )
     if incompleta:
         return 1
+    return 0
+
+
+def _comando_e2(tokens: list[str]) -> int:
+    """Ejecuta el diseño oficial de E2. No escribe archivos."""
+    if tokens in (["-h"], ["--help"]):
+        print(AYUDA, end="")
+        return 0
+    if tokens not in ([], ["--json"]):
+        print("e2 solo admite --json", file=sys.stderr)
+        return 2
+    spec = build_e2_campaign()
+    started = time.perf_counter()
+    campaign = execute_campaign(spec)
+    elapsed = time.perf_counter() - started
+    try:
+        result = e2_result(spec, campaign, wall_execution_seconds=elapsed)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if tokens == ["--json"]:
+        print(e2_result_json(result))
+    else:
+        print(format_e2(result))
     return 0
 
 
