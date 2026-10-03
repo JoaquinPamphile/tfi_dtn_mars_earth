@@ -21,6 +21,7 @@ from experiments.campaign import controlled_development_campaign, execute_campai
 from experiments.controlled import controlled_local_run_spec
 from experiments.e1 import build_e1_campaign, e1_result, e1_result_json, format_e1
 from experiments.e2 import build_e2_campaign, e2_result, e2_result_json, format_e2
+from experiments.e3 import build_e3_campaign, e3_result, e3_result_json, format_e3
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
@@ -37,6 +38,7 @@ Uso:
   python -m cli scientific-campaign
   python -m cli e1 [--json]
   python -m cli e2 [--json]
+  python -m cli e3 [--json]
 
 run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
@@ -57,6 +59,11 @@ e2 ejecuta E2 — Efecto de la carga ofrecida.
 Son doce corridas: seis fracciones de carga y, en cada una, Individual
 y lote fijo 25. --json imprime la vista estructurada.
 No escribe archivos.
+
+e3 ejecuta E3 — Comparación controlada de recovery.
+Son cuatro celdas: sender-driven y receiver-driven, cada una sin pérdida
+y con la misma pérdida silenciosa. --json imprime la vista estructurada.
+No escribe archivos. No declara una política ganadora.
 
 Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -120,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_e1(argumentos[1:])
     if argumentos[0] == "e2":
         return _comando_e2(argumentos[1:])
+    if argumentos[0] == "e3":
+        return _comando_e3(argumentos[1:])
     if argumentos[0] != "run":
         print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
@@ -216,6 +225,30 @@ def _comando_e2(tokens: list[str]) -> int:
         print(e2_result_json(result))
     else:
         print(format_e2(result))
+    return 0
+
+
+def _comando_e3(tokens: list[str]) -> int:
+    """Ejecuta el diseño oficial de E3. No escribe archivos."""
+    if tokens in (["-h"], ["--help"]):
+        print(AYUDA, end="")
+        return 0
+    if tokens not in ([], ["--json"]):
+        print("e3 solo admite --json", file=sys.stderr)
+        return 2
+    spec = build_e3_campaign()
+    started = time.perf_counter()
+    campaign = execute_campaign(spec)
+    elapsed = time.perf_counter() - started
+    try:
+        result = e3_result(spec, campaign, wall_execution_seconds=elapsed)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if tokens == ["--json"]:
+        print(e3_result_json(result))
+    else:
+        print(format_e3(result))
     return 0
 
 
