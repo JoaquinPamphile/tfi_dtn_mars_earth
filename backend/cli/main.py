@@ -22,6 +22,12 @@ from experiments.controlled import controlled_local_run_spec
 from experiments.e1 import build_e1_campaign, e1_result, e1_result_json, format_e1
 from experiments.e2 import build_e2_campaign, e2_result, e2_result_json, format_e2
 from experiments.e3 import build_e3_campaign, e3_result, e3_result_json, format_e3
+from experiments.e3_sensitivity import (
+    build_e3_sensitivity_campaign,
+    e3_sensitivity_json,
+    e3_sensitivity_result,
+    format_e3_sensitivity,
+)
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
@@ -39,6 +45,7 @@ Uso:
   python -m cli e1 [--json]
   python -m cli e2 [--json]
   python -m cli e3 [--json]
+  python -m cli e3-sensitivity [--json]
 
 run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
@@ -64,6 +71,9 @@ e3 ejecuta E3 — Comparación controlada de recovery.
 Son cuatro celdas: sender-driven y receiver-driven, cada una sin pérdida
 y con la misma pérdida silenciosa. --json imprime la vista estructurada.
 No escribe archivos. No declara una política ganadora.
+
+e3-sensitivity ejecuta el análisis de sensibilidad de E3 a la posición
+de la pérdida. No constituye un experimento E4. No escribe archivos.
 
 Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -129,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_e2(argumentos[1:])
     if argumentos[0] == "e3":
         return _comando_e3(argumentos[1:])
+    if argumentos[0] == "e3-sensitivity":
+        return _comando_e3_sensitivity(argumentos[1:])
     if argumentos[0] != "run":
         print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
@@ -249,6 +261,30 @@ def _comando_e3(tokens: list[str]) -> int:
         print(e3_result_json(result))
     else:
         print(format_e3(result))
+    return 0
+
+
+def _comando_e3_sensitivity(tokens: list[str]) -> int:
+    """Ejecuta la sensibilidad de E3. No toca la campaña oficial."""
+    if tokens in (["-h"], ["--help"]):
+        print(AYUDA, end="")
+        return 0
+    if tokens not in ([], ["--json"]):
+        print("e3-sensitivity solo admite --json", file=sys.stderr)
+        return 2
+    spec = build_e3_sensitivity_campaign()
+    started = time.perf_counter()
+    campaign = execute_campaign(spec)
+    elapsed = time.perf_counter() - started
+    try:
+        result = e3_sensitivity_result(spec, campaign, wall_execution_seconds=elapsed)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    if tokens == ["--json"]:
+        print(e3_sensitivity_json(result))
+    else:
+        print(format_e3_sensitivity(result))
     return 0
 
 
