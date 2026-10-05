@@ -24,6 +24,7 @@ from core.stopping.policy import StopPolicy
 from core.sync.strategy import STRATEGY_TYPE_FIXED_BATCH, STRATEGY_TYPE_INDIVIDUAL
 from core.trace.level import TraceLevel
 
+from experiments.canonical import spec_payload
 from experiments.controlled import (
     CONTROLLED_LOCAL_SEED,
     controlled_local_scenario,
@@ -285,16 +286,4 @@ def _canonical_campaign_json(spec: CampaignSpec) -> str:
 
 
 def _spec_payload(spec: ScientificRunSpec) -> dict[str, object]:
-    return {
-        "scenario": spec.scenario.model_dump(mode="json"),
-        "workload": spec.workload.model_dump(mode="json"),
-        "seed": spec.seed,
-        "strategy_type": spec.strategy_type,
-        "batch_size_events": spec.batch_size_events,
-        "recovery_policy": spec.recovery_policy.value,
-        "retry_policy": spec.retry_policy.model_dump(mode="json"),
-        "failure_plan": spec.failure_plan.model_dump(mode="json"),
-        "stop_policy": spec.stop_policy.value,
-        "trace_level": spec.trace_level.value,
-        "gap_request_timeout_seconds": spec.gap_request_timeout_seconds,
-    }
+    return spec_payload(spec)

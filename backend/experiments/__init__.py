@@ -17,7 +17,14 @@ from experiments.e3_sensitivity import (
     e3_sensitivity_result,
 )
 from experiments.controlled import controlled_local_run_spec
+from experiments.evidence import (
+    EvidenceExistsError,
+    export_campaign_evidence,
+    export_development_evidence,
+)
 from experiments.execute import execute_scientific_run
+from experiments.fingerprint import configuration_hash, dataset_fingerprint
+from experiments.manifest import CampaignManifest, ScientificRunManifest
 from experiments.offered_load import (
     CANONICAL_OFFERED_LOAD_FRACTIONS,
     offered_load_event_count,
@@ -32,15 +39,20 @@ __all__ = [
     "CampaignResult",
     "CampaignRunResult",
     "CampaignRunSpec",
+    "CampaignManifest",
     "CampaignSpec",
     "E1Result",
     "E2Result",
     "E3Result",
     "E3SensitivityResult",
+    "EvidenceExistsError",
     "Scenario",
+    "ScientificRunManifest",
     "ScientificRunResult",
     "ScientificRunSpec",
     "Workload",
+    "configuration_hash",
+    "dataset_fingerprint",
     "build_e1_campaign",
     "build_e2_campaign",
     "build_e3_campaign",
@@ -51,6 +63,8 @@ __all__ = [
     "e2_result",
     "e3_result",
     "e3_sensitivity_result",
+    "export_campaign_evidence",
+    "export_development_evidence",
     "execute_campaign",
     "execute_scientific_run",
     "offered_load_event_count",
