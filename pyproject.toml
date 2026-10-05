@@ -1,6 +1,6 @@
 [project]
 name = "tfi-dtn-mars-earth"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Aplicación y banco experimental de sincronización de telemetría DTN Marte–Tierra."
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -19,6 +19,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["backend"]
 include = ["core*", "runner*", "cli*", "experiments*"]
+
+[tool.setuptools.package-data]
+experiments = ["VERSION"]
+
+[tool.setuptools.dynamic]
+version = {file = "backend/experiments/VERSION"}
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]

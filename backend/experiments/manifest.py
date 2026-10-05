@@ -15,10 +15,10 @@ from experiments.campaign import CampaignResult, CampaignSpec
 from experiments.canonical import (
     HASH_ALGORITHM,
     MANIFEST_SCHEMA_VERSION,
-    SOFTWARE_VERSION,
     jsonable,
     spec_payload,
 )
+from experiments.software_provenance import SoftwareProvenance, current_provenance
 from experiments.fingerprint import (
     configuration_hash,
     dataset_event_count,
@@ -34,6 +34,8 @@ class ScientificRunManifest:
 
     manifest_schema_version: int
     software_version: str
+    source_revision: str | None
+    source_state: str
     telemetry_schema_version: int
     hash_algorithm: str
     dataset_identity: str
@@ -67,6 +69,8 @@ class ScientificRunManifest:
             {
                 "manifest_schema_version": self.manifest_schema_version,
                 "software_version": self.software_version,
+                "source_revision": self.source_revision,
+                "source_state": self.source_state,
                 "telemetry_schema_version": self.telemetry_schema_version,
                 "hash_algorithm": self.hash_algorithm,
                 "dataset_identity": self.dataset_identity,
@@ -106,6 +110,8 @@ class CampaignManifest:
 
     manifest_schema_version: int
     software_version: str
+    source_revision: str | None
+    source_state: str
     campaign_id: str
     campaign_identity: str
     description: str
@@ -120,6 +126,8 @@ class CampaignManifest:
             {
                 "manifest_schema_version": self.manifest_schema_version,
                 "software_version": self.software_version,
+                "source_revision": self.source_revision,
+                "source_state": self.source_state,
                 "campaign_id": self.campaign_id,
                 "campaign_identity": self.campaign_identity,
                 "description": self.description,
@@ -138,6 +146,7 @@ def scientific_run_manifest(
     *,
     error_type: str | None = None,
     error_message: str | None = None,
+    provenance: SoftwareProvenance | None = None,
 ) -> ScientificRunManifest:
     """Arma el manifiesto. Sin resultado, las métricas quedan en null."""
     if not isinstance(spec, ScientificRunSpec):
@@ -155,9 +164,12 @@ def scientific_run_manifest(
         completed = True
         metrics = result.metrics.to_dict()
         engine_status = result.engine_status
+    observed = current_provenance() if provenance is None else provenance
     return ScientificRunManifest(
         manifest_schema_version=MANIFEST_SCHEMA_VERSION,
-        software_version=SOFTWARE_VERSION,
+        software_version=observed.software_version,
+        source_revision=observed.source_revision,
+        source_state=observed.source_state,
         telemetry_schema_version=DEFAULT_SCHEMA_VERSION,
         hash_algorithm=HASH_ALGORITHM,
         dataset_identity=spec.dataset_identity,
@@ -188,7 +200,11 @@ def scientific_run_manifest(
     )
 
 
-def campaign_manifest(spec: CampaignSpec, result: CampaignResult) -> CampaignManifest:
+def campaign_manifest(
+    spec: CampaignSpec,
+    result: CampaignResult,
+    provenance: SoftwareProvenance | None = None,
+) -> CampaignManifest:
     """Manifiesto de la campaña en el orden declarado de ``spec.runs``."""
     if spec.campaign_id != result.campaign_id:
         raise ValueError("la campaña del resultado no coincide con la especificación")
@@ -196,6 +212,7 @@ def campaign_manifest(spec: CampaignSpec, result: CampaignResult) -> CampaignMan
         raise ValueError("campaign_identity no coincide con la especificación")
     if len(spec.runs) != len(result.runs):
         raise ValueError("el resultado no tiene las corridas de la especificación")
+    observed = current_provenance() if provenance is None else provenance
     entries: list[dict[str, Any]] = []
     for index, (planned, finished) in enumerate(zip(spec.runs, result.runs, strict=True)):
         if finished.index != index:
@@ -203,13 +220,18 @@ def campaign_manifest(spec: CampaignSpec, result: CampaignResult) -> CampaignMan
         if finished.label != planned.label:
             raise ValueError("el rótulo del resultado no coincide con la especificación")
         if finished.completed:
-            manifest = scientific_run_manifest(planned.spec, finished.result)
+            manifest = scientific_run_manifest(
+                planned.spec,
+                finished.result,
+                provenance=observed,
+            )
         else:
             manifest = scientific_run_manifest(
                 planned.spec,
                 None,
                 error_type=finished.error_type,
                 error_message=finished.error_message,
+                provenance=observed,
             )
         body = manifest.to_dict()
         entries.append(
@@ -227,7 +249,9 @@ def campaign_manifest(spec: CampaignSpec, result: CampaignResult) -> CampaignMan
         )
     return CampaignManifest(
         manifest_schema_version=MANIFEST_SCHEMA_VERSION,
-        software_version=SOFTWARE_VERSION,
+        software_version=observed.software_version,
+        source_revision=observed.source_revision,
+        source_state=observed.source_state,
         campaign_id=spec.campaign_id,
         campaign_identity=spec.campaign_identity,
         description=spec.description,

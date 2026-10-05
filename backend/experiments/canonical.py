@@ -18,7 +18,6 @@ from experiments.spec import ScientificRunSpec
 HASH_ALGORITHM = "sha256"
 MANIFEST_SCHEMA_VERSION = 1
 EVIDENCE_SCHEMA_VERSION = 1
-SOFTWARE_VERSION = "0.0.0"
 
 
 def spec_payload(spec: ScientificRunSpec) -> dict[str, Any]:

@@ -19,10 +19,15 @@ from experiments.campaign import CampaignResult, CampaignSpec
 from experiments.canonical import (
     EVIDENCE_SCHEMA_VERSION,
     HASH_ALGORITHM,
-    SOFTWARE_VERSION,
     canonical_json_text,
 )
+from experiments.fingerprint import DATASET_FINGERPRINT_FIELDS
 from experiments.manifest import campaign_manifest
+from experiments.software_provenance import (
+    SoftwareProvenance,
+    current_provenance,
+    require_frozen_source,
+)
 
 OFFICIAL_CAMPAIGNS = {
     "e1-strategy-alessi-10k": "e1",
@@ -126,23 +131,28 @@ def _package(
     family: str,
     role: str,
 ) -> dict[str, Any]:
-    manifest = campaign_manifest(spec, result).to_dict()
+    provenance = current_provenance()
+    require_frozen_source(role, provenance)
+    manifest = campaign_manifest(spec, result, provenance).to_dict()
     return {
         "evidence_schema_version": EVIDENCE_SCHEMA_VERSION,
         "family": family,
         "role": role,
         "campaign_id": spec.campaign_id,
         "campaign_identity": spec.campaign_identity,
-        "reproducibility": _reproducibility(),
+        "reproducibility": _reproducibility(provenance),
         "campaign_manifest": manifest,
     }
 
 
-def _reproducibility() -> dict[str, Any]:
+def _reproducibility(provenance: SoftwareProvenance) -> dict[str, Any]:
     return {
         "hash_algorithm": HASH_ALGORITHM,
-        "software_version": SOFTWARE_VERSION,
+        "software_version": provenance.software_version,
+        "source_revision": provenance.source_revision,
+        "source_state": provenance.source_state,
         "configuration_hash_includes_trace_level": True,
+        "configuration_hash_includes_software_provenance": False,
         "trace_level_is_scientific_factor": False,
         "execution_identity_inputs": [
             "scenario_id",
@@ -152,13 +162,34 @@ def _reproducibility() -> dict[str, Any]:
         ],
         "dataset_identity_inputs": ["scenario_id", "seed"],
         "dataset_fingerprint": (
-            "SHA-256 de las líneas de identidad del dataset materializado"
+            "SHA-256 del JSON canónico de cada TelemetryEvent materializado, "
+            "en orden de secuencia"
         ),
+        "dataset_fingerprint_fields": list(DATASET_FINGERPRINT_FIELDS),
+        "flow_in_dataset_fingerprint": "payload",
+        "telemetry_schema_version_role": "external_label",
+        "export_policy": {
+            "official": "clean_revision_required",
+            "sensitivity": "clean_revision_required",
+            "development": "provenance_recorded",
+        },
         "wall_clock_in_scientific_identity": False,
         "note": (
             "El reloj de pared no entra en las identidades científicas ni en "
             "configuration_hash. trace_level distingue la configuración de "
-            "ejecución y no es un factor de E1, E2 ni E3."
+            "ejecución y no es un factor de E1, E2 ni E3. configuration_hash "
+            "resume la ScientificRunSpec y no incluye software_version, "
+            "source_revision ni source_state. source_revision es el commit "
+            "HEAD cuando pudo leerse. source_state clean o dirty solo sale "
+            "de git status del proceso que ejecuta. Un sello de imagen Docker "
+            "lee HEAD y deja source_state unknown: no afirma un árbol limpio. "
+            "La exportación official y sensitivity exige clean y un SHA de "
+            "40 hexadecimales. development registra el estado observado. "
+            "dataset_fingerprint cubre el evento materializado, incluido el "
+            "payload. flow no es un campo del evento: el workload lo copia "
+            "dentro del payload. schema_version entra porque el codec lo "
+            "transmite. telemetry_schema_version del manifiesto es la "
+            "etiqueta legible de ese valor y no se agrega otra vez a la huella."
         ),
     }
 
