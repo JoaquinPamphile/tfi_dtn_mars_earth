@@ -7,19 +7,28 @@ las acompaña con la identidad y los eventos generados.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from core.metrics.run import ScientificRunMetrics
 
 
 @dataclass(frozen=True, slots=True)
 class GeneratedTelemetry:
-    """Evento que Marte persistió durante la corrida."""
+    """Evento que Marte persistió durante la corrida.
+
+    ``payload``, ``priority`` y ``schema_version`` son los del
+    ``TelemetryEvent`` materializado. Hacen falta para recomprobar
+    ``dataset_fingerprint``.
+    """
 
     event_id: str
     source_id: str
     sequence_number: int
     generated_at_sim: float
     event_type: str
+    payload: dict[str, Any]
+    priority: str
+    schema_version: int
 
 
 @dataclass(frozen=True, slots=True)

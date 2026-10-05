@@ -6,6 +6,8 @@ persiste cada evento.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from core.domain.retry import RetryPolicy
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
@@ -48,6 +50,9 @@ def execute_scientific_run(spec: ScientificRunSpec) -> ScientificRunResult:
             sequence_number=event.sequence_number,
             generated_at_sim=event.generated_at_sim,
             event_type=event.event_type,
+            payload=deepcopy(event.payload),
+            priority=event.priority.value,
+            schema_version=event.schema_version,
         )
         for event in mars.events_for_source()
     )
