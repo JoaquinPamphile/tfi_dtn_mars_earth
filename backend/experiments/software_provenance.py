@@ -4,14 +4,21 @@ La versión de release tiene una sola fuente: el archivo ``VERSION`` de
 este paquete. ``pyproject.toml`` la lee al instalar. El manifiesto usa
 el texto de ese archivo, no una copia escrita en otro módulo.
 
-``source_revision`` es el commit HEAD cuando pudo leerse.
+``source_revision`` es el commit cuando pudo leerse.
 ``source_state`` es ``clean``, ``dirty`` o ``unknown``.
 
-``clean`` y ``dirty`` solo salen de ``git status`` ejecutado en el mismo
-proceso, sobre el árbol que va a correr. El build de Docker copia ``.git``
-para leer HEAD y borra el directorio. No ejecuta ``git status``: con
-``core.autocrlf`` en el host, el estado dentro del contenedor no es
-fiable. Ese sello queda en ``unknown``. No se reescribe como ``clean``.
+Fuera de una imagen, ``clean`` y ``dirty`` salen de ``git status``
+ejecutado en el mismo proceso. El Dockerfile de desarrollo copia ``.git``
+solo para leer HEAD, borra ese directorio y escribe un sello
+``git_head_unverified``. No ejecuta ``git status``: con ``core.autocrlf``
+en el host, el estado dentro del contenedor no es fiable. Ese sello queda
+en ``unknown``.
+
+El release build no usa el working tree. Arma el contexto con
+``git archive`` del commit y escribe un sello ``git_archive``. El loader
+acepta ``clean`` solo para esa observation, con un SHA de 40
+hexadecimales. El texto ``source_state`` no alcanza: una observation no
+verificada no produce ``clean``.
 
 La evidencia ``official`` y ``sensitivity`` exige ``clean`` y un SHA de
 40 hexadecimales. ``development`` registra el estado observado.
@@ -32,7 +39,12 @@ SOURCE_DIRTY = "dirty"
 SOURCE_UNKNOWN = "unknown"
 _SOURCE_STATES = frozenset({SOURCE_CLEAN, SOURCE_DIRTY, SOURCE_UNKNOWN})
 _SHA = re.compile(r"[0-9a-f]{40}")
-_OBSERVATION_HEAD = "git_head_unverified"
+OBSERVATION_GIT_HEAD_UNVERIFIED = "git_head_unverified"
+OBSERVATION_GIT_ARCHIVE = "git_archive"
+# ``clean`` desde un sello solo si la observation es una de estas.
+# ``git_head_unverified`` no está: el Dockerfile de desarrollo la escribe
+# y no demuestra que el árbol de la imagen sea el commit.
+TRUSTED_CLEAN_OBSERVATIONS = frozenset({OBSERVATION_GIT_ARCHIVE})
 
 
 class ProvenanceError(ValueError):
@@ -70,15 +82,57 @@ def software_version() -> str:
 def current_provenance() -> SoftwareProvenance:
     """Procedencia de este proceso.
 
-    Si ``SOFTWARE_PROVENANCE_FILE`` está definido, ese sello aporta el
-    commit y el estado queda ``unknown``. Si no hay sello, se consulta
-    git en el directorio de trabajo.
+    Si ``SOFTWARE_PROVENANCE_FILE`` está definido, el estado sale del
+    sello solo cuando su observation es un método verificado. Si no hay
+    sello, se consulta git en el directorio de trabajo.
     """
     version = software_version()
     stamp = os.environ.get("SOFTWARE_PROVENANCE_FILE")
     if stamp:
         return _from_stamp(Path(stamp), version)
     return _from_git(version)
+
+
+def release_stamp_payload(source_revision: str) -> dict[str, str]:
+    """Sello de un contexto creado exclusivamente con ``git archive``.
+
+    No recibe ``source_state``. ``clean`` no es un argumento: esta
+    función solo existe porque el contexto es el archivo de ese commit.
+    """
+    if _SHA.fullmatch(source_revision) is None:
+        raise ValueError("source_revision debe ser un SHA de 40 hexadecimales")
+    return {
+        "observation": OBSERVATION_GIT_ARCHIVE,
+        "source_revision": source_revision,
+        "source_state": SOURCE_CLEAN,
+    }
+
+
+def provenance_from_stamp_payload(
+    payload: object,
+    *,
+    software_version: str,
+) -> SoftwareProvenance:
+    """Interpreta un sello. La versión no se lee del JSON.
+
+    ``clean`` exige las tres cosas a la vez: observation verificada,
+    ``source_state`` clean y un SHA de 40 hexadecimales. Cualquier otra
+    combinación queda en ``unknown``. Un SHA inválido no se conserva.
+    """
+    if not isinstance(payload, dict):
+        return SoftwareProvenance(software_version, None, SOURCE_UNKNOWN)
+    revision = payload.get("source_revision")
+    if not isinstance(revision, str) or _SHA.fullmatch(revision) is None:
+        revision = None
+    observation = payload.get("observation")
+    state = payload.get("source_state")
+    if (
+        revision is not None
+        and observation in TRUSTED_CLEAN_OBSERVATIONS
+        and state == SOURCE_CLEAN
+    ):
+        return SoftwareProvenance(software_version, revision, SOURCE_CLEAN)
+    return SoftwareProvenance(software_version, revision, SOURCE_UNKNOWN)
 
 
 def observe_worktree(
@@ -119,22 +173,12 @@ def require_frozen_source(role: str, provenance: SoftwareProvenance) -> None:
 
 
 def _from_stamp(path: Path, version: str) -> SoftwareProvenance:
-    """Lee el commit del sello. El archivo no puede declarar ``clean``."""
-    revision = _stamp_revision(path)
-    return SoftwareProvenance(version, revision, SOURCE_UNKNOWN)
-
-
-def _stamp_revision(path: Path) -> str | None:
+    """Lee el sello. ``clean`` solo si la observation es verificada."""
     try:
         loaded = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
-        return None
-    if not isinstance(loaded, dict):
-        return None
-    revision = loaded.get("source_revision")
-    if not isinstance(revision, str) or _SHA.fullmatch(revision) is None:
-        return None
-    return revision
+        return SoftwareProvenance(version, None, SOURCE_UNKNOWN)
+    return provenance_from_stamp_payload(loaded, software_version=version)
 
 
 def _from_git(version: str) -> SoftwareProvenance:
@@ -202,7 +246,7 @@ def _read_ref(git_dir: Path, ref: str) -> str | None:
 
 def _write_stamp(path: Path, git_dir: Path) -> None:
     payload = {
-        "observation": _OBSERVATION_HEAD,
+        "observation": OBSERVATION_GIT_HEAD_UNVERIFIED,
         "source_revision": _read_git_head(git_dir),
         "source_state": SOURCE_UNKNOWN,
     }

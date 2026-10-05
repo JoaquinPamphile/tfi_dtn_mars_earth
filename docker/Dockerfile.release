@@ -9,10 +9,7 @@ ENV SOFTWARE_PROVENANCE_FILE=/app/software_provenance.json
 
 COPY pyproject.toml ./
 COPY backend ./backend
-COPY .git /tmp/git-meta
-
-RUN python backend/experiments/software_provenance.py --write-stamp /app/software_provenance.json --git-dir /tmp/git-meta \
-    && rm -rf /tmp/git-meta
+COPY software_provenance.json /app/software_provenance.json
 
 RUN pip install --no-cache-dir ".[test]"
 
