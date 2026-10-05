@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from core.simulation.engine import SimulationStatus
 from core.sync.strategy import (
@@ -28,6 +29,7 @@ from experiments.e3_sensitivity import (
     e3_sensitivity_result,
     format_e3_sensitivity,
 )
+from experiments.evidence import EvidenceExistsError, export_campaign_evidence
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
@@ -42,10 +44,10 @@ Uso:
   python -m cli run [opciones]
   python -m cli scientific-run
   python -m cli scientific-campaign
-  python -m cli e1 [--json]
-  python -m cli e2 [--json]
-  python -m cli e3 [--json]
-  python -m cli e3-sensitivity [--json]
+  python -m cli e1 [--json] [--export-evidence]
+  python -m cli e2 [--json] [--export-evidence]
+  python -m cli e3 [--json] [--export-evidence]
+  python -m cli e3-sensitivity [--json] [--export-evidence]
 
 run ejecuta una corrida headless de demostración del motor.
 No es un experimento científico ni usa un escenario Alessi.
@@ -60,20 +62,26 @@ y la misma semilla. No es evidencia científica.
 e1 ejecuta E1 — Granularidad de sincronización.
 Son cuatro corridas, en el orden oficial: individual, lote fijo 10,
 lote fijo 25 y lote fijo 50. --json imprime la comparación estructurada.
-No escribe archivos.
+Sin --export-evidence no escribe archivos.
 
 e2 ejecuta E2 — Efecto de la carga ofrecida.
 Son doce corridas: seis fracciones de carga y, en cada una, Individual
 y lote fijo 25. --json imprime la vista estructurada.
-No escribe archivos.
+Sin --export-evidence no escribe archivos.
 
 e3 ejecuta E3 — Comparación controlada de recovery.
 Son cuatro celdas: sender-driven y receiver-driven, cada una sin pérdida
 y con la misma pérdida silenciosa. --json imprime la vista estructurada.
-No escribe archivos. No declara una política ganadora.
+Sin --export-evidence no escribe archivos. No declara una política ganadora.
 
 e3-sensitivity ejecuta el análisis de sensibilidad de E3 a la posición
-de la pérdida. No constituye un experimento E4. No escribe archivos.
+de la pérdida. No constituye un experimento E4.
+Sin --export-evidence no escribe archivos.
+
+--export-evidence escribe el paquete bajo evidence/ y no cambia el informe.
+E1, E2 y E3 oficiales van a evidence/official/<familia>/ y a
+evidence/manifests/. La sensibilidad solo va a evidence/manifests/.
+Si el archivo ya existe con otro contenido, no se sobrescribe.
 
 Opciones:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -217,99 +225,117 @@ def _comando_campaign(tokens: list[str]) -> int:
 
 
 def _comando_e2(tokens: list[str]) -> int:
-    """Ejecuta el diseño oficial de E2. No escribe archivos."""
-    if tokens in (["-h"], ["--help"]):
-        print(AYUDA, end="")
-        return 0
-    if tokens not in ([], ["--json"]):
-        print("e2 solo admite --json", file=sys.stderr)
-        return 2
-    spec = build_e2_campaign()
-    started = time.perf_counter()
-    campaign = execute_campaign(spec)
-    elapsed = time.perf_counter() - started
-    try:
-        result = e2_result(spec, campaign, wall_execution_seconds=elapsed)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    if tokens == ["--json"]:
-        print(e2_result_json(result))
-    else:
-        print(format_e2(result))
-    return 0
+    """Ejecuta el diseño oficial de E2."""
+    return _comando_familia(
+        tokens,
+        comando="e2",
+        construir=build_e2_campaign,
+        evaluar=e2_result,
+        formatear=format_e2,
+        a_json=e2_result_json,
+    )
 
 
 def _comando_e3(tokens: list[str]) -> int:
-    """Ejecuta el diseño oficial de E3. No escribe archivos."""
-    if tokens in (["-h"], ["--help"]):
-        print(AYUDA, end="")
-        return 0
-    if tokens not in ([], ["--json"]):
-        print("e3 solo admite --json", file=sys.stderr)
-        return 2
-    spec = build_e3_campaign()
-    started = time.perf_counter()
-    campaign = execute_campaign(spec)
-    elapsed = time.perf_counter() - started
-    try:
-        result = e3_result(spec, campaign, wall_execution_seconds=elapsed)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    if tokens == ["--json"]:
-        print(e3_result_json(result))
-    else:
-        print(format_e3(result))
-    return 0
+    """Ejecuta el diseño oficial de E3."""
+    return _comando_familia(
+        tokens,
+        comando="e3",
+        construir=build_e3_campaign,
+        evaluar=e3_result,
+        formatear=format_e3,
+        a_json=e3_result_json,
+    )
 
 
 def _comando_e3_sensitivity(tokens: list[str]) -> int:
     """Ejecuta la sensibilidad de E3. No toca la campaña oficial."""
-    if tokens in (["-h"], ["--help"]):
-        print(AYUDA, end="")
-        return 0
-    if tokens not in ([], ["--json"]):
-        print("e3-sensitivity solo admite --json", file=sys.stderr)
-        return 2
-    spec = build_e3_sensitivity_campaign()
-    started = time.perf_counter()
-    campaign = execute_campaign(spec)
-    elapsed = time.perf_counter() - started
-    try:
-        result = e3_sensitivity_result(spec, campaign, wall_execution_seconds=elapsed)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    if tokens == ["--json"]:
-        print(e3_sensitivity_json(result))
-    else:
-        print(format_e3_sensitivity(result))
-    return 0
+    return _comando_familia(
+        tokens,
+        comando="e3-sensitivity",
+        construir=build_e3_sensitivity_campaign,
+        evaluar=e3_sensitivity_result,
+        formatear=format_e3_sensitivity,
+        a_json=e3_sensitivity_json,
+    )
 
 
 def _comando_e1(tokens: list[str]) -> int:
     """Ejecuta el diseño oficial de E1. No reemplaza los otros comandos."""
-    if tokens in (["-h"], ["--help"]):
+    return _comando_familia(
+        tokens,
+        comando="e1",
+        construir=build_e1_campaign,
+        evaluar=e1_result,
+        formatear=format_e1,
+        a_json=e1_result_json,
+    )
+
+
+def _comando_familia(
+    tokens: list[str],
+    *,
+    comando: str,
+    construir: object,
+    evaluar: object,
+    formatear: object,
+    a_json: object,
+) -> int:
+    """Ejecuta una familia. --export-evidence no cambia el informe de stdout."""
+    try:
+        exportar, resto = _separar_export(tokens)
+    except _UsoError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if resto in (["-h"], ["--help"]):
         print(AYUDA, end="")
         return 0
-    if tokens not in ([], ["--json"]):
-        print("e1 solo admite --json", file=sys.stderr)
+    if resto not in ([], ["--json"]):
+        print(
+            f"{comando} solo admite --json y --export-evidence",
+            file=sys.stderr,
+        )
         return 2
-    spec = build_e1_campaign()
+    spec = construir()
     started = time.perf_counter()
     campaign = execute_campaign(spec)
     elapsed = time.perf_counter() - started
     try:
-        result = e1_result(spec, campaign, wall_execution_seconds=elapsed)
+        result = evaluar(spec, campaign, wall_execution_seconds=elapsed)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    if tokens == ["--json"]:
-        print(e1_result_json(result))
+    if resto == ["--json"]:
+        print(a_json(result))
     else:
-        print(format_e1(result))
+        print(formatear(result))
+    if not exportar:
+        return 0
+    try:
+        exported = export_campaign_evidence(spec, campaign, root=_evidence_root())
+    except (EvidenceExistsError, ValueError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    for path in exported.paths:
+        print(f"Evidencia: {path}", file=sys.stderr)
     return 0
+
+
+def _separar_export(tokens: list[str]) -> tuple[bool, list[str]]:
+    exportar = False
+    resto: list[str] = []
+    for token in tokens:
+        if token == "--export-evidence":
+            if exportar:
+                raise _UsoError("--export-evidence está repetido")
+            exportar = True
+            continue
+        resto.append(token)
+    return exportar, resto
+
+
+def _evidence_root() -> Path:
+    return Path.cwd() / "evidence"
 
 
 def _parse_opciones(tokens: list[str]) -> _Opciones:
