@@ -1,0 +1,114 @@
+.topology {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.nodeSlot {
+  flex: 1;
+  min-width: 0;
+}
+
+.connector {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.note {
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.planes {
+  display: grid;
+  gap: 16px;
+}
+
+.plane {
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.plane h2 {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.planeHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.ack {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.step {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.caption {
+  margin-top: 12px;
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+.callout {
+  padding: 16px 18px;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.callout h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.callout p {
+  margin-top: 8px;
+  max-width: 62ch;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .topology {
+    flex-direction: column;
+  }
+
+  .connector {
+    justify-content: center;
+    transform: rotate(90deg);
+  }
+}

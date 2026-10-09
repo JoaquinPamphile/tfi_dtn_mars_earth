@@ -1,0 +1,170 @@
+{
+  "campaign_id": "e2-offered-load",
+  "campaign_identity": "d66bf23b-6392-5e01-b9c5-c0531c098d9d",
+  "evidence_file": "official/e2/d66bf23b-6392-5e01-b9c5-c0531c098d9d.json",
+  "evidence_schema_version": 1,
+  "family": "e2",
+  "reproducibility": {
+    "configuration_hash_includes_software_provenance": false,
+    "configuration_hash_includes_trace_level": true,
+    "dataset_fingerprint": "SHA-256 del JSON can\u00f3nico de cada TelemetryEvent materializado, en orden de secuencia",
+    "dataset_fingerprint_fields": [
+      "event_id",
+      "source_id",
+      "sequence_number",
+      "generated_at_sim",
+      "event_type",
+      "payload",
+      "priority",
+      "schema_version"
+    ],
+    "dataset_identity_inputs": [
+      "scenario_id",
+      "seed"
+    ],
+    "execution_identity_inputs": [
+      "scenario_id",
+      "seed",
+      "strategy_type",
+      "batch_size_events"
+    ],
+    "export_policy": {
+      "development": "provenance_recorded",
+      "official": "clean_revision_required",
+      "sensitivity": "clean_revision_required"
+    },
+    "flow_in_dataset_fingerprint": "payload",
+    "hash_algorithm": "sha256",
+    "note": "El reloj de pared no entra en las identidades cient\u00edficas ni en configuration_hash. trace_level distingue la configuraci\u00f3n de ejecuci\u00f3n y no es un factor de E1, E2 ni E3. configuration_hash resume la ScientificRunSpec y no incluye software_version, source_revision ni source_state. source_revision es el commit cuando pudo leerse. Fuera de una imagen, source_state clean o dirty sale de git status del proceso que ejecuta. El sello de la imagen de desarrollo usa observation git_head_unverified y queda unknown. El sello de la imagen de release usa observation git_archive y puede ser clean: su contexto es el archivo de ese commit, no el working tree. El loader no acepta clean por el texto source_state si la observation no es un m\u00e9todo verificado. Un SHA que no tiene 40 hexadecimales no produce clean. La exportaci\u00f3n official y sensitivity exige clean y un SHA de 40 hexadecimales. development registra el estado observado. dataset_fingerprint cubre el evento materializado, incluido el payload. flow no es un campo del evento: el workload lo copia dentro del payload. schema_version entra porque el codec lo transmite. telemetry_schema_version del manifiesto es la etiqueta legible de ese valor y no se agrega otra vez a la huella.",
+    "software_version": "1.0.0-rc1",
+    "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+    "source_state": "clean",
+    "telemetry_schema_version_role": "external_label",
+    "trace_level_is_scientific_factor": false,
+    "wall_clock_in_scientific_identity": false
+  },
+  "role": "official",
+  "run_order": [
+    {
+      "completed": true,
+      "configuration_hash": "c2622b1349c4c474d7ff65b69424d9eaca94c277b51866af19703ea5df59ae89",
+      "dataset_fingerprint": "91d61f5b2c6156cdcf9e1ccbb17fb71f5be1c0417e2c05f9206550d17f8f0c13",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 0,
+      "label": "0.25 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "d53d5a4b4d665ba61526bb024d305e7f671fd6d863e1cae26e0bf1ee1af13af9",
+      "dataset_fingerprint": "91d61f5b2c6156cdcf9e1ccbb17fb71f5be1c0417e2c05f9206550d17f8f0c13",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 1,
+      "label": "0.25 Fixed Batch 25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "2fbe4b2aa1a73c9f9c8191eb9ce52ccccc771c65beea30a48c5df82d4e7eae58",
+      "dataset_fingerprint": "0088a0f46bf523cc7632b109baa56a7534f492afe93f8f094321542502d0d8c9",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 2,
+      "label": "0.50 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "2cf593e0e9661fc4af7db8017fc6af41d0d8a01553c6a9f3007a9edd5411bc14",
+      "dataset_fingerprint": "0088a0f46bf523cc7632b109baa56a7534f492afe93f8f094321542502d0d8c9",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 3,
+      "label": "0.50 Fixed Batch 25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "987f748c051643b0324313d903c3fc67dd1798cc6b057ef0963c52a6c67a780f",
+      "dataset_fingerprint": "c8a33090e419485b05146c589807d02a0bfbbbcb9be9ccf3a9677d43e36b85c8",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 4,
+      "label": "0.75 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "93c2da9495e0c43fba6ac29d618c17dfc494a3bbe3ac8a28925cb084c8ae1984",
+      "dataset_fingerprint": "c8a33090e419485b05146c589807d02a0bfbbbcb9be9ccf3a9677d43e36b85c8",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 5,
+      "label": "0.75 Fixed Batch 25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "e436e7c3c1a501bb163df825f7b35dd89da5b378fe4cdaaee12800cb4fa4e2f3",
+      "dataset_fingerprint": "daf2e051ebcdd35b987f547472f556ff1070a8a65fa397516b8fc14e85fed5b8",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 6,
+      "label": "0.90 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "cc803c214b1619deb4d0e816aa39f72c9235a04f024380cf5e2ff59e9f340b61",
+      "dataset_fingerprint": "daf2e051ebcdd35b987f547472f556ff1070a8a65fa397516b8fc14e85fed5b8",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 7,
+      "label": "0.90 Fixed Batch 25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "07c280a2c85ae8918d681ed7d5ab2df7f2203369680eb5a572f6d3edf7ae35a3",
+      "dataset_fingerprint": "c0820bd906595c5735d122089b661c3b624d3536c743c336abce47e32ecc1a6c",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 8,
+      "label": "1.00 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "7aa452ff67abcedd7c5ddb7c7568268e3c2a71e9003e977b2aadebc100b3a8cf",
+      "dataset_fingerprint": "c0820bd906595c5735d122089b661c3b624d3536c743c336abce47e32ecc1a6c",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 9,
+      "label": "1.00 Fixed Batch 25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "919e45fedcd67ab25c4903c4d0d0163f503ed006ffa57ea3b714cc0962de3c72",
+      "dataset_fingerprint": "4c804d37d8af0f41c1d40db8d20ce8284cf0d54e2aa440f86ea3d540de979669",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 10,
+      "label": "1.20 Individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "6aefc9bc6d808e33347f9d6050ada58979bdc0eed3a3e5956235b02f5dbfd2ce",
+      "dataset_fingerprint": "4c804d37d8af0f41c1d40db8d20ce8284cf0d54e2aa440f86ea3d540de979669",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 11,
+      "label": "1.20 Fixed Batch 25"
+    }
+  ],
+  "status": "COMPLETED"
+}

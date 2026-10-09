@@ -1,0 +1,1969 @@
+{
+  "campaign_id": "e1-strategy-alessi-10k",
+  "campaign_identity": "efe47dd9-61f4-50d5-a2ba-11144c800493",
+  "campaign_manifest": {
+    "campaign_id": "e1-strategy-alessi-10k",
+    "campaign_identity": "efe47dd9-61f4-50d5-a2ba-11144c800493",
+    "completed_count": 4,
+    "description": "E1 \u2014 granularidad de sincronizaci\u00f3n. \u00bfC\u00f3mo afecta la estrategia de sincronizaci\u00f3n a una aplicaci\u00f3n de telemetr\u00eda nativa de DTN cuando la conectividad es id\u00e9ntica, el dataset de telemetr\u00eda generado es id\u00e9ntico, no hay fallos y \u00fanicamente cambia la agrupaci\u00f3n de la sincronizaci\u00f3n?",
+    "failed_count": 0,
+    "manifest_schema_version": 1,
+    "run_count": 4,
+    "runs": [
+      {
+        "completed": true,
+        "configuration_hash": "de1c5d939e1654b12bb75a64a4acb33d806080c2fb3502cfaa035b962468a4cb",
+        "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+        "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+        "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+        "failed": false,
+        "index": 0,
+        "label": "individual",
+        "manifest": {
+          "batch_size_events": null,
+          "configuration_hash": "de1c5d939e1654b12bb75a64a4acb33d806080c2fb3502cfaa035b962468a4cb",
+          "dataset_event_count": 10000,
+          "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+          "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+          "experiment_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "failure_plan": {
+            "ack_drops": [],
+            "contact_cuts": [],
+            "silent_forward_delivery_losses": []
+          },
+          "gap_request_timeout_seconds": null,
+          "hash_algorithm": "sha256",
+          "horizon_seconds": 86400.0,
+          "manifest_schema_version": 1,
+          "metrics": {
+            "backlog": 0,
+            "completeness": 1.0,
+            "confirmation_ratio": 1.0,
+            "confirmed": 10000,
+            "confirmed_ratio": 1.0,
+            "contacts": {
+              "contact_utilization_mean": 0.013229331452886711,
+              "contact_utilization_weighted": 0.005306776349737793,
+              "contacts_forced_cut": 0,
+              "contacts_total": 32,
+              "contacts_used": 4,
+              "forward_contact_utilization_weighted": 0.005201269841269842,
+              "reverse_contact_utilization_weighted": 0.007120493342065051
+            },
+            "converged": true,
+            "converged_at_sim": 34526.09518398693,
+            "convergence_reference_at_sim": 20477.952,
+            "duplicates_received": 0,
+            "duplicates_stored": 0,
+            "earth_persisted_unique": 10000,
+            "final_backlog": 0,
+            "freshness": {
+              "count": 10000,
+              "max_seconds": 28380.049152,
+              "mean_seconds": 18304.89676800471,
+              "min_seconds": 8229.74438400942,
+              "p50_seconds": 18304.89676800471,
+              "p95_seconds": 27372.53391360047
+            },
+            "freshness_coverage": 1.0,
+            "freshness_max_seconds": 28380.049152,
+            "freshness_mean_seconds": 18304.89676800471,
+            "freshness_min_seconds": 8229.74438400942,
+            "freshness_p50_seconds": 18304.89676800471,
+            "freshness_p95_seconds": 27372.53391360047,
+            "freshness_sample_count": 10000,
+            "gaps_count": 0,
+            "generated": 10000,
+            "not_persisted_on_earth": 0,
+            "not_persisted_ratio": 0.0,
+            "persisted_on_earth_but_unconfirmed": 0,
+            "persisted_unconfirmed_ratio": 0.0,
+            "recovery": {
+              "confirmed_count": 0,
+              "duplicates_received_after_loss": null,
+              "duplicates_stored_after_loss": null,
+              "earth_recovery_to_origin_confirmation_seconds": null,
+              "episode_count": 0,
+              "episodes": [],
+              "gap_observed_at_sim": null,
+              "gap_request_transport_attempt_count": null,
+              "loss_to_earth_recovery_seconds": null,
+              "loss_to_origin_confirmation_seconds": null,
+              "loss_to_trigger_seconds": null,
+              "policy_recovery_forward_bytes": null,
+              "policy_recovery_network_bytes_total": 0,
+              "policy_recovery_reverse_bytes": null,
+              "receiver_gap_request_logical_count": null,
+              "receiver_repair_attempt_count": null,
+              "recovered_count": 0,
+              "sender_ack_timeout_count": null,
+              "sender_retry_attempt_count": null,
+              "trigger_to_earth_recovery_seconds": null
+            },
+            "retry_attempts_total": 0,
+            "scenario_completed_at_sim": 84000.0,
+            "sync_units_created": 10000,
+            "time_sim": 84000.0,
+            "time_to_convergence_seconds": 14048.14318398693,
+            "traffic": {
+              "ack_syncunit_bytes_created": 3261898,
+              "ack_transport_bytes": 6523796,
+              "application_bytes_transmitted_total": 88443796,
+              "earth_to_relay_bytes": 3261898,
+              "forward_bytes_transmitted": 81920000,
+              "interrupted_transport_bytes": 0,
+              "mars_to_relay_bytes": 40960000,
+              "relay_to_earth_bytes": 40960000,
+              "relay_to_mars_bytes": 3261898,
+              "retry_transport_bytes": 0,
+              "reverse_bytes_transmitted": 6523796,
+              "telemetry_initial_syncunit_bytes_created": 40960000,
+              "telemetry_retry_syncunit_bytes_created": 0,
+              "telemetry_syncunit_bytes_created": 40960000,
+              "telemetry_transport_bytes": 81920000,
+              "total_transport_application_bytes": 88443796
+            },
+            "view_age_seconds": 63522.047999999995
+          },
+          "recovery_policy": "sender-driven",
+          "retry_policy": {
+            "ack_timeout_seconds": 89760.0
+          },
+          "scenario_id": "research-alessi-baseline",
+          "seed": 1,
+          "software_version": "1.0.0-rc1",
+          "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+          "source_state": "clean",
+          "specification": {
+            "batch_size_events": null,
+            "failure_plan": {
+              "ack_drops": [],
+              "contact_cuts": [],
+              "silent_forward_delivery_losses": []
+            },
+            "gap_request_timeout_seconds": null,
+            "recovery_policy": "sender-driven",
+            "retry_policy": {
+              "ack_timeout_seconds": 89760.0
+            },
+            "scenario": {
+              "contacts": [
+                {
+                  "contact_id": "alessi-mars-relay-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-01",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-02",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-03",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-04",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-05",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-06",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-07",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-08",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-09",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-10",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-11",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-12",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 79200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-01",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-02",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-03",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-04",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-05",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-06",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-07",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-08",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-09",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-10",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-11",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-12",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 79200.0
+                }
+              ],
+              "description": "L\u00ednea base de tres nodos en tiempo f\u00edsico, derivada del an\u00e1lisis de prestaciones DTN de comunicaciones multi-activo Marte\u2013Tierra. Corte representativo del orbitador 1: lander 143, orbitador 141 y un extremo Tierra que re\u00fane GS1 (201), GS2 (202), GS3 (203) y EDRS (105). Los instantes salen de una reconstrucci\u00f3n de la figura 5, redondeada al m\u00faltiplo de 5 s de esa figura y pasada a tiempo f\u00edsico multiplicando por 60. No son una tabla exacta de contactos ni un efem\u00e9rides orbital. No reproduce la red de nueve nodos y no usa el orbitador 2.",
+              "horizon_seconds": 86400.0,
+              "notes": "Clasificaci\u00f3n. Intervalos Marte\u2013rel\u00e9: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos rel\u00e9\u2013Tierra: tiempo SOURCE_APPROXIMATED de la uni\u00f3n reconstruida y topolog\u00eda TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps.",
+              "scenario_id": "research-alessi-baseline"
+            },
+            "seed": 1,
+            "stop_policy": "PROFILE_HORIZON_SETTLED",
+            "strategy_type": "individual",
+            "trace_level": "SCIENTIFIC",
+            "workload": {
+              "canonical_individual_syncunit_bytes": 4096,
+              "duration_seconds": null,
+              "event_type": "research.alessi.normal_tm",
+              "flow": "alessi.normal_tm",
+              "max_events": 10000,
+              "offered_load_fraction": null,
+              "priority": "normal",
+              "rate_events_per_second": 0.48828125,
+              "source_id": "MSR-SURFACE-01",
+              "start_time_sim": 0.0,
+              "workload_id": "alessi-normal-tm"
+            }
+          },
+          "stop_policy": "PROFILE_HORIZON_SETTLED",
+          "strategy_type": "individual",
+          "telemetry_schema_version": 1,
+          "terminal": {
+            "completed": true,
+            "engine_status": "COMPLETED",
+            "error_message": null,
+            "error_type": null
+          },
+          "trace_level": "SCIENTIFIC",
+          "workload": {
+            "canonical_individual_syncunit_bytes": 4096,
+            "duration_seconds": null,
+            "event_type": "research.alessi.normal_tm",
+            "flow": "alessi.normal_tm",
+            "max_events": 10000,
+            "offered_load_fraction": null,
+            "priority": "normal",
+            "rate_events_per_second": 0.48828125,
+            "source_id": "MSR-SURFACE-01",
+            "start_time_sim": 0.0,
+            "workload_id": "alessi-normal-tm"
+          },
+          "workload_id": "alessi-normal-tm"
+        }
+      },
+      {
+        "completed": true,
+        "configuration_hash": "bae592384cfe0c8943f4171c6e54fa145dff63a95f4ada4ad1f381cea8b14053",
+        "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+        "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+        "execution_identity": "08283d27-6222-56a8-b462-b91460a34357",
+        "failed": false,
+        "index": 1,
+        "label": "fixed_batch_10",
+        "manifest": {
+          "batch_size_events": 10,
+          "configuration_hash": "bae592384cfe0c8943f4171c6e54fa145dff63a95f4ada4ad1f381cea8b14053",
+          "dataset_event_count": 10000,
+          "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+          "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "execution_identity": "08283d27-6222-56a8-b462-b91460a34357",
+          "experiment_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "failure_plan": {
+            "ack_drops": [],
+            "contact_cuts": [],
+            "silent_forward_delivery_losses": []
+          },
+          "gap_request_timeout_seconds": null,
+          "hash_algorithm": "sha256",
+          "horizon_seconds": 86400.0,
+          "manifest_schema_version": 1,
+          "metrics": {
+            "backlog": 0,
+            "completeness": 1.0,
+            "confirmation_ratio": 1.0,
+            "confirmed": 10000,
+            "confirmed_ratio": 1.0,
+            "contacts": {
+              "contact_utilization_mean": 0.009739530769335512,
+              "contact_utilization_weighted": 0.004862797038317073,
+              "contacts_forced_cut": 0,
+              "contacts_total": 32,
+              "contacts_used": 4,
+              "forward_contact_utilization_weighted": 0.0049728253968253965,
+              "reverse_contact_utilization_weighted": 0.00297134686749618
+            },
+            "converged": true,
+            "converged_at_sim": 34510.88939200049,
+            "convergence_reference_at_sim": 20477.952,
+            "duplicates_received": 0,
+            "duplicates_stored": 0,
+            "earth_persisted_unique": 10000,
+            "final_backlog": 0,
+            "freshness": {
+              "count": 10000,
+              "max_seconds": 28380.469932,
+              "mean_seconds": 18297.981288000596,
+              "min_seconds": 8215.492644001191,
+              "p50_seconds": 18297.981288000596,
+              "p95_seconds": 27372.221067600058
+            },
+            "freshness_coverage": 1.0,
+            "freshness_max_seconds": 28380.469932,
+            "freshness_mean_seconds": 18297.981288000596,
+            "freshness_min_seconds": 8215.492644001191,
+            "freshness_p50_seconds": 18297.981288000596,
+            "freshness_p95_seconds": 27372.221067600058,
+            "freshness_sample_count": 10000,
+            "gaps_count": 0,
+            "generated": 10000,
+            "not_persisted_on_earth": 0,
+            "not_persisted_ratio": 0.0,
+            "persisted_on_earth_but_unconfirmed": 0,
+            "persisted_unconfirmed_ratio": 0.0,
+            "recovery": {
+              "confirmed_count": 0,
+              "duplicates_received_after_loss": null,
+              "duplicates_stored_after_loss": null,
+              "earth_recovery_to_origin_confirmation_seconds": null,
+              "episode_count": 0,
+              "episodes": [],
+              "gap_observed_at_sim": null,
+              "gap_request_transport_attempt_count": null,
+              "loss_to_earth_recovery_seconds": null,
+              "loss_to_origin_confirmation_seconds": null,
+              "loss_to_trigger_seconds": null,
+              "policy_recovery_forward_bytes": null,
+              "policy_recovery_network_bytes_total": 0,
+              "policy_recovery_reverse_bytes": null,
+              "receiver_gap_request_logical_count": null,
+              "receiver_repair_attempt_count": null,
+              "recovered_count": 0,
+              "sender_ack_timeout_count": null,
+              "sender_retry_attempt_count": null,
+              "trigger_to_earth_recovery_seconds": null
+            },
+            "retry_attempts_total": 0,
+            "scenario_completed_at_sim": 84000.0,
+            "sync_units_created": 1000,
+            "time_sim": 84000.0,
+            "time_to_convergence_seconds": 14032.937392000491,
+            "traffic": {
+              "ack_syncunit_bytes_created": 1361174,
+              "ack_transport_bytes": 2722348,
+              "application_bytes_transmitted_total": 81044348,
+              "earth_to_relay_bytes": 1361174,
+              "forward_bytes_transmitted": 78322000,
+              "interrupted_transport_bytes": 0,
+              "mars_to_relay_bytes": 39161000,
+              "relay_to_earth_bytes": 39161000,
+              "relay_to_mars_bytes": 1361174,
+              "retry_transport_bytes": 0,
+              "reverse_bytes_transmitted": 2722348,
+              "telemetry_initial_syncunit_bytes_created": 39161000,
+              "telemetry_retry_syncunit_bytes_created": 0,
+              "telemetry_syncunit_bytes_created": 39161000,
+              "telemetry_transport_bytes": 78322000,
+              "total_transport_application_bytes": 81044348
+            },
+            "view_age_seconds": 63522.047999999995
+          },
+          "recovery_policy": "sender-driven",
+          "retry_policy": {
+            "ack_timeout_seconds": 89760.0
+          },
+          "scenario_id": "research-alessi-baseline",
+          "seed": 1,
+          "software_version": "1.0.0-rc1",
+          "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+          "source_state": "clean",
+          "specification": {
+            "batch_size_events": 10,
+            "failure_plan": {
+              "ack_drops": [],
+              "contact_cuts": [],
+              "silent_forward_delivery_losses": []
+            },
+            "gap_request_timeout_seconds": null,
+            "recovery_policy": "sender-driven",
+            "retry_policy": {
+              "ack_timeout_seconds": 89760.0
+            },
+            "scenario": {
+              "contacts": [
+                {
+                  "contact_id": "alessi-mars-relay-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-01",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-02",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-03",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-04",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-05",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-06",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-07",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-08",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-09",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-10",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-11",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-12",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 79200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-01",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-02",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-03",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-04",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-05",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-06",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-07",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-08",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-09",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-10",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-11",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-12",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 79200.0
+                }
+              ],
+              "description": "L\u00ednea base de tres nodos en tiempo f\u00edsico, derivada del an\u00e1lisis de prestaciones DTN de comunicaciones multi-activo Marte\u2013Tierra. Corte representativo del orbitador 1: lander 143, orbitador 141 y un extremo Tierra que re\u00fane GS1 (201), GS2 (202), GS3 (203) y EDRS (105). Los instantes salen de una reconstrucci\u00f3n de la figura 5, redondeada al m\u00faltiplo de 5 s de esa figura y pasada a tiempo f\u00edsico multiplicando por 60. No son una tabla exacta de contactos ni un efem\u00e9rides orbital. No reproduce la red de nueve nodos y no usa el orbitador 2.",
+              "horizon_seconds": 86400.0,
+              "notes": "Clasificaci\u00f3n. Intervalos Marte\u2013rel\u00e9: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos rel\u00e9\u2013Tierra: tiempo SOURCE_APPROXIMATED de la uni\u00f3n reconstruida y topolog\u00eda TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps.",
+              "scenario_id": "research-alessi-baseline"
+            },
+            "seed": 1,
+            "stop_policy": "PROFILE_HORIZON_SETTLED",
+            "strategy_type": "fixed_batch",
+            "trace_level": "SCIENTIFIC",
+            "workload": {
+              "canonical_individual_syncunit_bytes": 4096,
+              "duration_seconds": null,
+              "event_type": "research.alessi.normal_tm",
+              "flow": "alessi.normal_tm",
+              "max_events": 10000,
+              "offered_load_fraction": null,
+              "priority": "normal",
+              "rate_events_per_second": 0.48828125,
+              "source_id": "MSR-SURFACE-01",
+              "start_time_sim": 0.0,
+              "workload_id": "alessi-normal-tm"
+            }
+          },
+          "stop_policy": "PROFILE_HORIZON_SETTLED",
+          "strategy_type": "fixed_batch",
+          "telemetry_schema_version": 1,
+          "terminal": {
+            "completed": true,
+            "engine_status": "COMPLETED",
+            "error_message": null,
+            "error_type": null
+          },
+          "trace_level": "SCIENTIFIC",
+          "workload": {
+            "canonical_individual_syncunit_bytes": 4096,
+            "duration_seconds": null,
+            "event_type": "research.alessi.normal_tm",
+            "flow": "alessi.normal_tm",
+            "max_events": 10000,
+            "offered_load_fraction": null,
+            "priority": "normal",
+            "rate_events_per_second": 0.48828125,
+            "source_id": "MSR-SURFACE-01",
+            "start_time_sim": 0.0,
+            "workload_id": "alessi-normal-tm"
+          },
+          "workload_id": "alessi-normal-tm"
+        }
+      },
+      {
+        "completed": true,
+        "configuration_hash": "93604a96fedc62d9e5580eaaf048c55b00168d2f23014033b36d63a0bd12c48a",
+        "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+        "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+        "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+        "failed": false,
+        "index": 2,
+        "label": "fixed_batch_25",
+        "manifest": {
+          "batch_size_events": 25,
+          "configuration_hash": "93604a96fedc62d9e5580eaaf048c55b00168d2f23014033b36d63a0bd12c48a",
+          "dataset_event_count": 10000,
+          "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+          "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+          "experiment_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "failure_plan": {
+            "ack_drops": [],
+            "contact_cuts": [],
+            "silent_forward_delivery_losses": []
+          },
+          "gap_request_timeout_seconds": null,
+          "hash_algorithm": "sha256",
+          "horizon_seconds": 86400.0,
+          "manifest_schema_version": 1,
+          "metrics": {
+            "backlog": 0,
+            "completeness": 1.0,
+            "confirmation_ratio": 1.0,
+            "confirmed": 10000,
+            "confirmed_ratio": 1.0,
+            "contacts": {
+              "contact_utilization_mean": 0.009506658799019607,
+              "contact_utilization_weighted": 0.0048331118071305995,
+              "contacts_forced_cut": 0,
+              "contacts_total": 32,
+              "contacts_used": 4,
+              "forward_contact_utilization_weighted": 0.004957511111111111,
+              "reverse_contact_utilization_weighted": 0.002694616895874263
+            },
+            "converged": true,
+            "converged_at_sim": 34509.87523200037,
+            "convergence_reference_at_sim": 20477.952,
+            "duplicates_received": 0,
+            "duplicates_stored": 0,
+            "earth_persisted_unique": 10000,
+            "final_backlog": 0,
+            "freshness": {
+              "count": 10000,
+              "max_seconds": 28381.171212,
+              "mean_seconds": 18297.966407999906,
+              "min_seconds": 8214.76160399981,
+              "p50_seconds": 18297.966407999906,
+              "p95_seconds": 27372.850731599992
+            },
+            "freshness_coverage": 1.0,
+            "freshness_max_seconds": 28381.171212,
+            "freshness_mean_seconds": 18297.966407999906,
+            "freshness_min_seconds": 8214.76160399981,
+            "freshness_p50_seconds": 18297.966407999906,
+            "freshness_p95_seconds": 27372.850731599992,
+            "freshness_sample_count": 10000,
+            "gaps_count": 0,
+            "generated": 10000,
+            "not_persisted_on_earth": 0,
+            "not_persisted_ratio": 0.0,
+            "persisted_on_earth_but_unconfirmed": 0,
+            "persisted_unconfirmed_ratio": 0.0,
+            "recovery": {
+              "confirmed_count": 0,
+              "duplicates_received_after_loss": null,
+              "duplicates_stored_after_loss": null,
+              "earth_recovery_to_origin_confirmation_seconds": null,
+              "episode_count": 0,
+              "episodes": [],
+              "gap_observed_at_sim": null,
+              "gap_request_transport_attempt_count": null,
+              "loss_to_earth_recovery_seconds": null,
+              "loss_to_origin_confirmation_seconds": null,
+              "loss_to_trigger_seconds": null,
+              "policy_recovery_forward_bytes": null,
+              "policy_recovery_network_bytes_total": 0,
+              "policy_recovery_reverse_bytes": null,
+              "receiver_gap_request_logical_count": null,
+              "receiver_repair_attempt_count": null,
+              "recovered_count": 0,
+              "sender_ack_timeout_count": null,
+              "sender_retry_attempt_count": null,
+              "trigger_to_earth_recovery_seconds": null
+            },
+            "retry_attempts_total": 0,
+            "scenario_completed_at_sim": 84000.0,
+            "sync_units_created": 400,
+            "time_sim": 84000.0,
+            "time_to_convergence_seconds": 14031.923232000368,
+            "traffic": {
+              "ack_syncunit_bytes_created": 1234404,
+              "ack_transport_bytes": 2468808,
+              "application_bytes_transmitted_total": 80549608,
+              "earth_to_relay_bytes": 1234404,
+              "forward_bytes_transmitted": 78080800,
+              "interrupted_transport_bytes": 0,
+              "mars_to_relay_bytes": 39040400,
+              "relay_to_earth_bytes": 39040400,
+              "relay_to_mars_bytes": 1234404,
+              "retry_transport_bytes": 0,
+              "reverse_bytes_transmitted": 2468808,
+              "telemetry_initial_syncunit_bytes_created": 39040400,
+              "telemetry_retry_syncunit_bytes_created": 0,
+              "telemetry_syncunit_bytes_created": 39040400,
+              "telemetry_transport_bytes": 78080800,
+              "total_transport_application_bytes": 80549608
+            },
+            "view_age_seconds": 63522.047999999995
+          },
+          "recovery_policy": "sender-driven",
+          "retry_policy": {
+            "ack_timeout_seconds": 89760.0
+          },
+          "scenario_id": "research-alessi-baseline",
+          "seed": 1,
+          "software_version": "1.0.0-rc1",
+          "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+          "source_state": "clean",
+          "specification": {
+            "batch_size_events": 25,
+            "failure_plan": {
+              "ack_drops": [],
+              "contact_cuts": [],
+              "silent_forward_delivery_losses": []
+            },
+            "gap_request_timeout_seconds": null,
+            "recovery_policy": "sender-driven",
+            "retry_policy": {
+              "ack_timeout_seconds": 89760.0
+            },
+            "scenario": {
+              "contacts": [
+                {
+                  "contact_id": "alessi-mars-relay-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-01",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-02",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-03",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-04",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-05",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-06",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-07",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-08",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-09",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-10",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-11",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-12",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 79200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-01",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-02",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-03",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-04",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-05",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-06",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-07",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-08",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-09",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-10",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-11",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-12",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 79200.0
+                }
+              ],
+              "description": "L\u00ednea base de tres nodos en tiempo f\u00edsico, derivada del an\u00e1lisis de prestaciones DTN de comunicaciones multi-activo Marte\u2013Tierra. Corte representativo del orbitador 1: lander 143, orbitador 141 y un extremo Tierra que re\u00fane GS1 (201), GS2 (202), GS3 (203) y EDRS (105). Los instantes salen de una reconstrucci\u00f3n de la figura 5, redondeada al m\u00faltiplo de 5 s de esa figura y pasada a tiempo f\u00edsico multiplicando por 60. No son una tabla exacta de contactos ni un efem\u00e9rides orbital. No reproduce la red de nueve nodos y no usa el orbitador 2.",
+              "horizon_seconds": 86400.0,
+              "notes": "Clasificaci\u00f3n. Intervalos Marte\u2013rel\u00e9: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos rel\u00e9\u2013Tierra: tiempo SOURCE_APPROXIMATED de la uni\u00f3n reconstruida y topolog\u00eda TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps.",
+              "scenario_id": "research-alessi-baseline"
+            },
+            "seed": 1,
+            "stop_policy": "PROFILE_HORIZON_SETTLED",
+            "strategy_type": "fixed_batch",
+            "trace_level": "SCIENTIFIC",
+            "workload": {
+              "canonical_individual_syncunit_bytes": 4096,
+              "duration_seconds": null,
+              "event_type": "research.alessi.normal_tm",
+              "flow": "alessi.normal_tm",
+              "max_events": 10000,
+              "offered_load_fraction": null,
+              "priority": "normal",
+              "rate_events_per_second": 0.48828125,
+              "source_id": "MSR-SURFACE-01",
+              "start_time_sim": 0.0,
+              "workload_id": "alessi-normal-tm"
+            }
+          },
+          "stop_policy": "PROFILE_HORIZON_SETTLED",
+          "strategy_type": "fixed_batch",
+          "telemetry_schema_version": 1,
+          "terminal": {
+            "completed": true,
+            "engine_status": "COMPLETED",
+            "error_message": null,
+            "error_type": null
+          },
+          "trace_level": "SCIENTIFIC",
+          "workload": {
+            "canonical_individual_syncunit_bytes": 4096,
+            "duration_seconds": null,
+            "event_type": "research.alessi.normal_tm",
+            "flow": "alessi.normal_tm",
+            "max_events": 10000,
+            "offered_load_fraction": null,
+            "priority": "normal",
+            "rate_events_per_second": 0.48828125,
+            "source_id": "MSR-SURFACE-01",
+            "start_time_sim": 0.0,
+            "workload_id": "alessi-normal-tm"
+          },
+          "workload_id": "alessi-normal-tm"
+        }
+      },
+      {
+        "completed": true,
+        "configuration_hash": "a1589a59482bca6ba486e546cd88407a052fcca9de40b0b59263c5137f968801",
+        "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+        "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+        "execution_identity": "ea97db88-5a70-59be-b2b4-378ae0c5175d",
+        "failed": false,
+        "index": 3,
+        "label": "fixed_batch_50",
+        "manifest": {
+          "batch_size_events": 50,
+          "configuration_hash": "a1589a59482bca6ba486e546cd88407a052fcca9de40b0b59263c5137f968801",
+          "dataset_event_count": 10000,
+          "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+          "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "execution_identity": "ea97db88-5a70-59be-b2b4-378ae0c5175d",
+          "experiment_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+          "failure_plan": {
+            "ack_drops": [],
+            "contact_cuts": [],
+            "silent_forward_delivery_losses": []
+          },
+          "gap_request_timeout_seconds": null,
+          "hash_algorithm": "sha256",
+          "horizon_seconds": 86400.0,
+          "manifest_schema_version": 1,
+          "metrics": {
+            "backlog": 0,
+            "completeness": 1.0,
+            "confirmation_ratio": 1.0,
+            "confirmed": 10000,
+            "confirmed_ratio": 1.0,
+            "contacts": {
+              "contact_utilization_mean": 0.009429148458605666,
+              "contact_utilization_weighted": 0.004823224970299168,
+              "contacts_forced_cut": 0,
+              "contacts_total": 32,
+              "contacts_used": 4,
+              "forward_contact_utilization_weighted": 0.004952406349206349,
+              "reverse_contact_utilization_weighted": 0.0026025234664920323
+            },
+            "converged": true,
+            "converged_at_sim": 34509.5377280004,
+            "convergence_reference_at_sim": 20477.952,
+            "duplicates_received": 0,
+            "duplicates_stored": 0,
+            "earth_persisted_unique": 10000,
+            "final_backlog": 0,
+            "freshness": {
+              "count": 10000,
+              "max_seconds": 28382.340012,
+              "mean_seconds": 18298.584808000036,
+              "min_seconds": 8214.829604000075,
+              "p50_seconds": 18298.58480800004,
+              "p95_seconds": 27373.964491600003
+            },
+            "freshness_coverage": 1.0,
+            "freshness_max_seconds": 28382.340012,
+            "freshness_mean_seconds": 18298.584808000036,
+            "freshness_min_seconds": 8214.829604000075,
+            "freshness_p50_seconds": 18298.58480800004,
+            "freshness_p95_seconds": 27373.964491600003,
+            "freshness_sample_count": 10000,
+            "gaps_count": 0,
+            "generated": 10000,
+            "not_persisted_on_earth": 0,
+            "not_persisted_ratio": 0.0,
+            "persisted_on_earth_but_unconfirmed": 0,
+            "persisted_unconfirmed_ratio": 0.0,
+            "recovery": {
+              "confirmed_count": 0,
+              "duplicates_received_after_loss": null,
+              "duplicates_stored_after_loss": null,
+              "earth_recovery_to_origin_confirmation_seconds": null,
+              "episode_count": 0,
+              "episodes": [],
+              "gap_observed_at_sim": null,
+              "gap_request_transport_attempt_count": null,
+              "loss_to_earth_recovery_seconds": null,
+              "loss_to_origin_confirmation_seconds": null,
+              "loss_to_trigger_seconds": null,
+              "policy_recovery_forward_bytes": null,
+              "policy_recovery_network_bytes_total": 0,
+              "policy_recovery_reverse_bytes": null,
+              "receiver_gap_request_logical_count": null,
+              "receiver_repair_attempt_count": null,
+              "recovered_count": 0,
+              "sender_ack_timeout_count": null,
+              "sender_retry_attempt_count": null,
+              "trigger_to_earth_recovery_seconds": null
+            },
+            "retry_attempts_total": 0,
+            "scenario_completed_at_sim": 84000.0,
+            "sync_units_created": 200,
+            "time_sim": 84000.0,
+            "time_to_convergence_seconds": 14031.585728000402,
+            "traffic": {
+              "ack_syncunit_bytes_created": 1192216,
+              "ack_transport_bytes": 2384432,
+              "application_bytes_transmitted_total": 80384832,
+              "earth_to_relay_bytes": 1192216,
+              "forward_bytes_transmitted": 78000400,
+              "interrupted_transport_bytes": 0,
+              "mars_to_relay_bytes": 39000200,
+              "relay_to_earth_bytes": 39000200,
+              "relay_to_mars_bytes": 1192216,
+              "retry_transport_bytes": 0,
+              "reverse_bytes_transmitted": 2384432,
+              "telemetry_initial_syncunit_bytes_created": 39000200,
+              "telemetry_retry_syncunit_bytes_created": 0,
+              "telemetry_syncunit_bytes_created": 39000200,
+              "telemetry_transport_bytes": 78000400,
+              "total_transport_application_bytes": 80384832
+            },
+            "view_age_seconds": 63522.047999999995
+          },
+          "recovery_policy": "sender-driven",
+          "retry_policy": {
+            "ack_timeout_seconds": 89760.0
+          },
+          "scenario_id": "research-alessi-baseline",
+          "seed": 1,
+          "software_version": "1.0.0-rc1",
+          "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+          "source_state": "clean",
+          "specification": {
+            "batch_size_events": 50,
+            "failure_plan": {
+              "ack_drops": [],
+              "contact_cuts": [],
+              "silent_forward_delivery_losses": []
+            },
+            "gap_request_timeout_seconds": null,
+            "recovery_policy": "sender-driven",
+            "retry_policy": {
+              "ack_timeout_seconds": 89760.0
+            },
+            "scenario": {
+              "contacts": [
+                {
+                  "contact_id": "alessi-mars-relay-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-mars-relay-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "RELAY",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "MARS",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-01",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 28500.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 27000.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-02",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 35700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 34500.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-03",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 74700.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 73200.0
+                },
+                {
+                  "contact_id": "alessi-relay-mars-04",
+                  "data_rate_bps": 1000000,
+                  "destination": "MARS",
+                  "end_time_sim": 81900.0,
+                  "propagation_delay_s": 0.0,
+                  "source": "RELAY",
+                  "start_time_sim": 80700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-01",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-02",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-03",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-04",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-05",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-06",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-07",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-08",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-09",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-10",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-11",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-relay-earth-12",
+                  "data_rate_bps": 2000000,
+                  "destination": "EARTH",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "RELAY",
+                  "start_time_sim": 79200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-01",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 6300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 1200.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-02",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 9600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 8100.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-03",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 20700.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 15300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-04",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 27600.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 22500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-05",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 34800.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 29400.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-06",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 42000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 36300.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-07",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 48900.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 43500.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-08",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 56100.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 50700.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-09",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 63300.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 57600.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-10",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 70200.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 64800.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-11",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 77400.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 72000.0
+                },
+                {
+                  "contact_id": "alessi-earth-relay-12",
+                  "data_rate_bps": 32000,
+                  "destination": "RELAY",
+                  "end_time_sim": 84000.0,
+                  "propagation_delay_s": 1380.0,
+                  "source": "EARTH",
+                  "start_time_sim": 79200.0
+                }
+              ],
+              "description": "L\u00ednea base de tres nodos en tiempo f\u00edsico, derivada del an\u00e1lisis de prestaciones DTN de comunicaciones multi-activo Marte\u2013Tierra. Corte representativo del orbitador 1: lander 143, orbitador 141 y un extremo Tierra que re\u00fane GS1 (201), GS2 (202), GS3 (203) y EDRS (105). Los instantes salen de una reconstrucci\u00f3n de la figura 5, redondeada al m\u00faltiplo de 5 s de esa figura y pasada a tiempo f\u00edsico multiplicando por 60. No son una tabla exacta de contactos ni un efem\u00e9rides orbital. No reproduce la red de nueve nodos y no usa el orbitador 2.",
+              "horizon_seconds": 86400.0,
+              "notes": "Clasificaci\u00f3n. Intervalos Marte\u2013rel\u00e9: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos rel\u00e9\u2013Tierra: tiempo SOURCE_APPROXIMATED de la uni\u00f3n reconstruida y topolog\u00eda TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps.",
+              "scenario_id": "research-alessi-baseline"
+            },
+            "seed": 1,
+            "stop_policy": "PROFILE_HORIZON_SETTLED",
+            "strategy_type": "fixed_batch",
+            "trace_level": "SCIENTIFIC",
+            "workload": {
+              "canonical_individual_syncunit_bytes": 4096,
+              "duration_seconds": null,
+              "event_type": "research.alessi.normal_tm",
+              "flow": "alessi.normal_tm",
+              "max_events": 10000,
+              "offered_load_fraction": null,
+              "priority": "normal",
+              "rate_events_per_second": 0.48828125,
+              "source_id": "MSR-SURFACE-01",
+              "start_time_sim": 0.0,
+              "workload_id": "alessi-normal-tm"
+            }
+          },
+          "stop_policy": "PROFILE_HORIZON_SETTLED",
+          "strategy_type": "fixed_batch",
+          "telemetry_schema_version": 1,
+          "terminal": {
+            "completed": true,
+            "engine_status": "COMPLETED",
+            "error_message": null,
+            "error_type": null
+          },
+          "trace_level": "SCIENTIFIC",
+          "workload": {
+            "canonical_individual_syncunit_bytes": 4096,
+            "duration_seconds": null,
+            "event_type": "research.alessi.normal_tm",
+            "flow": "alessi.normal_tm",
+            "max_events": 10000,
+            "offered_load_fraction": null,
+            "priority": "normal",
+            "rate_events_per_second": 0.48828125,
+            "source_id": "MSR-SURFACE-01",
+            "start_time_sim": 0.0,
+            "workload_id": "alessi-normal-tm"
+          },
+          "workload_id": "alessi-normal-tm"
+        }
+      }
+    ],
+    "software_version": "1.0.0-rc1",
+    "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+    "source_state": "clean",
+    "status": "COMPLETED"
+  },
+  "evidence_schema_version": 1,
+  "family": "e1",
+  "reproducibility": {
+    "configuration_hash_includes_software_provenance": false,
+    "configuration_hash_includes_trace_level": true,
+    "dataset_fingerprint": "SHA-256 del JSON can\u00f3nico de cada TelemetryEvent materializado, en orden de secuencia",
+    "dataset_fingerprint_fields": [
+      "event_id",
+      "source_id",
+      "sequence_number",
+      "generated_at_sim",
+      "event_type",
+      "payload",
+      "priority",
+      "schema_version"
+    ],
+    "dataset_identity_inputs": [
+      "scenario_id",
+      "seed"
+    ],
+    "execution_identity_inputs": [
+      "scenario_id",
+      "seed",
+      "strategy_type",
+      "batch_size_events"
+    ],
+    "export_policy": {
+      "development": "provenance_recorded",
+      "official": "clean_revision_required",
+      "sensitivity": "clean_revision_required"
+    },
+    "flow_in_dataset_fingerprint": "payload",
+    "hash_algorithm": "sha256",
+    "note": "El reloj de pared no entra en las identidades cient\u00edficas ni en configuration_hash. trace_level distingue la configuraci\u00f3n de ejecuci\u00f3n y no es un factor de E1, E2 ni E3. configuration_hash resume la ScientificRunSpec y no incluye software_version, source_revision ni source_state. source_revision es el commit cuando pudo leerse. Fuera de una imagen, source_state clean o dirty sale de git status del proceso que ejecuta. El sello de la imagen de desarrollo usa observation git_head_unverified y queda unknown. El sello de la imagen de release usa observation git_archive y puede ser clean: su contexto es el archivo de ese commit, no el working tree. El loader no acepta clean por el texto source_state si la observation no es un m\u00e9todo verificado. Un SHA que no tiene 40 hexadecimales no produce clean. La exportaci\u00f3n official y sensitivity exige clean y un SHA de 40 hexadecimales. development registra el estado observado. dataset_fingerprint cubre el evento materializado, incluido el payload. flow no es un campo del evento: el workload lo copia dentro del payload. schema_version entra porque el codec lo transmite. telemetry_schema_version del manifiesto es la etiqueta legible de ese valor y no se agrega otra vez a la huella.",
+    "software_version": "1.0.0-rc1",
+    "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+    "source_state": "clean",
+    "telemetry_schema_version_role": "external_label",
+    "trace_level_is_scientific_factor": false,
+    "wall_clock_in_scientific_identity": false
+  },
+  "role": "official"
+}

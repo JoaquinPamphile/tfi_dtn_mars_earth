@@ -1,0 +1,24 @@
+.node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 112px;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.role {
+  color: var(--text);
+  font-size: 1rem;
+}

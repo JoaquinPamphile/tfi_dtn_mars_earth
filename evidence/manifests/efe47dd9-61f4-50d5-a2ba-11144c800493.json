@@ -1,0 +1,90 @@
+{
+  "campaign_id": "e1-strategy-alessi-10k",
+  "campaign_identity": "efe47dd9-61f4-50d5-a2ba-11144c800493",
+  "evidence_file": "official/e1/efe47dd9-61f4-50d5-a2ba-11144c800493.json",
+  "evidence_schema_version": 1,
+  "family": "e1",
+  "reproducibility": {
+    "configuration_hash_includes_software_provenance": false,
+    "configuration_hash_includes_trace_level": true,
+    "dataset_fingerprint": "SHA-256 del JSON can\u00f3nico de cada TelemetryEvent materializado, en orden de secuencia",
+    "dataset_fingerprint_fields": [
+      "event_id",
+      "source_id",
+      "sequence_number",
+      "generated_at_sim",
+      "event_type",
+      "payload",
+      "priority",
+      "schema_version"
+    ],
+    "dataset_identity_inputs": [
+      "scenario_id",
+      "seed"
+    ],
+    "execution_identity_inputs": [
+      "scenario_id",
+      "seed",
+      "strategy_type",
+      "batch_size_events"
+    ],
+    "export_policy": {
+      "development": "provenance_recorded",
+      "official": "clean_revision_required",
+      "sensitivity": "clean_revision_required"
+    },
+    "flow_in_dataset_fingerprint": "payload",
+    "hash_algorithm": "sha256",
+    "note": "El reloj de pared no entra en las identidades cient\u00edficas ni en configuration_hash. trace_level distingue la configuraci\u00f3n de ejecuci\u00f3n y no es un factor de E1, E2 ni E3. configuration_hash resume la ScientificRunSpec y no incluye software_version, source_revision ni source_state. source_revision es el commit cuando pudo leerse. Fuera de una imagen, source_state clean o dirty sale de git status del proceso que ejecuta. El sello de la imagen de desarrollo usa observation git_head_unverified y queda unknown. El sello de la imagen de release usa observation git_archive y puede ser clean: su contexto es el archivo de ese commit, no el working tree. El loader no acepta clean por el texto source_state si la observation no es un m\u00e9todo verificado. Un SHA que no tiene 40 hexadecimales no produce clean. La exportaci\u00f3n official y sensitivity exige clean y un SHA de 40 hexadecimales. development registra el estado observado. dataset_fingerprint cubre el evento materializado, incluido el payload. flow no es un campo del evento: el workload lo copia dentro del payload. schema_version entra porque el codec lo transmite. telemetry_schema_version del manifiesto es la etiqueta legible de ese valor y no se agrega otra vez a la huella.",
+    "software_version": "1.0.0-rc1",
+    "source_revision": "86597493672d2ebd445993999e1940b5471222b2",
+    "source_state": "clean",
+    "telemetry_schema_version_role": "external_label",
+    "trace_level_is_scientific_factor": false,
+    "wall_clock_in_scientific_identity": false
+  },
+  "role": "official",
+  "run_order": [
+    {
+      "completed": true,
+      "configuration_hash": "de1c5d939e1654b12bb75a64a4acb33d806080c2fb3502cfaa035b962468a4cb",
+      "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "1fb08f63-14e9-5720-917a-acbf5371e20f",
+      "failed": false,
+      "index": 0,
+      "label": "individual"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "bae592384cfe0c8943f4171c6e54fa145dff63a95f4ada4ad1f381cea8b14053",
+      "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "08283d27-6222-56a8-b462-b91460a34357",
+      "failed": false,
+      "index": 1,
+      "label": "fixed_batch_10"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "93604a96fedc62d9e5580eaaf048c55b00168d2f23014033b36d63a0bd12c48a",
+      "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "bea394f4-8c27-54d6-b393-c3531a136550",
+      "failed": false,
+      "index": 2,
+      "label": "fixed_batch_25"
+    },
+    {
+      "completed": true,
+      "configuration_hash": "a1589a59482bca6ba486e546cd88407a052fcca9de40b0b59263c5137f968801",
+      "dataset_fingerprint": "10f0fae67b70e5faf42bbe738babaee56d1fe8f4b8a6862206f4eda22e983cab",
+      "dataset_identity": "5ce4f264-f5da-5451-addf-7c78bed072ba",
+      "execution_identity": "ea97db88-5a70-59be-b2b4-378ae0c5175d",
+      "failed": false,
+      "index": 3,
+      "label": "fixed_batch_50"
+    }
+  ],
+  "status": "COMPLETED"
+}

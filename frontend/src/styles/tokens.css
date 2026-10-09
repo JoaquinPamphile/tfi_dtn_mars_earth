@@ -1,0 +1,33 @@
+/* Tokens del visor: fondo oscuro, acento contenido, sin neón. */
+:root {
+  --bg: #0e141b;
+  --sidebar: #0b1117;
+  --topbar: #101820;
+  --card: #17212b;
+  --card-hover: #1c2833;
+  --line: #2c3c4a;
+  --text: #e7eef5;
+  --muted: #a8b7c6;
+  --faint: #8b9bab;
+  --accent: #9ec0db;
+  --accent-dim: rgba(158, 192, 219, 0.14);
+  --valid: #9dceb4;
+  --valid-dim: rgba(157, 206, 180, 0.14);
+  --pending: #e0c39a;
+  --pending-dim: rgba(224, 195, 154, 0.14);
+  --readonly: #d5e3f0;
+  --readonly-dim: rgba(158, 192, 219, 0.16);
+  --radius: 12px;
+  --sidebar-width: 248px;
+  --topbar-height: 60px;
+  --font: "Segoe UI", "Helvetica Neue", sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}

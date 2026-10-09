@@ -1,0 +1,33 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: min(100%, 1040px);
+}
+
+.metaList {
+  display: grid;
+  gap: 14px;
+}
+
+.metaList div {
+  display: grid;
+  gap: 2px;
+}
+
+.metaList dt {
+  color: var(--faint);
+  font-size: 0.78rem;
+}
+
+.metaList dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
