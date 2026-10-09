@@ -16,7 +16,7 @@
 }
 
 .note {
-  color: var(--muted);
+  color: var(--color-text-muted);
   max-width: 62ch;
 }
 
@@ -27,8 +27,8 @@
 
 .plane {
   padding: 18px;
-  background: var(--card);
-  border: 1px solid var(--line);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
 }
 
@@ -50,8 +50,9 @@
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-border);
   font-family: var(--mono);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
@@ -67,9 +68,9 @@
 
 .step {
   padding: 6px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  color: var(--text);
+  color: var(--color-text);
   font-family: var(--mono);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
@@ -78,16 +79,16 @@
 .caption {
   margin-top: 12px;
   max-width: 62ch;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .callout {
   padding: 16px 18px;
-  background: var(--card);
-  border-top: 1px solid var(--line);
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
@@ -99,7 +100,7 @@
 .callout p {
   margin-top: 8px;
   max-width: 62ch;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 760px) {

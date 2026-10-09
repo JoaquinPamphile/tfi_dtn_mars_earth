@@ -1,5 +1,6 @@
 import { projectConfig } from "../../config/project";
 import { StatusBadge } from "../common/StatusBadge";
+import { ThemeToggle } from "./ThemeToggle";
 import styles from "./TopBar.module.css";
 
 export function TopBar({
@@ -24,9 +25,12 @@ export function TopBar({
         </button>
         <p className={styles.title}>{projectConfig.projectName}</p>
       </div>
-      {projectConfig.readOnly ? (
-        <StatusBadge tone="readonly">{projectConfig.headerBadge}</StatusBadge>
-      ) : null}
+      <div className={styles.actions}>
+        <ThemeToggle />
+        {projectConfig.readOnly ? (
+          <StatusBadge tone="readonly">{projectConfig.headerBadge}</StatusBadge>
+        ) : null}
+      </div>
     </header>
   );
 }

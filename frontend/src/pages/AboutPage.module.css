@@ -4,7 +4,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  color: var(--text);
+  color: var(--color-text);
 }
 
 .list li {
@@ -20,9 +20,9 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--color-accent);
 }
 
 .upcoming {
-  color: var(--muted);
+  color: var(--color-text-muted);
 }

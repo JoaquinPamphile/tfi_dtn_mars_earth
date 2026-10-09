@@ -3,7 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0e141b" />
     <title>Laboratorio DTN</title>
+    <!-- Aplica el tema antes de React. La clave y los colores siguen a src/domain/theme.ts -->
+    <script>
+      (function () {
+        var clave = "dtn-lab-theme";
+        var tema = "dark";
+        var claro = "#eef3f7";
+        var oscuro = "#0e141b";
+        try {
+          var guardado = localStorage.getItem(clave);
+          if (guardado === "light" || guardado === "dark") {
+            tema = guardado;
+          } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+            tema = "light";
+          }
+        } catch (error) {
+          if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+            tema = "light";
+          }
+        }
+        var raiz = document.documentElement;
+        raiz.dataset.theme = tema;
+        raiz.style.backgroundColor = tema === "light" ? claro : oscuro;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", tema === "light" ? claro : oscuro);
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>

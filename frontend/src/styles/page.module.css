@@ -16,13 +16,13 @@
 }
 
 .metaList dt {
-  color: var(--faint);
+  color: var(--color-text-faint);
   font-size: 0.78rem;
 }
 
 .metaList dd {
   margin: 0;
-  color: var(--text);
+  color: var(--color-text);
 }
 
 .mono {

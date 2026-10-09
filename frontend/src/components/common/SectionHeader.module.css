@@ -16,7 +16,7 @@
 .description {
   margin-top: 6px;
   max-width: 42rem;
-  color: var(--muted);
+  color: var(--color-text-muted);
   font-size: 1.02rem;
 }
 

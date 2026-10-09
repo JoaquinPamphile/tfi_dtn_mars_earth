@@ -13,25 +13,25 @@
 }
 
 .readonly {
-  color: var(--readonly);
-  background: var(--readonly-dim);
-  border-color: rgba(158, 192, 219, 0.28);
+  color: var(--color-readonly);
+  background: var(--color-readonly-soft);
+  border-color: var(--color-readonly-border);
 }
 
 .valid {
-  color: var(--valid);
-  background: var(--valid-dim);
-  border-color: rgba(157, 206, 180, 0.28);
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-color: var(--color-success-border);
 }
 
 .pending {
-  color: var(--pending);
-  background: var(--pending-dim);
-  border-color: rgba(224, 195, 154, 0.28);
+  color: var(--color-pending);
+  background: var(--color-pending-soft);
+  border-color: var(--color-pending-border);
 }
 
 .neutral {
-  color: var(--muted);
+  color: var(--color-text-muted);
   background: transparent;
-  border-color: var(--line);
+  border-color: var(--color-border);
 }

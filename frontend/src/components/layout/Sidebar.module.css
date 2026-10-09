@@ -4,13 +4,13 @@
   width: var(--sidebar-width);
   flex: none;
   min-height: 0;
-  background: var(--sidebar);
-  border-right: 1px solid var(--line);
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
 }
 
 .brand {
   padding: 18px 16px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .name {
@@ -20,7 +20,7 @@
 
 .version {
   margin-top: 4px;
-  color: var(--faint);
+  color: var(--color-text-faint);
   font-family: var(--mono);
   font-size: 0.72rem;
 }
@@ -36,41 +36,41 @@
   display: block;
   padding: 9px 12px;
   border-radius: 8px;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .link:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text);
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .active,
 .active:hover {
-  background: var(--accent-dim);
-  color: var(--text);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
 .footer {
   margin-top: auto;
   padding: 14px 16px 16px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--color-border);
 }
 
 .footerLabel {
-  color: var(--faint);
+  color: var(--color-text-faint);
   font-size: 0.72rem;
 }
 
 .footerValue {
   margin-top: 4px;
-  color: var(--muted);
+  color: var(--color-text-muted);
   font-size: 0.78rem;
 }
 
 .footerNote {
   margin-top: 8px;
-  color: var(--faint);
+  color: var(--color-text-faint);
   font-size: 0.75rem;
   line-height: 1.4;
 }

@@ -1,6 +1,6 @@
 .lede {
   max-width: 62ch;
-  color: var(--muted);
+  color: var(--color-text-muted);
 }
 
 .grid {
