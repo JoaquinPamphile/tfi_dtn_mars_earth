@@ -255,10 +255,21 @@ class ContactPlanDefinition(BaseModel):
             raise ValueError("no debe estar vacío")
         return value
 
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def schema_version_must_not_be_boolean(cls, value: object) -> object:
+        # Corre antes de la coerción a int: True y False no deben volverse 1 y 0.
+        if isinstance(value, bool):
+            raise ValueError(
+                "schema_version debe ser "
+                f"{CONTACT_PLAN_DEFINITION_SCHEMA_VERSION}"
+            )
+        return value
+
     @field_validator("schema_version")
     @classmethod
     def schema_version_must_be_known(cls, value: int) -> int:
-        if isinstance(value, bool) or value != CONTACT_PLAN_DEFINITION_SCHEMA_VERSION:
+        if value != CONTACT_PLAN_DEFINITION_SCHEMA_VERSION:
             raise ValueError(
                 "schema_version debe ser "
                 f"{CONTACT_PLAN_DEFINITION_SCHEMA_VERSION}"
