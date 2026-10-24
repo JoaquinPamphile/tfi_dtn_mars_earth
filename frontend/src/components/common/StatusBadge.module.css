@@ -18,7 +18,8 @@
   border-color: var(--color-readonly-border);
 }
 
-.valid {
+.valid,
+.canonical {
   color: var(--color-success);
   background: var(--color-success-soft);
   border-color: var(--color-success-border);
@@ -34,4 +35,10 @@
   color: var(--color-text-muted);
   background: transparent;
   border-color: var(--color-border);
+}
+
+.stage {
+  padding: 6px 12px;
+  font-size: 18px;
+  letter-spacing: 0.06em;
 }

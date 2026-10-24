@@ -1,0 +1,23 @@
+.panel {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-pending-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+.title {
+  font-size: 1.05rem;
+}
+
+.lead {
+  color: var(--color-text-muted);
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--color-pending);
+}

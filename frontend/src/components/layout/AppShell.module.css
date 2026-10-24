@@ -20,6 +20,21 @@
   padding: 28px 32px 48px;
 }
 
+.mainDefense {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 20px 16px;
+}
+
+.mainPresenting {
+  padding: 0;
+}
+
+.presenting {
+  background: var(--color-bg);
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -33,5 +48,13 @@
 @media (max-width: 900px) {
   .main {
     padding: 20px 16px 40px;
+  }
+
+  .mainDefense {
+    padding: 8px 12px 12px;
+  }
+
+  .mainPresenting {
+    padding: 0;
   }
 }

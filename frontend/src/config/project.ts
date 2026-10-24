@@ -11,8 +11,9 @@ export const projectConfig = {
   scientificMode: "read-only",
   readOnly: true,
   readOnlyLabel: "READ ONLY",
+  readOnlyStateLabel: "SOLO LECTURA",
   homeBadge: "RC1 · SOLO LECTURA",
   headerBadge: "RC1 · READ ONLY",
-  dataSourceLabel: "METADATOS ESTÁTICOS",
-  evidenceIntegrationNote: "Integración con evidence: pendiente V0.1",
+  dataSourceLabel: "RC1 EVIDENCE",
+  evidenceIntegrationNote: "Evidence RC1 cargada",
 } as const;

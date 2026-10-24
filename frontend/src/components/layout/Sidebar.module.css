@@ -58,8 +58,13 @@
 }
 
 .footerLabel {
+  margin-top: 10px;
   color: var(--color-text-faint);
   font-size: 0.72rem;
+}
+
+.footerLabel:first-child {
+  margin-top: 0;
 }
 
 .footerValue {

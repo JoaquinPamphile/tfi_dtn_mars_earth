@@ -1,7 +1,8 @@
-import { useEvidence } from "../app/LabProvider";
+import { useLabSession } from "../app/LabProvider";
 import { InfoCard } from "../components/common/InfoCard";
 import { SectionHeader } from "../components/common/SectionHeader";
 import { StatusBadge } from "../components/common/StatusBadge";
+import { EvidenceUnavailable } from "../components/experiments/EvidenceUnavailable";
 import { projectConfig } from "../config/project";
 import pageStyles from "../styles/page.module.css";
 import styles from "./HomePage.module.css";
@@ -14,18 +15,33 @@ function enumerar(items: string[]): string {
 }
 
 export function HomePage() {
-  const adapter = useEvidence();
-  const dataset = adapter.getDataset();
+  const session = useLabSession();
+  const modo = projectConfig.readOnly ? projectConfig.readOnlyLabel : projectConfig.scientificMode;
+
+  if (session.kind === "unavailable") {
+    return (
+      <div className={pageStyles.page}>
+        <SectionHeader
+          title={projectConfig.projectName}
+          description={projectConfig.subtitle}
+          addon={
+            projectConfig.readOnly ? (
+              <StatusBadge tone="readonly">{projectConfig.homeBadge}</StatusBadge>
+            ) : undefined
+          }
+        />
+        <EvidenceUnavailable error={session.error} />
+      </div>
+    );
+  }
+
+  const dataset = session.adapter.getDataset();
   const release = dataset.release;
   const source = dataset.source;
-  const codigos = enumerar(dataset.experiments.map((item) => item.family.code));
+  const codigos = enumerar(dataset.experiments.map((item) => item.code));
   const familias =
-    dataset.experiments.length === 1
-      ? "1 familia con evidence válida."
-      : `${dataset.experiments.length} familias con evidence válida.`;
-  const modo = projectConfig.readOnly
-    ? projectConfig.readOnlyLabel
-    : projectConfig.scientificMode;
+    dataset.experiments.length === 1 ? "1 familia." : `${dataset.experiments.length} familias.`;
+  const corridas = source.runCount === 1 ? "1 corrida." : `${source.runCount ?? 0} corridas.`;
 
   return (
     <div className={pageStyles.page}>
@@ -39,8 +55,8 @@ export function HomePage() {
         }
       />
       <p className={styles.lede}>
-        El laboratorio visualiza la evidencia científica congelada. No modifica el
-        backend ni las campañas.
+        El laboratorio visualiza la evidencia científica congelada. No modifica el backend ni las
+        campañas.
       </p>
       <div className={styles.grid}>
         <InfoCard title="Escenario" to="/escenario">
@@ -48,7 +64,7 @@ export function HomePage() {
         </InfoCard>
         <InfoCard title="Experimentos" to="/experimentos">
           <p>
-            {codigos}. {familias}
+            {codigos}. {familias} {corridas}
           </p>
         </InfoCard>
         <InfoCard title="Release científica">

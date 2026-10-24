@@ -22,3 +22,14 @@
   color: var(--color-text);
   font-size: 1rem;
 }
+
+.stage {
+  min-height: 72px;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.stage .code,
+.stage .role {
+  font-size: 18px;
+}

@@ -42,6 +42,26 @@
   --color-selection: rgba(158, 192, 219, 0.32);
   --color-overlay: rgba(5, 8, 12, 0.56);
   --color-control-disabled: transparent;
+  --bar-forward-bg: #1f6f9a;
+  --bar-forward-border: #d5ebf8;
+  --bar-return-bg: #8a6230;
+  --bar-return-stripe: #e2c48a;
+  --bar-return-border: #f3dfb8;
+  --bar-generation-bg: #1e6b45;
+  --bar-generation-border: #c9ead8;
+  --chart-series-1: #8eb4d4;
+  --chart-series-2: #d7b07a;
+  --chart-series-3: #7eb8b4;
+  --chart-grid: rgba(168, 183, 198, 0.32);
+  --chart-axis: #a8b7c6;
+  --mark-loss: #e07a72;
+  --mark-gap: #7eb8b4;
+  --mark-trigger: #e0c39a;
+  --mark-depart: #9ec0db;
+  --mark-earth: #9dceb4;
+  --mark-mars: #d7b07a;
+  --lane-sender: #d7b07a;
+  --lane-receiver: #8eb4d4;
 }
 
 :root[data-theme="light"] {
@@ -73,6 +93,26 @@
   --color-selection: rgba(27, 86, 120, 0.2);
   --color-overlay: rgba(18, 28, 38, 0.42);
   --color-control-disabled: #f3f7fb;
+  --bar-forward-bg: #1b5678;
+  --bar-forward-border: #0e3348;
+  --bar-return-bg: #8a5a18;
+  --bar-return-stripe: #e4c48a;
+  --bar-return-border: #5c3b0e;
+  --bar-generation-bg: #14643f;
+  --bar-generation-border: #0c3d26;
+  --chart-series-1: #1b5678;
+  --chart-series-2: #8a5a18;
+  --chart-series-3: #1a6b66;
+  --chart-grid: rgba(74, 98, 116, 0.35);
+  --chart-axis: #3e5568;
+  --mark-loss: #9d2c2c;
+  --mark-gap: #1a6b66;
+  --mark-trigger: #7a5620;
+  --mark-depart: #1b5678;
+  --mark-earth: #14643f;
+  --mark-mars: #8a5a18;
+  --lane-sender: #8a5a18;
+  --lane-receiver: #1b5678;
 }
 
 @media (prefers-reduced-motion: reduce) {

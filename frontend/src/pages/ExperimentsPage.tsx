@@ -1,17 +1,27 @@
-import { useEvidence } from "../app/LabProvider";
+import { useLabSession } from "../app/LabProvider";
+import { EvidenceUnavailable } from "../components/experiments/EvidenceUnavailable";
 import { ExperimentCard } from "../components/experiments/ExperimentCard";
 import { SectionHeader } from "../components/common/SectionHeader";
 import pageStyles from "../styles/page.module.css";
 import styles from "./ExperimentsPage.module.css";
 
 export function ExperimentsPage() {
-  const experimentos = useEvidence().getExperiments();
+  const session = useLabSession();
+  if (session.kind === "unavailable") {
+    return (
+      <div className={pageStyles.page}>
+        <EvidenceUnavailable error={session.error} />
+      </div>
+    );
+  }
+
+  const experimentos = session.adapter.getExperiments();
 
   return (
-    <div className={pageStyles.page}>
+    <div className={`${pageStyles.page} ${pageStyles.lab}`}>
       <SectionHeader
         title="Experimentos"
-        description="Familias cerradas de la release. El detalle numérico queda para V0.1."
+        description="Laboratorio de la evidence RC1. Cada familia abre diseño, corridas, gráficos, métricas, procedencia y reproducibilidad."
       />
       <div className={styles.grid}>
         {experimentos.map((experimento) => (

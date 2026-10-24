@@ -1,22 +1,22 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { EvidenceAdapter } from "../adapters";
+import type { LabSession } from "../adapters";
 
-const LabContext = createContext<EvidenceAdapter | null>(null);
+const LabContext = createContext<LabSession | null>(null);
 
 export function LabProvider({
-  adapter,
+  session,
   children,
 }: {
-  adapter: EvidenceAdapter;
+  session: LabSession;
   children: ReactNode;
 }) {
-  return <LabContext.Provider value={adapter}>{children}</LabContext.Provider>;
+  return <LabContext.Provider value={session}>{children}</LabContext.Provider>;
 }
 
-export function useEvidence(): EvidenceAdapter {
-  const adapter = useContext(LabContext);
-  if (!adapter) {
-    throw new Error("useEvidence debe usarse dentro de LabProvider.");
+export function useLabSession(): LabSession {
+  const session = useContext(LabContext);
+  if (!session) {
+    throw new Error("useLabSession debe usarse dentro de LabProvider.");
   }
-  return adapter;
+  return session;
 }

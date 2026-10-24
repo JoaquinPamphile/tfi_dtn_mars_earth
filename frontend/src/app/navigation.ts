@@ -5,6 +5,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
+  { to: "/defensa", label: "Defensa", end: false },
   { to: "/", label: "Inicio", end: true },
   { to: "/escenario", label: "Escenario", end: false },
   { to: "/experimentos", label: "Experimentos", end: false },

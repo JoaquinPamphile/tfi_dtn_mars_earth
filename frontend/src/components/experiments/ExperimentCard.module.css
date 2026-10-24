@@ -28,6 +28,10 @@
 }
 
 .objective {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
   color: var(--color-text-muted);
   font-size: 0.92rem;
 }
@@ -42,6 +46,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+.identity {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.identity div {
+  display: grid;
+  gap: 2px;
+}
+
+.identity dt {
+  color: var(--color-text-faint);
+  font-size: 0.72rem;
+}
+
+.identity dd {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
 .actions {
   display: flex;
   flex-direction: column;
@@ -52,15 +80,14 @@
 }
 
 .explore {
+  display: inline-flex;
   padding: 7px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-accent-border);
   border-radius: 8px;
-  background: var(--color-control-disabled);
-  color: var(--color-text-faint);
-  cursor: not-allowed;
+  background: var(--color-accent-soft);
+  color: var(--color-text);
 }
 
-.hint {
-  color: var(--color-text-faint);
-  font-size: 0.75rem;
+.explore:hover {
+  border-color: var(--color-border-strong);
 }

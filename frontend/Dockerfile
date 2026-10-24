@@ -1,5 +1,6 @@
 # Shell de desarrollo del Laboratorio DTN.
-# No forma parte de la release científica ni lee evidence/.
+# No forma parte de la release científica.
+# No copia evidence/ dentro de la imagen: compose la monta en solo lectura.
 FROM node:22-bookworm-slim
 
 WORKDIR /app

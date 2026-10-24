@@ -1,0 +1,283 @@
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  animation: chart-in 180ms ease-out;
+}
+
+.chartHead {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 40px;
+}
+
+.chartTitle {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.plot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.plot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.legendItem[data-dim="true"] {
+  opacity: 0.4;
+}
+
+.swatch {
+  width: 18px;
+  height: 10px;
+  border: 1.5px solid var(--series, var(--chart-series-1));
+  border-radius: 2px;
+}
+
+.swatch[data-series="0"] {
+  background: var(--chart-series-1);
+  --series: var(--chart-series-1);
+}
+
+.swatch[data-series="1"] {
+  --series: var(--chart-series-2);
+  background-color: color-mix(in srgb, var(--chart-series-2) 32%, transparent);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--chart-series-2) 0 1.5px,
+    transparent 1.5px 5px
+  );
+}
+
+.swatch[data-series="2"] {
+  --series: var(--chart-series-3);
+  background-color: color-mix(in srgb, var(--chart-series-3) 28%, transparent);
+  background-image: radial-gradient(var(--chart-series-3) 1.15px, transparent 1.2px);
+  background-size: 6px 6px;
+}
+
+.symbolLine {
+  display: block;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 3;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  pointer-events: none;
+  box-shadow: 0 8px 24px var(--color-overlay);
+  transform: translate(12px, 8px);
+}
+
+.tooltip[data-placement="above"] {
+  transform: translate(12px, -100%);
+}
+
+.tooltipTitle {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tooltipRow {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.tooltipLabel {
+  color: var(--color-text-muted);
+}
+
+.unavailable {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 120px;
+  margin: 0;
+  color: var(--color-pending);
+  font-size: 16px;
+  text-align: center;
+}
+
+.toggle {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+
+.toggleButton {
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.toggleButton[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--color-accent-border);
+}
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.calloutTitle {
+  font-size: clamp(16px, 1.5vw, 20px);
+  font-weight: 700;
+}
+
+.calloutNote {
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+
+.finding {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.findingTitle {
+  font-size: clamp(16px, 1.5vw, 20px);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.findingNote {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table caption {
+  padding: 8px 10px;
+  caption-side: top;
+  font-weight: 700;
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-weight: 650;
+}
+
+.table th:first-child,
+.table td:first-child,
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  text-align: left;
+}
+
+.mark {
+  cursor: pointer;
+}
+
+.mark:focus {
+  outline: none;
+}
+
+.mark:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@keyframes chart-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart {
+    animation: none;
+  }
+}

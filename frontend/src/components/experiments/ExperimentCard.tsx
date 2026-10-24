@@ -1,36 +1,43 @@
-import type { ExperimentSummary } from "../../domain";
+import { Link } from "react-router-dom";
+import { abbreviateHash, presentationLabel, presentationTone, type ExperimentSummary } from "../../domain";
 import { StatusBadge } from "../common/StatusBadge";
 import styles from "./ExperimentCard.module.css";
-
-const ETIQUETA_ESTADO = {
-  EVIDENCE_VALID: "EVIDENCE VALID",
-} as const;
 
 function etiquetaCorridas(cantidad: number): string {
   return cantidad === 1 ? "1 corrida" : `${cantidad} corridas`;
 }
 
 export function ExperimentCard({ experiment }: { experiment: ExperimentSummary }) {
-  const { family } = experiment;
-  const ayudaId = `${family.id}-explorar-ayuda`;
+  const identidad = experiment.identity;
 
   return (
     <article className={styles.card}>
       <div className={styles.head}>
-        <h2 className={styles.code}>{family.code}</h2>
-        <StatusBadge tone="valid">{ETIQUETA_ESTADO[family.status]}</StatusBadge>
+        <h2 className={styles.code}>{experiment.code}</h2>
+        <StatusBadge tone={presentationTone(experiment.presentation)}>
+          {presentationLabel(experiment.presentation)}
+        </StatusBadge>
       </div>
-      <p className={styles.name}>{family.name}</p>
-      <p className={styles.objective}>{family.objective}</p>
-      {family.scopeNote ? <p className={styles.scope}>{family.scopeNote}</p> : null}
-      <p className={styles.runs}>{etiquetaCorridas(family.runCount)}</p>
+      <p className={styles.name}>{experiment.name}</p>
+      <p className={styles.objective}>{experiment.objective}</p>
+      {experiment.scopeNote ? <p className={styles.scope}>{experiment.scopeNote}</p> : null}
+      <p className={styles.runs}>{etiquetaCorridas(experiment.runCount)}</p>
+      {identidad ? (
+        <dl className={styles.identity}>
+          <div>
+            <dt>Artefacto</dt>
+            <dd title={identidad.campaignIdentity}>{abbreviateHash(identidad.campaignIdentity)}</dd>
+          </div>
+          <div>
+            <dt>campaign_id</dt>
+            <dd>{identidad.campaignId}</dd>
+          </div>
+        </dl>
+      ) : null}
       <div className={styles.actions}>
-        <button type="button" className={styles.explore} disabled aria-describedby={ayudaId}>
+        <Link className={styles.explore} to={`/experimentos/${experiment.id}`}>
           Explorar
-        </button>
-        <p id={ayudaId} className={styles.hint}>
-          El detalle de corridas llega en V0.1.
-        </p>
+        </Link>
       </div>
     </article>
   );

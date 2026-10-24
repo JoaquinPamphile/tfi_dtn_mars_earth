@@ -5,6 +5,14 @@
   width: min(100%, 1040px);
 }
 
+.wide {
+  width: min(100%, 1120px);
+}
+
+.lab {
+  width: min(100%, 1440px);
+}
+
 .metaList {
   display: grid;
   gap: 14px;

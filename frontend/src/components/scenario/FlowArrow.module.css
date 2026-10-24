@@ -23,3 +23,17 @@
   border-bottom: 4px solid transparent;
   border-left: 6px solid currentColor;
 }
+
+.stage {
+  width: 56px;
+}
+
+.stage .line {
+  height: 2px;
+}
+
+.stage .head {
+  border-top-width: 6px;
+  border-bottom-width: 6px;
+  border-left-width: 9px;
+}

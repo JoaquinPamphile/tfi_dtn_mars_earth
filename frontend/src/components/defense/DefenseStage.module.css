@@ -1,0 +1,23 @@
+.stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.presenting {
+  padding: clamp(16px, 2.4vh, 36px) clamp(20px, 3vw, 64px) clamp(12px, 2vh, 24px);
+}
+
+.stage:fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-text);
+}

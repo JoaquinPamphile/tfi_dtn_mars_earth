@@ -1,4 +1,4 @@
-import { useEvidence } from "../app/LabProvider";
+import { useLabSession } from "../app/LabProvider";
 import { InfoCard } from "../components/common/InfoCard";
 import { SectionHeader } from "../components/common/SectionHeader";
 import { projectConfig } from "../config/project";
@@ -11,21 +11,19 @@ const ALCANCE = [
   "No modifica campañas.",
 ];
 
-const PROXIMAS = [
-  "Lectura de evidence",
-  "Explorador de corridas",
-  "Timeline de contactos",
-  "Métricas",
-  "Visualización de recovery",
-];
-
 export function AboutPage() {
-  const adapter = useEvidence();
-  const release = adapter.getRelease();
-  const source = adapter.getDataset().source;
-  const modo = projectConfig.readOnly
-    ? projectConfig.readOnlyLabel
-    : projectConfig.scientificMode;
+  const session = useLabSession();
+  const lista = session.kind === "ready";
+  const release = lista ? session.adapter.getRelease() : null;
+  const source = lista ? session.adapter.getDataset().source : null;
+  const modo = projectConfig.readOnly ? projectConfig.readOnlyLabel : projectConfig.scientificMode;
+  const capacidades = [
+    ["Lectura de evidence", lista ? "COMPLETA" : "NO DISPONIBLE"],
+    ["Explorador de corridas", lista ? "METADATOS V0.1" : "NO DISPONIBLE"],
+    ["Timeline de contactos", "Futuro"],
+    ["Métricas", "Futuro"],
+    ["Visualización de recovery", "Futuro"],
+  ] as const;
 
   return (
     <div className={pageStyles.page}>
@@ -38,7 +36,7 @@ export function AboutPage() {
         <dl className={pageStyles.metaList}>
           <div>
             <dt>Backend científico</dt>
-            <dd>{release.version}</dd>
+            <dd>{release?.version ?? projectConfig.releaseVersion}</dd>
           </div>
           <div>
             <dt>Modo</dt>
@@ -46,14 +44,19 @@ export function AboutPage() {
           </div>
           <div>
             <dt>source revision</dt>
-            <dd className={pageStyles.mono}>{release.sourceRevision}</dd>
+            <dd className={pageStyles.mono}>{release?.sourceRevision ?? projectConfig.sourceRevision}</dd>
           </div>
           <div>
             <dt>Fuente de datos</dt>
-            <dd>{source.label}</dd>
+            <dd>{source?.label ?? "NO DISPONIBLE"}</dd>
           </div>
         </dl>
-        <p>{source.integrationNote}</p>
+        {source ? <p>{source.integrationNote}</p> : null}
+        {session.kind === "unavailable" ? (
+          <p>
+            {session.error.name}: {session.error.message}
+          </p>
+        ) : null}
       </InfoCard>
 
       <InfoCard title="Alcance de esta interfaz">
@@ -64,12 +67,15 @@ export function AboutPage() {
         </ul>
       </InfoCard>
 
-      <InfoCard title="Próximas capacidades">
-        <ul className={`${styles.list} ${styles.upcoming}`}>
-          {PROXIMAS.map((item) => (
-            <li key={item}>{item}</li>
+      <InfoCard title="Capacidades">
+        <dl className={pageStyles.metaList}>
+          {capacidades.map(([nombre, estado]) => (
+            <div key={nombre}>
+              <dt>{nombre}</dt>
+              <dd className={estado === "Futuro" ? styles.future : undefined}>{estado}</dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       </InfoCard>
     </div>
   );
