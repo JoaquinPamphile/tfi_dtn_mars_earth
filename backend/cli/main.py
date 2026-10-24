@@ -49,59 +49,31 @@ Uso:
   python -m cli e3 [--json] [--export-evidence]
   python -m cli e3-sensitivity [--json] [--export-evidence]
 
-run ejecuta una corrida headless de demostración del motor.
-No es un experimento científico ni usa un escenario Alessi.
+Comandos:
+  run                  Ejecuta una demostración local.
+  scientific-run       Ejecuta la corrida científica controlada.
+  scientific-campaign  Ejecuta la campaña controlada de desarrollo.
+  e1                   Ejecuta E1.
+  e2                   Ejecuta E2.
+  e3                   Ejecuta E3.
+  e3-sensitivity       Ejecuta el análisis de sensibilidad de E3.
 
-scientific-run ejecuta la corrida controlada local por defecto.
-Es una sola corrida, con escenario y workload explícitos.
-
-scientific-campaign ejecuta la campaña controlada de desarrollo.
-Son dos corridas en orden, con el mismo escenario, el mismo workload
-y la misma semilla. No es evidencia científica.
-
-e1 ejecuta E1 — Granularidad de sincronización.
-Son cuatro corridas, en el orden oficial: individual, lote fijo 10,
-lote fijo 25 y lote fijo 50. --json imprime la comparación estructurada.
-Sin --export-evidence no escribe archivos.
-
-e2 ejecuta E2 — Efecto de la carga ofrecida.
-Son doce corridas: seis fracciones de carga y, en cada una, Individual
-y lote fijo 25. --json imprime la vista estructurada.
-Sin --export-evidence no escribe archivos.
-
-e3 ejecuta E3 — Comparación controlada de recovery.
-Son cuatro celdas: sender-driven y receiver-driven, cada una sin pérdida
-y con la misma pérdida silenciosa. --json imprime la vista estructurada.
-Sin --export-evidence no escribe archivos. No declara una política ganadora.
-
-e3-sensitivity ejecuta el análisis de sensibilidad de E3 a la posición
-de la pérdida. No constituye un experimento E4.
-Sin --export-evidence no escribe archivos.
-
---export-evidence escribe el paquete bajo evidence/ y no cambia el informe.
-E1, E2 y E3 oficiales van a evidence/official/<familia>/ y a
-evidence/manifests/. La sensibilidad solo va a evidence/manifests/.
-Si el archivo ya existe con otro contenido, no se sobrescribe.
-
-Opciones:
+Opciones de run:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
   --batch-size N                        Tamaño de lote. Obligatorio en fixed_batch.
   --events N                            Eventos a generar. Por defecto: 10.
   --recovery {none,sender-driven,receiver-driven}
                                         Recuperación. Por defecto: none.
-                                        none no programa timeout de ACK ni GapRequest.
-                                        sender-driven reintenta por timeout de ACK
-                                        y no pide huecos.
-                                        receiver-driven pide los huecos que Tierra observa
-                                        y no reintenta por timeout de ACK.
-  --fault silent-loss                   Pierde en silencio la secuencia intermedia 1,
-                                        intento 1, hop RELAY_TO_EARTH.
-                                        Exige al menos 3 eventos y la estrategia individual.
-                                        Sigue siendo una demostración local.
+  --fault silent-loss                   Inyecta una pérdida silenciosa.
   --json                                Resumen operativo en JSON.
   --show-trace                          Traza: tiempo, índice, tipo y entidad.
   --scientific-summary                  Métricas científicas de esta corrida.
-                                        Con --json se agregan al objeto.
+
+Opciones de E1, E2, E3 y sensibilidad:
+  --json                                Informe estructurado en JSON.
+  --export-evidence                     Exporta evidencia bajo evidence/.
+
+Ayuda:
   -h, --help                            Muestra esta ayuda.
 """
 
@@ -137,20 +109,35 @@ def main(argv: list[str] | None = None) -> int:
     if argumentos[0] in {"-h", "--help", "help"}:
         print(AYUDA, end="")
         return 0
-    if argumentos[0] == "scientific-run":
+    comando = argumentos[0]
+    if comando == "scientific-run":
         return _comando_scientific(argumentos[1:])
-    if argumentos[0] == "scientific-campaign":
+    if comando == "scientific-campaign":
         return _comando_campaign(argumentos[1:])
-    if argumentos[0] == "e1":
-        return _comando_e1(argumentos[1:])
-    if argumentos[0] == "e2":
-        return _comando_e2(argumentos[1:])
-    if argumentos[0] == "e3":
-        return _comando_e3(argumentos[1:])
-    if argumentos[0] == "e3-sensitivity":
-        return _comando_e3_sensitivity(argumentos[1:])
-    if argumentos[0] != "run":
-        print(f"comando desconocido: {argumentos[0]}", file=sys.stderr)
+    familias = {
+        "e1": (build_e1_campaign, e1_result, format_e1, e1_result_json),
+        "e2": (build_e2_campaign, e2_result, format_e2, e2_result_json),
+        "e3": (build_e3_campaign, e3_result, format_e3, e3_result_json),
+        "e3-sensitivity": (
+            build_e3_sensitivity_campaign,
+            e3_sensitivity_result,
+            format_e3_sensitivity,
+            e3_sensitivity_json,
+        ),
+    }
+    familia = familias.get(comando)
+    if familia is not None:
+        construir, evaluar, formatear, a_json = familia
+        return _comando_familia(
+            argumentos[1:],
+            comando=comando,
+            construir=construir,
+            evaluar=evaluar,
+            formatear=formatear,
+            a_json=a_json,
+        )
+    if comando != "run":
+        print(f"comando desconocido: {comando}", file=sys.stderr)
         print(AYUDA, end="", file=sys.stderr)
         return 2
     try:
@@ -222,54 +209,6 @@ def _comando_campaign(tokens: list[str]) -> int:
     if incompleta:
         return 1
     return 0
-
-
-def _comando_e2(tokens: list[str]) -> int:
-    """Ejecuta el diseño oficial de E2."""
-    return _comando_familia(
-        tokens,
-        comando="e2",
-        construir=build_e2_campaign,
-        evaluar=e2_result,
-        formatear=format_e2,
-        a_json=e2_result_json,
-    )
-
-
-def _comando_e3(tokens: list[str]) -> int:
-    """Ejecuta el diseño oficial de E3."""
-    return _comando_familia(
-        tokens,
-        comando="e3",
-        construir=build_e3_campaign,
-        evaluar=e3_result,
-        formatear=format_e3,
-        a_json=e3_result_json,
-    )
-
-
-def _comando_e3_sensitivity(tokens: list[str]) -> int:
-    """Ejecuta la sensibilidad de E3. No toca la campaña oficial."""
-    return _comando_familia(
-        tokens,
-        comando="e3-sensitivity",
-        construir=build_e3_sensitivity_campaign,
-        evaluar=e3_sensitivity_result,
-        formatear=format_e3_sensitivity,
-        a_json=e3_sensitivity_json,
-    )
-
-
-def _comando_e1(tokens: list[str]) -> int:
-    """Ejecuta el diseño oficial de E1. No reemplaza los otros comandos."""
-    return _comando_familia(
-        tokens,
-        comando="e1",
-        construir=build_e1_campaign,
-        evaluar=e1_result,
-        formatear=format_e1,
-        a_json=e1_result_json,
-    )
 
 
 def _comando_familia(
@@ -351,6 +290,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
     index = 0
     while index < len(tokens):
         token = tokens[index]
+        opcion = token.split("=", 1)[0]
         if token in {"-h", "--help"}:
             raise _AyudaPedida()
         if token == "--json":
@@ -359,7 +299,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
             show_trace = True
         elif token == "--scientific-summary":
             scientific_summary = True
-        elif token == "--strategy" or token.startswith("--strategy="):
+        elif opcion == "--strategy":
             valor, index = _valor(tokens, index, "--strategy")
             if valor not in _ESTRATEGIAS:
                 admitidas = ", ".join(_ESTRATEGIAS)
@@ -367,14 +307,14 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
                     f"estrategia no admitida: {valor}. Admitidas: {admitidas}."
                 )
             strategy = valor
-        elif token == "--batch-size" or token.startswith("--batch-size="):
+        elif opcion == "--batch-size":
             valor, index = _valor(tokens, index, "--batch-size")
             batch_size = _entero(valor, "--batch-size")
             batch_informado = True
-        elif token == "--events" or token.startswith("--events="):
+        elif opcion == "--events":
             valor, index = _valor(tokens, index, "--events")
             events = _entero(valor, "--events")
-        elif token == "--recovery" or token.startswith("--recovery="):
+        elif opcion == "--recovery":
             valor, index = _valor(tokens, index, "--recovery")
             if valor not in RECOVERY_MODES:
                 admitidas = ", ".join(RECOVERY_MODES)
@@ -382,7 +322,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
                     f"recuperación no admitida: {valor}. Admitidas: {admitidas}."
                 )
             recovery = valor
-        elif token == "--fault" or token.startswith("--fault="):
+        elif opcion == "--fault":
             valor, index = _valor(tokens, index, "--fault")
             if valor not in FAULT_MODES or valor == FAULT_NONE:
                 raise _UsoError(
