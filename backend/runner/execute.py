@@ -8,13 +8,13 @@ from __future__ import annotations
 from core.domain.retry import RetryPolicy
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
+from core.runtime.metrics_collector import collect_scientific_metrics
 from core.runtime.stack import SimulationStack
 from core.state.earth import FastEarthStateRepository
 from core.state.mars import FastMarsStateRepository
 from core.trace.types import SimulationEventType
 from runner.config import RunConfig
 from runner.result import RunResult, TraceLine
-from runner.scientific import collect_scientific_metrics
 
 
 def execute_run(config: RunConfig) -> RunResult:

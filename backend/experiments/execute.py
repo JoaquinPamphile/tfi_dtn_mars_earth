@@ -11,6 +11,7 @@ from copy import deepcopy
 from core.domain.retry import RetryPolicy
 from core.earth.node import EarthNode
 from core.mars.node import MarsNode
+from core.runtime.metrics_collector import collect_scientific_metrics
 from core.runtime.stack import SimulationStack
 from core.state.earth import FastEarthStateRepository
 from core.state.mars import FastMarsStateRepository
@@ -18,7 +19,6 @@ from core.state.mars import FastMarsStateRepository
 from experiments.generation import install_workload_generation
 from experiments.result import GeneratedTelemetry, ScientificRunResult
 from experiments.spec import ScientificRunSpec
-from runner.scientific import collect_scientific_metrics
 
 
 def execute_scientific_run(spec: ScientificRunSpec) -> ScientificRunResult:
