@@ -2,6 +2,8 @@
 
 La ejecución vive en ``runner``. Este módulo solo interpreta argumentos
 y presenta el resultado. ``inspect-e1`` prepara una campaña y no la ejecuta.
+``run-e1`` ejecuta una campaña E1 configurable y muestra cada corrida en
+consola, sin exportar evidencia.
 """
 
 from __future__ import annotations
@@ -18,7 +20,11 @@ from core.sync.strategy import (
     InvalidSyncStrategyConfigError,
     UnknownSyncStrategyError,
 )
-from experiments.campaign import controlled_development_campaign, execute_campaign
+from experiments.campaign import (
+    CampaignResult,
+    controlled_development_campaign,
+    execute_campaign,
+)
 from experiments.controlled import controlled_local_run_spec
 from experiments.e1 import build_e1_campaign, e1_result, e1_result_json, format_e1
 from experiments.e2 import build_e2_campaign, e2_result, e2_result_json, format_e2
@@ -39,6 +45,7 @@ from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_c
 from runner.result import RunResult
 
 from cli.present import (
+    format_configurable_e1_campaign,
     format_e1_campaign_inspection,
     format_scientific_summary,
     format_summary,
@@ -56,6 +63,7 @@ Uso:
   python -m cli e3 [--json] [--export-evidence]
   python -m cli e3-sensitivity [--json] [--export-evidence]
   python -m cli inspect-e1 --config <archivo.json>
+  python -m cli run-e1 --config <archivo.json>
 
 Comandos:
   run                  Ejecuta una demostración local.
@@ -66,6 +74,7 @@ Comandos:
   e3                   Ejecuta E3.
   e3-sensitivity       Ejecuta el análisis de sensibilidad de E3.
   inspect-e1           Prepara e inspecciona una campaña E1, sin ejecutarla.
+  run-e1               Ejecuta una campaña E1 configurable, muestra los resultados en consola y no genera un paquete reproducible de evidencia.
 
 Opciones de run:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -84,6 +93,9 @@ Opciones de E1, E2, E3 y sensibilidad:
 
 Opciones de inspect-e1:
   --config ARCHIVO                      Configuración E1. Prepara e inspecciona, sin ejecutar.
+
+Opciones de run-e1:
+  --config ARCHIVO                      Configuración E1. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
 
 Ayuda:
   -h, --help                            Muestra esta ayuda.
@@ -128,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_campaign(argumentos[1:])
     if comando == "inspect-e1":
         return _comando_inspect_e1(argumentos[1:])
+    if comando == "run-e1":
+        return _comando_run_e1(argumentos[1:])
     familias = {
         "e1": (build_e1_campaign, e1_result, format_e1, e1_result_json),
         "e2": (build_e2_campaign, e2_result, format_e2, e2_result_json),
@@ -246,7 +260,7 @@ def _comando_inspect_e1(tokens: list[str]) -> int:
         print(AYUDA, end="")
         return 0
     try:
-        config_path = _ruta_de_config(tokens)
+        config_path = _ruta_de_config(tokens, comando="inspect-e1")
     except _UsoError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -259,7 +273,32 @@ def _comando_inspect_e1(tokens: list[str]) -> int:
     return 0
 
 
-def _ruta_de_config(tokens: list[str]) -> str:
+def _comando_run_e1(tokens: list[str]) -> int:
+    """Carga una campaña E1, la ejecuta y muestra cada corrida."""
+    if tokens == ["-h"] or tokens == ["--help"]:
+        print(AYUDA, end="")
+        return 0
+    try:
+        config_path = _ruta_de_config(tokens, comando="run-e1")
+    except _UsoError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        resuelta = load_e1_campaign(config_path)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    resultado = execute_campaign(resuelta.campaign)
+    print(format_configurable_e1_campaign(resultado))
+    fallos = _resumen_de_fallos(resultado)
+    if fallos:
+        print(fallos, file=sys.stderr)
+    if _todas_las_corridas_completaron(resultado):
+        return 0
+    return 1
+
+
+def _ruta_de_config(tokens: list[str], *, comando: str) -> str:
     """Devuelve la ruta de --config. No abre el archivo."""
     ruta: str | None = None
     index = 0
@@ -267,10 +306,7 @@ def _ruta_de_config(tokens: list[str]) -> str:
         token = tokens[index]
         opcion = token.split("=", 1)[0]
         if opcion in _OPCIONES_DE_EJECUCION:
-            raise _UsoError(
-                "inspect-e1 no admite opciones de ejecución ni de exportación: "
-                f"{opcion}"
-            )
+            raise _UsoError(_opcion_no_admitida(comando, opcion))
         if opcion != "--config":
             raise _UsoError(f"argumento no reconocido: {token}")
         if ruta is not None:
@@ -279,10 +315,7 @@ def _ruta_de_config(tokens: list[str]) -> str:
             if index + 1 < len(tokens):
                 siguiente = tokens[index + 1].split("=", 1)[0]
                 if siguiente in _OPCIONES_DE_EJECUCION:
-                    raise _UsoError(
-                        "inspect-e1 no admite opciones de ejecución ni de exportación: "
-                        f"{siguiente}"
-                    )
+                    raise _UsoError(_opcion_no_admitida(comando, siguiente))
             if index + 1 >= len(tokens) or tokens[index + 1].startswith("-"):
                 raise _UsoError("falta el valor de --config")
         valor, index = _valor(tokens, index, "--config")
@@ -290,17 +323,45 @@ def _ruta_de_config(tokens: list[str]) -> str:
             raise _UsoError("la ruta de --config no debe estar vacía")
         opcion_valor = valor.split("=", 1)[0]
         if opcion_valor in _OPCIONES_DE_EJECUCION:
-            raise _UsoError(
-                "inspect-e1 no admite opciones de ejecución ni de exportación: "
-                f"{opcion_valor}"
-            )
+            raise _UsoError(_opcion_no_admitida(comando, opcion_valor))
         if valor.startswith("-"):
             raise _UsoError(f"argumento no reconocido: {valor}")
         ruta = valor
         index += 1
     if ruta is None:
-        raise _UsoError("inspect-e1 requiere --config")
+        raise _UsoError(f"{comando} requiere --config")
     return ruta
+
+
+def _opcion_no_admitida(comando: str, opcion: str) -> str:
+    return (
+        f"{comando} no admite opciones de ejecución ni de exportación: {opcion}"
+    )
+
+
+def _resumen_de_fallos(resultado: CampaignResult) -> str:
+    """Etiqueta y causa de cada corrida que no terminó COMPLETED."""
+    lineas: list[str] = []
+    for run in resultado.runs:
+        if run.result is None:
+            lineas.append(f"{run.label}: {run.error_type}: {run.error_message}")
+            continue
+        if run.result.engine_status != SimulationStatus.COMPLETED.value:
+            lineas.append(f"{run.label}: estado {run.result.engine_status}")
+    return "\n".join(lineas)
+
+
+def _todas_las_corridas_completaron(resultado: CampaignResult) -> bool:
+    """Cada corrida tiene resultado y el motor quedó en COMPLETED.
+
+    No consulta ``status`` ni ``completed_count``. Un motor COMPLETED
+    con backlog o sin convergencia sigue siendo una ejecución terminada.
+    """
+    return all(
+        run.result is not None
+        and run.result.engine_status == SimulationStatus.COMPLETED.value
+        for run in resultado.runs
+    )
 
 
 def _comando_familia(

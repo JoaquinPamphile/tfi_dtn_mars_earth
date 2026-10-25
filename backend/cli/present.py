@@ -1,4 +1,4 @@
-"""Texto y JSON del resumen de una corrida, y la inspección de una campaña E1.
+"""Texto y JSON del resumen de una corrida, la inspección E1 y el informe de run-e1.
 
 No ejecuta el motor ni lee archivos.
 """
@@ -11,12 +11,14 @@ from core.metrics.run import ScientificRunMetrics
 from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
 from runner.result import RunResult
 
+from experiments.campaign import CampaignResult
 from experiments.contact_plan import (
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
 from experiments.experiment_bank import ResolvedE1Campaign
 from experiments.fingerprint import configuration_hash
+from experiments.report import format_campaign
 
 
 def format_summary(result: RunResult) -> str:
@@ -224,6 +226,43 @@ def format_e1_campaign_inspection(resolved: ResolvedE1Campaign) -> str:
         lineas.append(f"configuration_hash: {configuration_hash(run.spec)}")
         lineas.append("")
     return "\n".join(lineas).rstrip("\n")
+
+
+def format_configurable_e1_campaign(result: CampaignResult) -> str:
+    """Informe de una campaña E1 configurable ya ejecutada.
+
+    Reutiliza el informe de campaña y agrega, por cada corrida con
+    resultado, el estado del motor, el backlog y la convergencia.
+    No compara estrategias.
+    """
+    partes = [
+        "Campaña E1 configurable. No corresponde a la evidencia oficial RC1.",
+        "",
+        format_campaign(result),
+    ]
+    estado = _estado_de_motor(result)
+    if estado:
+        partes.extend(["", estado])
+    return "\n".join(partes)
+
+
+def _estado_de_motor(result: CampaignResult) -> str:
+    """Estado, backlog y convergencia, en el orden de la campaña."""
+    bloques: list[str] = []
+    for run in result.runs:
+        if run.result is None:
+            continue
+        bloques.append(
+            "\n".join(
+                (
+                    f"[{run.index + 1}] {run.label}",
+                    f"Estado del motor: {run.result.engine_status}",
+                    f"Backlog: {run.result.metrics.final_backlog}",
+                    "Convergió: " + ("sí" if run.result.metrics.converged else "no"),
+                )
+            )
+        )
+    return "\n\n".join(bloques)
 
 
 def _muestra_recuperacion(result: RunResult) -> bool:
