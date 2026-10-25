@@ -18,8 +18,12 @@ misma en las doce corridas. Las huellas de eventos coinciden dentro de
 cada carga y difieren entre cargas, porque cambian el conteo, la tasa y
 las marcas de tiempo.
 
-``build_e2_probe_campaign`` no es el diseño oficial. Solo reduce el conteo
-para tests. No aplica la grilla.
+``build_e2_probe_campaign`` no es el diseño oficial. Conserva el escenario
+y las políticas compartidas. Usa dos tratamientos, Individual y Fixed
+Batch 25. Recibe un conteo de eventos explícito y ajusta la tasa al
+intervalo de generación existente. No representa la grilla oficial de
+carga ofrecida: deja ``offered_load_fraction`` en ``None``. Su evaluación
+no adjunta capacidad de referencia.
 """
 
 from __future__ import annotations

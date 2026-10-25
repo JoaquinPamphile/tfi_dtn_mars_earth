@@ -11,9 +11,6 @@ colapso de GS1, GS2, GS3 y EDRS en un solo extremo Tierra.
 
 El tiempo físico es el de la figura multiplicado por 60:
 1440 s de figura equivalen a 86400 s, un día.
-
-``build_e1_probe_campaign`` no es el diseño oficial. Solo cambia el conteo
-de eventos para tests.
 """
 
 from __future__ import annotations
@@ -44,7 +41,6 @@ SOURCE_DIRECT = "SOURCE_DIRECT"
 TFI_ASSUMPTION = "TFI_ASSUMPTION"
 
 E1_CAMPAIGN_ID = "e1-strategy-alessi-10k"
-E1_PROBE_CAMPAIGN_ID = "e1-probe"
 E1_SCENARIO_ID = "research-alessi-baseline"
 E1_WORKLOAD_ID = "alessi-normal-tm"
 E1_EVENT_TYPE = "research.alessi.normal_tm"
@@ -81,11 +77,6 @@ E1_QUESTION = (
 )
 
 E1_DESCRIPTION = f"E1 — granularidad de sincronización. {E1_QUESTION}"
-
-E1_PROBE_DESCRIPTION = (
-    "Sonda de E1 para tests. Conserva los factores del diseño oficial y "
-    "cambia solo el conteo de eventos. No es el diseño oficial y no es evidencia."
-)
 
 E1_SCENARIO_DESCRIPTION = (
     "Línea base de tres nodos en tiempo físico, derivada del análisis de "
@@ -405,19 +396,6 @@ def build_e1_campaign() -> CampaignSpec:
         campaign_id=E1_CAMPAIGN_ID,
         description=E1_DESCRIPTION,
         max_events=E1_MAX_EVENTS,
-    )
-
-
-def build_e1_probe_campaign(*, max_events: int) -> CampaignSpec:
-    """Misma estructura que E1 con otro conteo. No es el diseño oficial."""
-    if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
-        raise ValueError("max_events de la sonda debe ser un entero >= 1")
-    if max_events == E1_MAX_EVENTS:
-        raise ValueError("la sonda no usa el conteo oficial; el diseño es build_e1_campaign")
-    return _campaign(
-        campaign_id=E1_PROBE_CAMPAIGN_ID,
-        description=E1_PROBE_DESCRIPTION,
-        max_events=max_events,
     )
 
 
