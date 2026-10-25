@@ -1,6 +1,4 @@
-"""
-Validador de configuración de experimetnos de entrada
-"""
+"""Valida la entrada del banco y prepara una campaña E1 sin ejecutarla."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,25 +25,17 @@ from core.trace.level import TraceLevel
 
 from experiments.campaign import CampaignRunSpec, CampaignSpec
 from experiments.contact_plan import ContactPlanDefinition
-from experiments.e1 import (
-    E1_CANONICAL_INDIVIDUAL_BYTES,
-    E1_SEED,
-    E1_START_TIME_SIM,
-    E1_TREATMENTS,
-)
 from experiments.scenario_adapter import scenario_from_contact_plan_definition
 from experiments.spec import ScientificRunSpec
 from experiments.workload import Workload
 
 EXPERIMENT_BANK_SCHEMA_VERSION = 1
-EXPERIMENT_BANK_DEFAULT_SEED = E1_SEED
-E1_BANK_DEFAULT_START_TIME_SIM = E1_START_TIME_SIM
-E1_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = E1_CANONICAL_INDIVIDUAL_BYTES
-E1_BANK_DEFAULT_BATCH_SIZES = tuple(
-    treatment.batch_size_events
-    for treatment in E1_TREATMENTS
-    if treatment.batch_size_events is not None
-)
+# Defaults propios de la versión 1 del contrato de entrada. Inicialmente
+# coinciden con E1 oficial, pero no se derivan de su builder histórico.
+EXPERIMENT_BANK_DEFAULT_SEED = 1
+E1_BANK_DEFAULT_START_TIME_SIM = 0.0
+E1_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
+E1_BANK_DEFAULT_BATCH_SIZES = (10, 25, 50)
 _UNSUPPORTED_EXPERIMENTS = frozenset({"e2", "e3", "sensitivity", "e3_sensitivity"})
 
 E1_BANK_CAMPAIGN_ID = "e1-experiment-bank-v1"
@@ -209,21 +199,21 @@ def resolve_e1_campaign(
     completitud, convergencia, ausencia de retries ni las condiciones científicas
     del estudio oficial E1. La evaluación de campañas configurables es separada.
     """
-    scenario_input = bank_document.scenario
-    e1_input = bank_document.experiments.e1
+    scenario_config = bank_document.scenario
+    e1_config = bank_document.experiments.e1
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
-        scenario_id=scenario_input.id,
-        horizon_seconds=scenario_input.horizon_seconds,
-        description=scenario_input.description,
-        notes=scenario_input.notes,
+        scenario_id=scenario_config.id,
+        horizon_seconds=scenario_config.horizon_seconds,
+        description=scenario_config.description,
+        notes=scenario_config.notes,
     )
 
-    rate_events_per_second = 1.0 / e1_input.event_interval_seconds
+    rate_events_per_second = 1.0 / e1_config.event_interval_seconds
     if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
         raise ValueError(
             "la tasa derivada debe ser finita y positiva: "
-            f"event_interval_seconds={e1_input.event_interval_seconds}, "
+            f"event_interval_seconds={e1_config.event_interval_seconds}, "
             f"rate_events_per_second={rate_events_per_second}"
         )
 
@@ -232,18 +222,18 @@ def resolve_e1_campaign(
         event_type=E1_BANK_EVENT_TYPE,
         flow=E1_BANK_FLOW,
         priority=TelemetryPriority.NORMAL,
-        start_time_sim=e1_input.start_time_sim,
+        start_time_sim=e1_config.start_time_sim,
         duration_seconds=None,
-        max_events=e1_input.event_count,
+        max_events=e1_config.event_count,
         rate_events_per_second=rate_events_per_second,
-        canonical_individual_syncunit_bytes=e1_input.individual_syncunit_bytes,
+        canonical_individual_syncunit_bytes=e1_config.individual_syncunit_bytes,
         offered_load_fraction=None,
     )
     retry_policy = RetryPolicy(
-        ack_timeout_seconds=e1_input.sender_ack_timeout_seconds
+        ack_timeout_seconds=e1_config.sender_ack_timeout_seconds
     )
     failure_plan = FailurePlan()
-    common = {
+    shared_run_parameters = {
         "scenario": scenario,
         "workload": workload,
         "seed": bank_document.seed,
@@ -255,23 +245,23 @@ def resolve_e1_campaign(
     }
     individual_spec = ScientificRunSpec(
         strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-        **common,
+        **shared_run_parameters,
     )
-    profile = workload.generation_profile(
+    generation_profile = workload.generation_profile(
         dataset_identity=individual_spec.dataset_identity
     )
-    last_generation_at_sim = profile.last_generation_at_sim()
+    last_generation_at_sim = generation_profile.last_generation_at_sim()
     if (
         last_generation_at_sim is not None
-        and last_generation_at_sim > scenario_input.horizon_seconds
+        and last_generation_at_sim > scenario_config.horizon_seconds
     ):
         raise ValueError(
             "el último evento queda después del horizonte: "
-            f"event_count={e1_input.event_count}, "
-            f"event_interval_seconds={e1_input.event_interval_seconds}, "
-            f"start_time_sim={e1_input.start_time_sim}, "
+            f"event_count={e1_config.event_count}, "
+            f"event_interval_seconds={e1_config.event_interval_seconds}, "
+            f"start_time_sim={e1_config.start_time_sim}, "
             f"last_generation_at_sim={last_generation_at_sim}, "
-            f"horizon_seconds={scenario_input.horizon_seconds}"
+            f"horizon_seconds={scenario_config.horizon_seconds}"
         )
 
     runs = [CampaignRunSpec(label="individual", spec=individual_spec)]
@@ -281,10 +271,10 @@ def resolve_e1_campaign(
             spec=ScientificRunSpec(
                 strategy_type=STRATEGY_TYPE_FIXED_BATCH,
                 batch_size_events=batch_size,
-                **common,
+                **shared_run_parameters,
             ),
         )
-        for batch_size in e1_input.batch_sizes
+        for batch_size in e1_config.batch_sizes
     )
     campaign = CampaignSpec(
         campaign_id=E1_BANK_CAMPAIGN_ID,
