@@ -1,7 +1,7 @@
 """Consola mínima para ejecutar la demostración local del motor.
 
 La ejecución vive en ``runner``. Este módulo solo interpreta argumentos
-y presenta el resultado.
+y presenta el resultado. ``inspect-e1`` prepara una campaña y no la ejecuta.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from experiments.e3_sensitivity import (
     format_e3_sensitivity,
 )
 from experiments.evidence import EvidenceExistsError, export_campaign_evidence
+from experiments.experiment_campaign_loader import load_e1_campaign
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
 from runner import execute_run
@@ -37,7 +38,13 @@ from runner.config import RECOVERY_MODES
 from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
 from runner.result import RunResult
 
-from cli.present import format_scientific_summary, format_summary, format_trace, summary_json
+from cli.present import (
+    format_e1_campaign_inspection,
+    format_scientific_summary,
+    format_summary,
+    format_trace,
+    summary_json,
+)
 
 AYUDA = """\
 Uso:
@@ -48,6 +55,7 @@ Uso:
   python -m cli e2 [--json] [--export-evidence]
   python -m cli e3 [--json] [--export-evidence]
   python -m cli e3-sensitivity [--json] [--export-evidence]
+  python -m cli inspect-e1 --config <archivo.json>
 
 Comandos:
   run                  Ejecuta una demostración local.
@@ -57,6 +65,7 @@ Comandos:
   e2                   Ejecuta E2.
   e3                   Ejecuta E3.
   e3-sensitivity       Ejecuta el análisis de sensibilidad de E3.
+  inspect-e1           Prepara e inspecciona una campaña E1, sin ejecutarla.
 
 Opciones de run:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -72,6 +81,9 @@ Opciones de run:
 Opciones de E1, E2, E3 y sensibilidad:
   --json                                Informe estructurado en JSON.
   --export-evidence                     Exporta evidencia bajo evidence/.
+
+Opciones de inspect-e1:
+  --config ARCHIVO                      Configuración E1. Prepara e inspecciona, sin ejecutar.
 
 Ayuda:
   -h, --help                            Muestra esta ayuda.
@@ -114,6 +126,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_scientific(argumentos[1:])
     if comando == "scientific-campaign":
         return _comando_campaign(argumentos[1:])
+    if comando == "inspect-e1":
+        return _comando_inspect_e1(argumentos[1:])
     familias = {
         "e1": (build_e1_campaign, e1_result, format_e1, e1_result_json),
         "e2": (build_e2_campaign, e2_result, format_e2, e2_result_json),
@@ -209,6 +223,84 @@ def _comando_campaign(tokens: list[str]) -> int:
     if incompleta:
         return 1
     return 0
+
+
+_OPCIONES_DE_EJECUCION = frozenset(
+    {
+        "--json",
+        "--export-evidence",
+        "--show-trace",
+        "--scientific-summary",
+        "--strategy",
+        "--batch-size",
+        "--events",
+        "--recovery",
+        "--fault",
+    }
+)
+
+
+def _comando_inspect_e1(tokens: list[str]) -> int:
+    """Prepara una campaña E1 y muestra el resumen. No ejecuta el motor."""
+    if tokens == ["-h"] or tokens == ["--help"]:
+        print(AYUDA, end="")
+        return 0
+    try:
+        config_path = _ruta_de_config(tokens)
+    except _UsoError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        resuelta = load_e1_campaign(config_path)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(format_e1_campaign_inspection(resuelta))
+    return 0
+
+
+def _ruta_de_config(tokens: list[str]) -> str:
+    """Devuelve la ruta de --config. No abre el archivo."""
+    ruta: str | None = None
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        opcion = token.split("=", 1)[0]
+        if opcion in _OPCIONES_DE_EJECUCION:
+            raise _UsoError(
+                "inspect-e1 no admite opciones de ejecución ni de exportación: "
+                f"{opcion}"
+            )
+        if opcion != "--config":
+            raise _UsoError(f"argumento no reconocido: {token}")
+        if ruta is not None:
+            raise _UsoError("--config está repetido")
+        if not token.startswith("--config="):
+            if index + 1 < len(tokens):
+                siguiente = tokens[index + 1].split("=", 1)[0]
+                if siguiente in _OPCIONES_DE_EJECUCION:
+                    raise _UsoError(
+                        "inspect-e1 no admite opciones de ejecución ni de exportación: "
+                        f"{siguiente}"
+                    )
+            if index + 1 >= len(tokens) or tokens[index + 1].startswith("-"):
+                raise _UsoError("falta el valor de --config")
+        valor, index = _valor(tokens, index, "--config")
+        if valor.strip() == "":
+            raise _UsoError("la ruta de --config no debe estar vacía")
+        opcion_valor = valor.split("=", 1)[0]
+        if opcion_valor in _OPCIONES_DE_EJECUCION:
+            raise _UsoError(
+                "inspect-e1 no admite opciones de ejecución ni de exportación: "
+                f"{opcion_valor}"
+            )
+        if valor.startswith("-"):
+            raise _UsoError(f"argumento no reconocido: {valor}")
+        ruta = valor
+        index += 1
+    if ruta is None:
+        raise _UsoError("inspect-e1 requiere --config")
+    return ruta
 
 
 def _comando_familia(

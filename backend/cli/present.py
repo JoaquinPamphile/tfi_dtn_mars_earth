@@ -1,4 +1,7 @@
-"""Texto y JSON del resumen de una corrida. No ejecuta el motor."""
+"""Texto y JSON del resumen de una corrida, y la inspección de una campaña E1.
+
+No ejecuta el motor ni lee archivos.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +10,13 @@ import json
 from core.metrics.run import ScientificRunMetrics
 from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
 from runner.result import RunResult
+
+from experiments.contact_plan import (
+    contact_plan_definition_fingerprint,
+    contact_plan_fingerprint,
+)
+from experiments.experiment_bank import ResolvedE1Campaign
+from experiments.fingerprint import configuration_hash
 
 
 def format_summary(result: RunResult) -> str:
@@ -171,6 +181,49 @@ def summary_json(
     if include_scientific and result.scientific_metrics is not None:
         payload["scientific_metrics"] = result.scientific_metrics.to_dict()
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def format_e1_campaign_inspection(resolved: ResolvedE1Campaign) -> str:
+    """Resumen de una campaña E1 ya resuelta.
+
+    El resolver copia el mismo escenario y la misma semilla en cada corrida.
+    No lee archivos, no ejecuta la simulación y no inventa métricas.
+    """
+    preparada = resolved.campaign
+    especificacion = preparada.runs[0].spec
+    escenario = especificacion.scenario
+    plan = resolved.contact_plan_definition
+    horizonte = (
+        "no definido"
+        if escenario.horizon_seconds is None
+        else f"{_numero(escenario.horizon_seconds)} s"
+    )
+    lineas = [
+        "Campaña preparada; simulación no ejecutada.",
+        (
+            "Preparar la campaña no garantiza convergencia "
+            "ni validez científica equivalente al E1 oficial."
+        ),
+        "",
+        f"scenario_id: {escenario.scenario_id}",
+        f"Horizonte: {horizonte}",
+        f"contact_plan_id: {plan.contact_plan_id}",
+        f"Contactos: {len(plan.contacts)}",
+        f"Huella operacional del plan: {contact_plan_fingerprint(plan)}",
+        f"Huella documental del plan: {contact_plan_definition_fingerprint(plan)}",
+        f"Semilla: {especificacion.seed}",
+        f"campaign_identity: {preparada.campaign_identity}",
+        f"Corridas: {len(preparada.runs)}",
+        "",
+    ]
+    for run in preparada.runs:
+        lineas.append(run.label)
+        lineas.append(f"Estrategia: {run.spec.strategy_type}")
+        if run.spec.batch_size_events is not None:
+            lineas.append(f"Tamaño de lote: {run.spec.batch_size_events}")
+        lineas.append(f"configuration_hash: {configuration_hash(run.spec)}")
+        lineas.append("")
+    return "\n".join(lineas).rstrip("\n")
 
 
 def _muestra_recuperacion(result: RunResult) -> bool:
