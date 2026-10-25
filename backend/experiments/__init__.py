@@ -5,7 +5,6 @@ from experiments.campaign import (
     CampaignRunResult,
     CampaignRunSpec,
     CampaignSpec,
-    controlled_development_campaign,
     execute_campaign,
 )
 from experiments.e1 import E1Result, build_e1_campaign, e1_result
@@ -16,7 +15,10 @@ from experiments.e3_sensitivity import (
     build_e3_sensitivity_campaign,
     e3_sensitivity_result,
 )
-from experiments.controlled import controlled_local_run_spec
+from experiments.controlled import (
+    controlled_development_campaign,
+    controlled_local_run_spec,
+)
 from experiments.evidence import (
     EvidenceExistsError,
     export_campaign_evidence,

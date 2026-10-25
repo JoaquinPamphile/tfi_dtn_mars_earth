@@ -20,12 +20,11 @@ from core.sync.strategy import (
     InvalidSyncStrategyConfigError,
     UnknownSyncStrategyError,
 )
-from experiments.campaign import (
-    CampaignResult,
+from experiments.campaign import CampaignResult, execute_campaign
+from experiments.controlled import (
     controlled_development_campaign,
-    execute_campaign,
+    controlled_local_run_spec,
 )
-from experiments.controlled import controlled_local_run_spec
 from experiments.e1 import build_e1_campaign, e1_result, e1_result_json, format_e1
 from experiments.e2 import build_e2_campaign, e2_result, e2_result_json, format_e2
 from experiments.e3 import build_e3_campaign, e3_result, e3_result_json, format_e3

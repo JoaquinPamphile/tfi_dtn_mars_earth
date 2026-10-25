@@ -1,15 +1,16 @@
-"""Escenario y corrida controlados, pequeños, para una sola ejecución.
+"""Escenario, corrida y campaña controlados de desarrollo.
 
 Los contactos son explícitos. No provienen de un plan de misión y no
-constituyen una campaña.
+constituyen una campaña. La campaña controlada no es evidencia científica.
 """
 
 from __future__ import annotations
 
 from core.stopping.policy import StopPolicy
-from core.sync.strategy import STRATEGY_TYPE_INDIVIDUAL
+from core.sync.strategy import STRATEGY_TYPE_FIXED_BATCH, STRATEGY_TYPE_INDIVIDUAL
 from core.trace.level import TraceLevel
 
+from experiments.campaign import CampaignRunSpec, CampaignSpec
 from experiments.scenario import Scenario, directed_round_trip
 from experiments.spec import ScientificRunSpec
 from experiments.workload import (
@@ -28,6 +29,8 @@ CONTROLLED_LOCAL_DATA_RATE_BPS = 8_000_000
 CONTROLLED_LOCAL_PROPAGATION_DELAY_S = 1.0
 CONTROLLED_LOCAL_RATE = 1.0
 CONTROLLED_LOCAL_DURATION_SECONDS = 4.0
+CONTROLLED_DEVELOPMENT_CAMPAIGN_ID = "controlled-campaign-v1"
+CONTROLLED_DEVELOPMENT_BATCH_SIZE = 2
 
 
 def controlled_local_scenario() -> Scenario:
@@ -72,4 +75,40 @@ def controlled_local_run_spec() -> ScientificRunSpec:
         strategy_type=STRATEGY_TYPE_INDIVIDUAL,
         stop_policy=StopPolicy.PROFILE_HORIZON_SETTLED,
         trace_level=TraceLevel.SUMMARY,
+    )
+
+
+def controlled_development_campaign() -> CampaignSpec:
+    """Dos corridas de desarrollo, en orden fijo.
+
+    Comparten escenario, workload y semilla. La primera es individual y
+    la segunda un lote fijo de dos eventos. No es evidencia científica.
+    """
+    scenario = controlled_local_scenario()
+    workload = controlled_local_workload()
+    comun = {
+        "scenario": scenario,
+        "workload": workload,
+        "seed": CONTROLLED_LOCAL_SEED,
+        "stop_policy": StopPolicy.PROFILE_HORIZON_SETTLED,
+        "trace_level": TraceLevel.SUMMARY,
+    }
+    individual = ScientificRunSpec(strategy_type=STRATEGY_TYPE_INDIVIDUAL, **comun)
+    lote = ScientificRunSpec(
+        strategy_type=STRATEGY_TYPE_FIXED_BATCH,
+        batch_size_events=CONTROLLED_DEVELOPMENT_BATCH_SIZE,
+        **comun,
+    )
+    return CampaignSpec(
+        campaign_id=CONTROLLED_DEVELOPMENT_CAMPAIGN_ID,
+        description=(
+            "Campaña científica controlada de desarrollo. No es evidencia científica."
+        ),
+        runs=(
+            CampaignRunSpec(label=STRATEGY_TYPE_INDIVIDUAL, spec=individual),
+            CampaignRunSpec(
+                label=f"fixed_batch_{CONTROLLED_DEVELOPMENT_BATCH_SIZE}",
+                spec=lote,
+            ),
+        ),
     )
