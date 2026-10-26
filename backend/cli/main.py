@@ -30,7 +30,7 @@ Uso:
   python -m cli e3 [--json] [--export-evidence]
   python -m cli e3-sensitivity [--json] [--export-evidence]
   python -m cli inspect-e1 --config <archivo.json>
-  python -m cli run-e1 --config <archivo.json>
+  python -m cli run-e1 --config <archivo.json> [--output <resultado.json>]
 
 Comandos:
   run                  Ejecuta una demostración local.
@@ -63,6 +63,7 @@ Opciones de inspect-e1:
 
 Opciones de run-e1:
   --config ARCHIVO                      Configuración E1. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
+  --output ARCHIVO                      Guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo.
 
 Ayuda:
   -h, --help                            Muestra esta ayuda.

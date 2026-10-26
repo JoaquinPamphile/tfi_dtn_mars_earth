@@ -1,4 +1,8 @@
-"""Valida la entrada del banco y prepara una campaña E1 sin ejecutarla."""
+"""Valida la entrada del banco y prepara una campaña E1 sin ejecutarla.
+
+El documento v1 acepta exactamente una sección: ``experiments.e1`` o
+``experiments.e2``. Un documento E2 validado no se resuelve ni se ejecuta.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -36,7 +40,12 @@ EXPERIMENT_BANK_DEFAULT_SEED = 1
 E1_BANK_DEFAULT_START_TIME_SIM = 0.0
 E1_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
 E1_BANK_DEFAULT_BATCH_SIZES = (10, 25, 50)
-_UNSUPPORTED_EXPERIMENTS = frozenset({"e2", "e3", "sensitivity", "e3_sensitivity"})
+# Defaults explícitos del contrato E2. No se importan del experimento oficial.
+E2_BANK_DEFAULT_START_TIME_SIM = 0.0
+E2_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
+E2_BANK_DEFAULT_BATCH_SIZE_EVENTS = 25
+_ADMITTED_EXPERIMENT_SECTIONS = frozenset({"e1", "e2"})
+_UNSUPPORTED_EXPERIMENTS = frozenset({"e3", "sensitivity", "e3_sensitivity"})
 
 E1_BANK_CAMPAIGN_ID = "e1-experiment-bank-v1"
 E1_BANK_CAMPAIGN_DESCRIPTION = (
@@ -128,31 +137,118 @@ class ExperimentBankE1(_BankInputModel):
         return value
 
 
+class ExperimentBankE2(_BankInputModel):
+    """Parámetros declarados para E2, todavía sin resolver a corridas.
+
+    ``individual_syncunit_bytes`` es el tamaño canónico de la SyncUnit
+    Individual, no solamente el del payload. ``capacity_interval_end_sim``
+    en ``None`` deja el horizonte del escenario para el futuro resolver.
+    """
+
+    generation_duration_seconds: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    offered_load_fractions: tuple[float, ...]
+    sender_ack_timeout_seconds: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    start_time_sim: float = Field(
+        default=E2_BANK_DEFAULT_START_TIME_SIM,
+        ge=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+    individual_syncunit_bytes: int = Field(
+        default=E2_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES,
+        gt=0,
+        strict=True,
+    )
+    batch_size_events: int = Field(
+        default=E2_BANK_DEFAULT_BATCH_SIZE_EVENTS,
+        ge=MIN_BATCH_SIZE_EVENTS,
+        le=MAX_BATCH_SIZE_EVENTS,
+        strict=True,
+    )
+    capacity_interval_end_sim: float | None = Field(
+        default=None,
+        allow_inf_nan=False,
+        strict=True,
+    )
+
+    @field_validator(
+        "generation_duration_seconds",
+        "offered_load_fractions",
+        "sender_ack_timeout_seconds",
+        "start_time_sim",
+        "individual_syncunit_bytes",
+        "batch_size_events",
+        "capacity_interval_end_sim",
+        mode="before",
+    )
+    @classmethod
+    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("los campos numéricos no admiten booleanos")
+        if isinstance(value, (list, tuple)) and any(isinstance(item, bool) for item in value):
+            raise ValueError("offered_load_fractions no admite booleanos")
+        return value
+
+    @field_validator("offered_load_fractions", mode="before")
+    @classmethod
+    def validate_offered_load_fractions(cls, value: Any) -> Any:
+        if not isinstance(value, (list, tuple)):
+            raise ValueError("offered_load_fractions debe ser una colección de números")
+        if len(value) == 0:
+            raise ValueError("offered_load_fractions no debe estar vacío")
+        accepted: list[float] = []
+        for item in value:
+            if isinstance(item, bool) or not isinstance(item, (int, float)):
+                raise ValueError("cada fracción debe ser un número finito mayor que 0")
+            number = float(item)
+            if not isfinite(number) or number <= 0:
+                raise ValueError("cada fracción debe ser finita y mayor que 0")
+            if number in accepted:
+                raise ValueError("offered_load_fractions no admite valores repetidos")
+            accepted.append(number)
+        return accepted
+
+    @model_validator(mode="after")
+    def capacity_end_must_follow_start(self) -> Self:
+        end = self.capacity_interval_end_sim
+        if end is not None and end <= self.start_time_sim:
+            raise ValueError(
+                "capacity_interval_end_sim debe ser mayor que start_time_sim"
+            )
+        return self
+
+
 class ExperimentBankExperiments(_BankInputModel):
-    """Experimentos admitidos por la primera versión del contrato."""
+    """Sección E1 del documento. No incluye ni serializa E2."""
 
     e1: ExperimentBankE1
 
-    @model_validator(mode="before")
-    @classmethod
-    def reject_known_but_unsupported_experiments(cls, value: Any) -> Any:
-        if isinstance(value, dict):
-            unsupported = sorted(_UNSUPPORTED_EXPERIMENTS.intersection(value))
-            if unsupported:
-                names = ", ".join(unsupported)
-                raise ValueError(
-                    f"{names} todavía no está soportado por el contrato de entrada v1"
-                )
-        return value
+
+class ExperimentBankE2Section(_BankInputModel):
+    """Sección E2 del documento. No es una campaña resuelta ni ejecutable."""
+
+    e2: ExperimentBankE2
 
 
 class ExperimentBankDocument(_BankInputModel):
-    """Documento validado, no una configuración efectiva de ejecución."""
+    """Documento validado, no una configuración efectiva de ejecución.
+
+    Contiene exactamente una sección, E1 o E2. Seleccionar E2 no resuelve
+    una campaña.
+    """
 
     schema_version: int = Field(strict=True)
     seed: int = Field(default=EXPERIMENT_BANK_DEFAULT_SEED, strict=True)
     scenario: ExperimentBankScenario
-    experiments: ExperimentBankExperiments
+    experiments: ExperimentBankExperiments | ExperimentBankE2Section
 
     @field_validator("schema_version", mode="before")
     @classmethod
@@ -166,6 +262,38 @@ class ExperimentBankDocument(_BankInputModel):
     def seed_must_not_be_boolean(cls, value: Any) -> Any:
         if isinstance(value, bool):
             raise ValueError("seed no admite booleanos")
+        return value
+
+    @field_validator("experiments", mode="before")
+    @classmethod
+    def select_exactly_one_experiment(cls, value: Any) -> Any:
+        if isinstance(value, (ExperimentBankExperiments, ExperimentBankE2Section)):
+            return value
+        if not isinstance(value, dict):
+            return value
+        unsupported = sorted(_UNSUPPORTED_EXPERIMENTS.intersection(value))
+        if unsupported:
+            names = ", ".join(unsupported)
+            raise ValueError(
+                f"{names} todavía no está soportado por el contrato de entrada v1"
+            )
+        unknown = sorted(set(value).difference(_ADMITTED_EXPERIMENT_SECTIONS))
+        if unknown:
+            names = ", ".join(unknown)
+            raise ValueError(f"clave desconocida en experiments: {names}")
+        selected = [name for name in ("e1", "e2") if name in value]
+        if len(selected) == 0:
+            raise ValueError(
+                "el documento debe incluir exactamente una sección: "
+                "experiments.e1 o experiments.e2"
+            )
+        if len(selected) > 1:
+            raise ValueError(
+                "experiments.e1 y experiments.e2 no pueden estar presentes a la vez"
+            )
+        chosen = selected[0]
+        if value[chosen] is None:
+            raise ValueError(f"experiments.{chosen} no puede ser null")
         return value
 
     @model_validator(mode="after")
@@ -187,6 +315,22 @@ class ResolvedE1Campaign:
     campaign: CampaignSpec
 
 
+def require_e1_bank_selection(
+    bank_document: ExperimentBankDocument,
+) -> ExperimentBankE1:
+    """Devuelve la sección E1 o rechaza un documento que selecciona E2."""
+    experiments = bank_document.experiments
+    if isinstance(experiments, ExperimentBankE2Section):
+        raise ValueError(
+            "el documento selecciona experiments.e2; "
+            "resolve_e1_campaign solo acepta experiments.e1 "
+            "y no construye ni ejecuta una campaña E2"
+        )
+    if isinstance(experiments, ExperimentBankExperiments):
+        return experiments.e1
+    raise ValueError("el documento no selecciona experiments.e1")
+
+
 def resolve_e1_campaign(
     bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
@@ -198,9 +342,11 @@ def resolve_e1_campaign(
     La resolución construye una especificación ejecutable, pero no certifica
     completitud, convergencia, ausencia de retries ni las condiciones científicas
     del estudio oficial E1. La evaluación de campañas configurables es separada.
+    Un documento que selecciona E2 se rechaza con ValueError antes de
+    construir el escenario o la campaña.
     """
+    e1_config = require_e1_bank_selection(bank_document)
     scenario_config = bank_document.scenario
-    e1_config = bank_document.experiments.e1
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
         scenario_id=scenario_config.id,

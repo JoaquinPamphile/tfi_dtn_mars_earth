@@ -246,6 +246,28 @@ def format_configurable_e1_campaign(result: CampaignResult) -> str:
     return "\n".join(partes)
 
 
+def format_e1_bank_comparison(assessment: dict[str, object]) -> str:
+    """Resumen de comparabilidad, sin agregar reglas a la evaluación."""
+    if assessment["comparable"] is True:
+        return "\n".join(
+            (
+                "Comparación controlada de agrupación: verificada.",
+                (
+                    "Se verificaron los factores compartidos y el dataset material "
+                    "completo. Esto no implica convergencia ni equivalencia con el "
+                    "E1 oficial."
+                ),
+            )
+        )
+    inconsistencies = assessment["inconsistencies"]
+    return "\n".join(
+        (
+            "Comparación controlada de agrupación: no verificada.",
+            *(f"- {item}" for item in inconsistencies),
+        )
+    )
+
+
 def _estado_de_motor(result: CampaignResult) -> str:
     """Estado, backlog y convergencia, en el orden de la campaña."""
     bloques: list[str] = []

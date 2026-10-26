@@ -1,18 +1,29 @@
 """
 Abre el JSON de una campaña E1 y el plan de contactos que ese JSON nombra.
+
+Si el documento selecciona E2, la carga se rechaza antes de abrir el plan.
 """
 from __future__ import annotations
 from pathlib import Path
 from pydantic import ValidationError
 from experiments.contact_plan import ContactPlanDefinition
-from experiments.experiment_bank import ExperimentBankDocument,ResolvedE1Campaign,resolve_e1_campaign
+from experiments.experiment_bank import (
+    ExperimentBankDocument,
+    ResolvedE1Campaign,
+    require_e1_bank_selection,
+    resolve_e1_campaign,
+)
 
 def load_e1_campaign(config_path: str | Path) -> ResolvedE1Campaign:
     """
-    Carga la campaña descripta en config_path.
+    Carga la campaña E1 descripta en config_path.
+
+    Un documento que selecciona E2 se rechaza antes de abrir el ContactPlan
+    y antes de resolver la campaña.
     """
     config_file = Path(config_path)
     bank = read_bank(config_file)
+    require_e1_bank_selection(bank)
     plan_file = resolve_contact_plan_path(config_file, bank.scenario.contact_plan_file)
     plan = read_contact_plan(plan_file)
     return resolve_e1_campaign(bank, plan)
