@@ -1,7 +1,7 @@
-"""Valida la entrada del banco y prepara una campaña E1 sin ejecutarla.
+"""Valida la entrada del banco y prepara campañas E1 y E2 sin ejecutarlas.
 
 El documento v1 acepta exactamente una sección: ``experiments.e1`` o
-``experiments.e2``. Un documento E2 validado no se resuelve ni se ejecuta.
+``experiments.e2``. Cada resolver exige su sección y no corre el motor.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StrictInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -29,6 +30,7 @@ from core.trace.level import TraceLevel
 
 from experiments.campaign import CampaignRunSpec, CampaignSpec
 from experiments.contact_plan import ContactPlanDefinition
+from experiments.offered_load import ReferenceCapacity, reference_mars_to_relay_capacity
 from experiments.scenario_adapter import scenario_from_contact_plan_definition
 from experiments.spec import ScientificRunSpec
 from experiments.workload import Workload
@@ -57,6 +59,16 @@ E1_BANK_CAMPAIGN_DESCRIPTION = (
 E1_BANK_WORKLOAD_ID = "experiment-bank-e1-v1"
 E1_BANK_EVENT_TYPE = "research.tfi.experiment_bank.e1"
 E1_BANK_FLOW = "tfi.experiment_bank.e1"
+E2_BANK_CAMPAIGN_ID = "e2-experiment-bank-v1"
+E2_BANK_CAMPAIGN_DESCRIPTION = (
+    "E2 configurable resuelto desde el banco experimental v1. "
+    "No es el diseño oficial de E2."
+)
+# Entran en el workload materializado. No son los identificadores de Alessi
+# ni los de la campaña oficial de carga ofrecida.
+E2_BANK_WORKLOAD_ID = "experiment-bank-e2-v1"
+E2_BANK_EVENT_TYPE = "research.tfi.experiment_bank.e2"
+E2_BANK_FLOW = "tfi.experiment_bank.e2"
 
 class _BankInputModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -142,7 +154,7 @@ class ExperimentBankE2(_BankInputModel):
 
     ``individual_syncunit_bytes`` es el tamaño canónico de la SyncUnit
     Individual, no solamente el del payload. ``capacity_interval_end_sim``
-    en ``None`` deja el horizonte del escenario para el futuro resolver.
+    en ``None`` usa el horizonte del escenario como fin de capacidad.
     """
 
     generation_duration_seconds: float = Field(
@@ -241,8 +253,8 @@ class ExperimentBankE2Section(_BankInputModel):
 class ExperimentBankDocument(_BankInputModel):
     """Documento validado, no una configuración efectiva de ejecución.
 
-    Contiene exactamente una sección, E1 o E2. Seleccionar E2 no resuelve
-    una campaña.
+    Contiene exactamente una sección, E1 o E2. Validar el documento no
+    resuelve ni ejecuta la campaña.
     """
 
     schema_version: int = Field(strict=True)
@@ -432,3 +444,238 @@ def resolve_e1_campaign(
         contact_plan_definition=contact_plan_definition,
         campaign=campaign,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedE2Campaign:
+    """Resolución E2 inmutable. No guarda resultados ni métricas de una corrida."""
+
+    bank_document: ExperimentBankDocument
+    contact_plan_definition: ContactPlanDefinition
+    campaign: CampaignSpec
+    reference_capacity: ReferenceCapacity
+
+
+def require_e2_bank_selection(
+    bank_document: ExperimentBankDocument,
+) -> ExperimentBankE2:
+    """Devuelve la sección E2 o rechaza un documento que selecciona E1."""
+    experiments = bank_document.experiments
+    if isinstance(experiments, ExperimentBankExperiments):
+        raise ValueError(
+            "el documento selecciona experiments.e1; "
+            "resolve_e2_campaign solo acepta experiments.e2 "
+            "y no construye ni ejecuta una campaña E1"
+        )
+    if isinstance(experiments, ExperimentBankE2Section):
+        return experiments.e2
+    raise ValueError("el documento no selecciona experiments.e2")
+
+
+def resolve_e2_campaign(
+    bank_document: ExperimentBankDocument,
+    contact_plan_definition: ContactPlanDefinition,
+) -> ResolvedE2Campaign:
+    """Convierte una entrada E2 validada en una campaña, sin ejecutarla.
+
+    Rechaza un documento E1 antes de construir el escenario. Los contactos
+    del escenario son los del plan recibido, sin recorte: el intervalo solo
+    entra en el cálculo de capacidad.
+
+    El fin de capacidad es ``capacity_interval_end_sim`` cuando está
+    definido y, si no, el horizonte del escenario. La capacidad es la suma
+    nominal de bytes serializables Marte → relé que solapan ese intervalo.
+    No es capacidad extremo a extremo, utilización realizada ni una garantía
+    de entrega. No exige convergencia, retorno suficiente ni ausencia de
+    retries, y no usa el fin del último contacto del E2 oficial.
+    """
+    e2_config = require_e2_bank_selection(bank_document)
+    scenario_config = bank_document.scenario
+    scenario = scenario_from_contact_plan_definition(
+        contact_plan_definition,
+        scenario_id=scenario_config.id,
+        horizon_seconds=scenario_config.horizon_seconds,
+        description=scenario_config.description,
+        notes=scenario_config.notes,
+    )
+    interval_start, interval_end = _e2_capacity_interval(
+        e2_config,
+        horizon_seconds=scenario_config.horizon_seconds,
+    )
+    capacity = reference_mars_to_relay_capacity(
+        scenario,
+        interval_start_sim=interval_start,
+        interval_end_sim=interval_end,
+    )
+    _require_positive_finite_capacity(capacity)
+
+    # La tasa 1.0 solo completa el workload base. with_offered_load la reemplaza.
+    base_workload = Workload(
+        workload_id=E2_BANK_WORKLOAD_ID,
+        event_type=E2_BANK_EVENT_TYPE,
+        flow=E2_BANK_FLOW,
+        priority=TelemetryPriority.NORMAL,
+        start_time_sim=e2_config.start_time_sim,
+        duration_seconds=e2_config.generation_duration_seconds,
+        max_events=None,
+        rate_events_per_second=1.0,
+        canonical_individual_syncunit_bytes=e2_config.individual_syncunit_bytes,
+    )
+    retry_policy = RetryPolicy(
+        ack_timeout_seconds=e2_config.sender_ack_timeout_seconds
+    )
+    failure_plan = FailurePlan()
+    shared_run_parameters = {
+        "scenario": scenario,
+        "seed": bank_document.seed,
+        "recovery_policy": RecoveryPolicy.SENDER_DRIVEN,
+        "retry_policy": retry_policy,
+        "failure_plan": failure_plan,
+        "stop_policy": StopPolicy.PROFILE_HORIZON_SETTLED,
+        "trace_level": TraceLevel.SCIENTIFIC,
+    }
+    runs: list[CampaignRunSpec] = []
+    for load_index, load_fraction in enumerate(e2_config.offered_load_fractions):
+        workload = _e2_workload_for_fraction(
+            base_workload,
+            load_index=load_index,
+            load_fraction=load_fraction,
+            capacity_bytes=capacity.serialized_capacity_bytes,
+            individual_bytes=e2_config.individual_syncunit_bytes,
+            duration_seconds=e2_config.generation_duration_seconds,
+        )
+        pair_parameters = {**shared_run_parameters, "workload": workload}
+        runs.append(
+            CampaignRunSpec(
+                label=f"load_{load_index}_{STRATEGY_TYPE_INDIVIDUAL}",
+                spec=ScientificRunSpec(
+                    strategy_type=STRATEGY_TYPE_INDIVIDUAL,
+                    **pair_parameters,
+                ),
+            )
+        )
+        runs.append(
+            CampaignRunSpec(
+                label=f"load_{load_index}_{STRATEGY_TYPE_FIXED_BATCH}",
+                spec=ScientificRunSpec(
+                    strategy_type=STRATEGY_TYPE_FIXED_BATCH,
+                    batch_size_events=e2_config.batch_size_events,
+                    **pair_parameters,
+                ),
+            )
+        )
+    campaign = CampaignSpec(
+        campaign_id=E2_BANK_CAMPAIGN_ID,
+        description=E2_BANK_CAMPAIGN_DESCRIPTION,
+        runs=tuple(runs),
+    )
+    return ResolvedE2Campaign(
+        bank_document=bank_document,
+        contact_plan_definition=contact_plan_definition,
+        campaign=campaign,
+        reference_capacity=capacity,
+    )
+
+
+def _e2_capacity_interval(
+    e2_config: ExperimentBankE2,
+    *,
+    horizon_seconds: float,
+) -> tuple[float, float]:
+    """``[inicio, fin de capacidad]`` acotado por el horizonte.
+
+    ``fin`` es el extremo explícito o el horizonte. La generación debe
+    terminar en el horizonte o antes. No recorta los contactos.
+    """
+    start = e2_config.start_time_sim
+    end = (
+        horizon_seconds
+        if e2_config.capacity_interval_end_sim is None
+        else e2_config.capacity_interval_end_sim
+    )
+    generation_end = start + e2_config.generation_duration_seconds
+    if not isfinite(start) or not isfinite(end) or not isfinite(generation_end):
+        raise ValueError(
+            "una magnitud derivada del intervalo no es finita: "
+            f"start_time_sim={start}, "
+            f"capacity_interval_end_sim={end}, "
+            f"generation_duration_seconds={e2_config.generation_duration_seconds}, "
+            f"generation_end_sim={generation_end}, "
+            f"horizon_seconds={horizon_seconds}"
+        )
+    if not (0 <= start < end <= horizon_seconds):
+        raise ValueError(
+            "el intervalo de capacidad debe cumplir "
+            "0 <= start_time_sim < fin_capacidad <= horizon_seconds: "
+            f"start_time_sim={start}, "
+            f"capacity_interval_end_sim={end}, "
+            f"horizon_seconds={horizon_seconds}"
+        )
+    if generation_end > horizon_seconds:
+        raise ValueError(
+            "la generación debe terminar dentro del horizonte: "
+            f"start_time_sim={start}, "
+            f"generation_duration_seconds={e2_config.generation_duration_seconds}, "
+            f"generation_end_sim={generation_end}, "
+            f"horizon_seconds={horizon_seconds}"
+        )
+    return start, end
+
+
+def _require_positive_finite_capacity(capacity: ReferenceCapacity) -> None:
+    """La suma nominal Marte → relé tiene que ser un real positivo."""
+    amount = capacity.serialized_capacity_bytes
+    if not isfinite(amount) or amount <= 0:
+        raise ValueError(
+            "la capacidad serializable nominal Marte → relé debe ser finita "
+            "y mayor que 0. No es capacidad extremo a extremo, utilización "
+            "ni garantía de entrega: "
+            f"interval_start_sim={capacity.interval_start_sim}, "
+            f"interval_end_sim={capacity.interval_end_sim}, "
+            f"serialized_capacity_bytes={amount}, "
+            f"contact_count={capacity.contact_count}"
+        )
+
+
+def _e2_workload_for_fraction(
+    base_workload: Workload,
+    *,
+    load_index: int,
+    load_fraction: float,
+    capacity_bytes: float,
+    individual_bytes: int,
+    duration_seconds: float,
+) -> Workload:
+    """Conteo y tasa de una fracción, con un mensaje que la identifica."""
+    context = (
+        f"fraction_index={load_index}, "
+        f"offered_load_fraction={load_fraction}, "
+        f"capacity_bytes={capacity_bytes}, "
+        f"individual_syncunit_bytes={individual_bytes}, "
+        f"generation_duration_seconds={duration_seconds}"
+    )
+    try:
+        workload = base_workload.with_offered_load(
+            load_fraction=load_fraction,
+            capacity_bytes=capacity_bytes,
+        )
+    except (ValueError, OverflowError, ValidationError) as error:
+        raise ValueError(
+            f"no se pudo derivar el conteo o la tasa de la fracción: {context}. {error}"
+        ) from error
+    event_count = workload.max_events
+    rate = workload.rate_events_per_second
+    if (
+        event_count is None
+        or isinstance(event_count, bool)
+        or event_count < 1
+        or not isfinite(rate)
+        or rate <= 0
+    ):
+        raise ValueError(
+            "el conteo o la tasa derivada no es válido: "
+            f"{context}, "
+            f"event_count={event_count}, "
+            f"rate_events_per_second={rate}"
+        )
+    return workload

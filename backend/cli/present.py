@@ -1,4 +1,4 @@
-"""Texto y JSON del resumen de una corrida, la inspección E1 y el informe de run-e1.
+"""Texto y JSON del resumen de una corrida, la inspección E1 y E2, y los informes de run-e1 y run-e2.
 
 No ejecuta el motor ni lee archivos.
 """
@@ -11,12 +11,12 @@ from core.metrics.run import ScientificRunMetrics
 from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
 from runner.result import RunResult
 
-from experiments.campaign import CampaignResult
+from experiments.campaign import CampaignResult, CampaignRunResult, CampaignRunSpec
 from experiments.contact_plan import (
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
-from experiments.experiment_bank import ResolvedE1Campaign
+from experiments.experiment_bank import ResolvedE1Campaign, ResolvedE2Campaign
 from experiments.fingerprint import configuration_hash
 from experiments.report import format_campaign
 
@@ -228,6 +228,75 @@ def format_e1_campaign_inspection(resolved: ResolvedE1Campaign) -> str:
     return "\n".join(lineas).rstrip("\n")
 
 
+def format_e2_campaign_inspection(resolved: ResolvedE2Campaign) -> str:
+    """Resumen de una campaña E2 ya resuelta.
+
+    Muestra la capacidad, los conteos y las tasas que ya trae la
+    resolución. No los vuelve a calcular, no abre archivos, no
+    materializa eventos y no ejecuta la simulación.
+    """
+    preparada = resolved.campaign
+    especificacion = preparada.runs[0].spec
+    escenario = especificacion.scenario
+    workload = especificacion.workload
+    plan = resolved.contact_plan_definition
+    capacidad = resolved.reference_capacity
+    horizonte = (
+        "no definido"
+        if escenario.horizon_seconds is None
+        else f"{_numero(escenario.horizon_seconds)} s"
+    )
+    duracion = (
+        "no definido"
+        if workload.duration_seconds is None
+        else f"{_numero(workload.duration_seconds)} s"
+    )
+    lineas = [
+        "Campaña E2 preparada; simulación no ejecutada.",
+        (
+            "La capacidad es nominal del enlace MARS → RELAY; no garantiza entrega "
+            "extremo a extremo. La fracción de carga ofrecida no es utilización."
+        ),
+        (
+            "La inspección no certifica convergencia "
+            "ni equivalencia con el E2 oficial."
+        ),
+        "",
+        f"scenario_id: {escenario.scenario_id}",
+        f"Horizonte: {horizonte}",
+        f"contact_plan_id: {plan.contact_plan_id}",
+        f"Contactos: {len(plan.contacts)}",
+        f"Huella operacional del plan: {contact_plan_fingerprint(plan)}",
+        f"Huella documental del plan: {contact_plan_definition_fingerprint(plan)}",
+        f"Semilla: {especificacion.seed}",
+        f"Inicio de generación: {_numero(workload.start_time_sim)} s",
+        f"Duración de generación: {duracion}",
+        (
+            "Intervalo de capacidad: "
+            f"[{_numero(capacidad.interval_start_sim)}, "
+            f"{_numero(capacidad.interval_end_sim)})"
+        ),
+        (
+            "Capacidad nominal MARS → RELAY: "
+            f"{_numero(capacidad.serialized_capacity_bytes)} bytes"
+        ),
+        f"Contactos que aportan capacidad: {capacidad.contact_count}",
+        (
+            "Tamaño canónico Individual: "
+            f"{workload.canonical_individual_syncunit_bytes} bytes"
+        ),
+        f"Tamaño de lote: {_tamano_de_lote(preparada.runs)}",
+        f"Timeout ACK: {_numero(especificacion.retry_policy.ack_timeout_seconds)} s",
+        f"campaign_identity: {preparada.campaign_identity}",
+        f"Corridas: {len(preparada.runs)}",
+        "",
+    ]
+    for run in preparada.runs:
+        lineas.extend(_lineas_de_corrida_e2(run))
+        lineas.append("")
+    return "\n".join(lineas).rstrip("\n")
+
+
 def format_configurable_e1_campaign(result: CampaignResult) -> str:
     """Informe de una campaña E1 configurable ya ejecutada.
 
@@ -244,6 +313,44 @@ def format_configurable_e1_campaign(result: CampaignResult) -> str:
     if estado:
         partes.extend(["", estado])
     return "\n".join(partes)
+
+
+def format_configurable_e2_campaign(
+    resolved: ResolvedE2Campaign, result: CampaignResult
+) -> str:
+    """Informe de una campaña E2 configurable ya ejecutada.
+
+    La capacidad, la fracción y la estrategia salen de la resolución.
+    Los conteos, el estado, el backlog y la convergencia salen del
+    resultado. No vuelve a calcular nada y no arma un segundo informe.
+    """
+    capacidad = resolved.reference_capacity
+    lineas = [
+        "Campaña E2 configurable. No corresponde a la evidencia oficial RC1.",
+        "",
+        (
+            "La fracción de carga ofrecida no es utilización. La capacidad nominal "
+            "del primer enlace no garantiza entrega extremo a extremo."
+        ),
+        "",
+        (
+            "Intervalo de capacidad: "
+            f"[{_numero(capacidad.interval_start_sim)}, "
+            f"{_numero(capacidad.interval_end_sim)})"
+        ),
+        (
+            "Capacidad nominal MARS → RELAY: "
+            f"{_numero(capacidad.serialized_capacity_bytes)} bytes"
+        ),
+        f"Identidad de campaña: {result.campaign_identity}",
+        "",
+    ]
+    bloques = [
+        "\n".join(_lineas_de_resultado_e2(planeada, corrida))
+        for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
+    ]
+    lineas.append("\n\n".join(bloques))
+    return "\n".join(lineas)
 
 
 def format_e1_bank_comparison(assessment: dict[str, object]) -> str:
@@ -303,6 +410,87 @@ def _numero(value: float) -> str:
     if "." not in texto:
         return f"{texto}.0"
     return texto
+
+
+def _fraccion(value: float) -> str:
+    """Conserva fracciones cercanas: 0.251 y 0.254 siguen siendo distintas."""
+    return format(value, ".16g")
+
+
+def _tamano_de_lote(runs: tuple[CampaignRunSpec, ...]) -> str:
+    for run in runs:
+        size = run.spec.batch_size_events
+        if size is not None:
+            return str(size)
+    return "no definido"
+
+
+def _lineas_de_resultado_e2(
+    planeada: CampaignRunSpec, corrida: CampaignRunResult
+) -> list[str]:
+    """Una corrida ejecutada, en el orden de la campaña.
+
+    La fracción y la estrategia se leen de la spec. El resultado solo
+    aporta conteos, estado y, si no terminó, el error ya capturado.
+    """
+    spec = planeada.spec
+    workload = spec.workload
+    fraccion = (
+        "no definida"
+        if workload.offered_load_fraction is None
+        else _fraccion(workload.offered_load_fraction)
+    )
+    lineas = [
+        f"[{corrida.index + 1}] {corrida.label}",
+        f"Fracción de carga: {fraccion}",
+        f"Estrategia: {spec.strategy_type}",
+    ]
+    if spec.batch_size_events is not None:
+        lineas.append(f"Tamaño de lote: {spec.batch_size_events}")
+    if corrida.result is None:
+        lineas.extend(
+            (
+                "Estado: falló",
+                f"Tipo: {corrida.error_type}",
+                f"Mensaje: {corrida.error_message}",
+            )
+        )
+        return lineas
+    lineas.extend(
+        (
+            f"Generados: {corrida.result.events_generated}",
+            f"Persistidos: {corrida.result.events_persisted_earth}",
+            f"Confirmados: {corrida.result.events_confirmed_mars}",
+            f"Estado del motor: {corrida.result.engine_status}",
+            f"Backlog: {corrida.result.metrics.final_backlog}",
+            "Convergió: " + ("sí" if corrida.result.metrics.converged else "no"),
+        )
+    )
+    return lineas
+
+
+def _lineas_de_corrida_e2(run: CampaignRunSpec) -> list[str]:
+    spec = run.spec
+    workload = spec.workload
+    fraccion = (
+        "no definida"
+        if workload.offered_load_fraction is None
+        else _fraccion(workload.offered_load_fraction)
+    )
+    conteo = "no definido" if workload.max_events is None else str(workload.max_events)
+    lineas = [
+        run.label,
+        f"Fracción de carga: {fraccion}",
+        f"Estrategia: {spec.strategy_type}",
+    ]
+    if spec.batch_size_events is not None:
+        lineas.append(f"Tamaño de lote: {spec.batch_size_events}")
+    lineas.append(f"Conteo derivado: {conteo}")
+    lineas.append(
+        f"Tasa derivada: {_numero(workload.rate_events_per_second)} eventos/s"
+    )
+    lineas.append(f"configuration_hash: {configuration_hash(spec)}")
+    return lineas
 
 
 def _fila(etiqueta: str, valor: str) -> str:

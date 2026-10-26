@@ -1,4 +1,4 @@
-"""Documento autocontenido del resultado del banco E1 configurable.
+"""Documentos autocontenidos de los resultados del banco configurable.
 
 La construcción es puramente en memoria. ``run_results`` sigue por posición
 el orden de ``campaign_manifest.runs`` y conserva solamente los campos de
@@ -13,19 +13,22 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from experiments.campaign import CampaignResult
+from experiments.campaign import CampaignResult, CampaignSpec
 from experiments.canonical import canonical_json_text, jsonable
 from experiments.contact_plan import (
+    ContactPlanDefinition,
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
-from experiments.experiment_bank import ResolvedE1Campaign
+from experiments.experiment_bank import ResolvedE1Campaign, ResolvedE2Campaign
 from experiments.manifest import campaign_manifest
+from experiments.offered_load import ReferenceCapacity
 from experiments.result import ScientificRunResult
 from experiments.software_provenance import SoftwareProvenance, current_provenance
 
 BANK_RESULT_SCHEMA_VERSION = 1
 E1_CONFIGURABLE_BANK_RESULT = "e1_configurable_bank_result"
+E2_CONFIGURABLE_BANK_RESULT = "e2_configurable_bank_result"
 
 
 def build_e1_bank_result(
@@ -42,56 +45,105 @@ def build_e1_bank_result(
     """
     if not isinstance(resolved, ResolvedE1Campaign):
         raise TypeError("resolved debe ser un ResolvedE1Campaign")
-    if not isinstance(result, CampaignResult):
-        raise TypeError("result debe ser un CampaignResult")
-    if provenance is not None and not isinstance(provenance, SoftwareProvenance):
-        raise TypeError("provenance debe ser una SoftwareProvenance")
-
-    observed = current_provenance() if provenance is None else provenance
-    manifest = campaign_manifest(
+    observed, manifest = _observed_campaign_manifest(
         resolved.campaign,
         result,
+        provenance,
+    )
+    document = _configured_bank_document(
+        artifact_type=E1_CONFIGURABLE_BANK_RESULT,
+        configuration=resolved.bank_document.model_dump(mode="json"),
+        contact_plan_definition=resolved.contact_plan_definition,
         provenance=observed,
-    ).to_dict()
-    _require_completed_results_match_specs(resolved, result)
+        manifest=manifest,
+        result=result,
+    )
+    return _json_object(document)
 
-    document = {
-        "bank_result_schema_version": BANK_RESULT_SCHEMA_VERSION,
-        "artifact_type": E1_CONFIGURABLE_BANK_RESULT,
-        "configuration": resolved.bank_document.model_dump(mode="json"),
-        "contact_plan_definition": resolved.contact_plan_definition.model_dump(
-            mode="json"
+
+def build_e2_bank_result(
+    resolved: ResolvedE2Campaign,
+    result: CampaignResult,
+    provenance: SoftwareProvenance | None = None,
+) -> dict[str, Any]:
+    """Combina la campaña E2 resuelta y su resultado, sin ejecutar ni leer archivos.
+
+    ``reference_capacity`` es la capacidad nominal ya resuelta Marte → relé:
+    escenario, intervalo, bytes serializables y contactos que aportan. Se
+    copia tal como quedó en la resolución. No se recalcula, no sale de un
+    formateador y no se sustituye por una constante. No es capacidad extremo
+    a extremo, utilización realizada ni garantía de entrega.
+
+    Las fracciones, los conteos y las tasas quedan en las especificaciones
+    del manifiesto. Las métricas tienen ahí su única copia. ``run_results``
+    conserva los eventos observados y los demás campos de
+    ``ScientificRunResult`` que el manifiesto no serializa. Un resultado
+    parcial no tiene que cubrir el dataset esperado. No se exige
+    convergencia, backlog cero ni motor COMPLETED.
+
+    Cada pareja Individual/Batch puede compartir dataset. Cargas distintas
+    pueden materializar datasets distintos.
+
+    El manifiesto ya calcula el hash de configuración y la huella del
+    dataset esperado de cada corrida. Esa huella puede generar en memoria
+    los eventos esperados cuando aún no están en la caché, una vez por
+    workload. El coste adicional son las dos huellas del plan de contacto
+    y la serialización del documento, incluidos los eventos observados.
+    Copiar la capacidad no genera eventos ni abre el archivo del plan.
+    """
+    if not isinstance(resolved, ResolvedE2Campaign):
+        raise TypeError("resolved debe ser un ResolvedE2Campaign")
+    observed, manifest = _observed_campaign_manifest(
+        resolved.campaign,
+        result,
+        provenance,
+    )
+    document = _configured_bank_document(
+        artifact_type=E2_CONFIGURABLE_BANK_RESULT,
+        configuration=resolved.bank_document.model_dump(mode="json"),
+        contact_plan_definition=resolved.contact_plan_definition,
+        provenance=observed,
+        manifest=manifest,
+        result=result,
+        reference_capacity=_nominal_mars_to_relay_capacity(
+            resolved.reference_capacity
         ),
-        "contact_plan_fingerprint": contact_plan_fingerprint(
-            resolved.contact_plan_definition
-        ),
-        "contact_plan_definition_fingerprint": (
-            contact_plan_definition_fingerprint(resolved.contact_plan_definition)
-        ),
-        "software_provenance": {
-            "software_version": observed.software_version,
-            "source_revision": observed.source_revision,
-            "source_state": observed.source_state,
-        },
-        "campaign_manifest": manifest,
-        "run_results": [
-            {"result": None if run.result is None else _result_remainder(run.result)}
-            for run in result.runs
-        ],
-    }
-    serialized = jsonable(document)
-    if not isinstance(serialized, dict):
-        raise RuntimeError("el resultado del banco debe ser un objeto JSON")
-    return serialized
+    )
+    return _json_object(document)
 
 
 def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
-    """Publica un documento nuevo sin reemplazar ninguna entrada existente.
+    """Publica un documento E1 nuevo sin reemplazar ninguna entrada existente.
 
-    El temporal se escribe y cierra en el mismo directorio. El enlace duro
-    publica entonces el inode completo con semántica de creación exclusiva:
-    si ``path`` apareció antes de ese paso, ``os.link`` falla. No hay fallback
-    para filesystems que no admitan enlaces duros.
+    Acepta solamente ``e1_configurable_bank_result``.
+    """
+    return _publish_bank_result(path, document, E1_CONFIGURABLE_BANK_RESULT)
+
+
+def write_e2_bank_result(path: Path, document: dict[str, Any]) -> Path:
+    """Publica un documento E2 ya construido sin reemplazar ninguna entrada existente.
+
+    Acepta solamente ``e2_configurable_bank_result``. Un resultado E1 se
+    rechaza antes de crear archivos. No vuelve a validar campañas, capacidad,
+    datasets ni métricas.
+    """
+    return _publish_bank_result(path, document, E2_CONFIGURABLE_BANK_RESULT)
+
+
+def _publish_bank_result(
+    path: Path,
+    document: dict[str, Any],
+    artifact_type: str,
+) -> Path:
+    """Escribe y cierra un temporal, luego lo publica con ``os.link``.
+
+    La serialización canónica y las validaciones ocurren antes de crear el
+    temporal, en el mismo directorio del destino. El enlace duro publica el
+    inode completo con creación exclusiva: si ``path`` ya existe, ``os.link``
+    falla y el destino queda intacto. El temporal se elimina al terminar,
+    también si el enlace falla. No hay fallback para filesystems sin enlaces
+    duros, ni se crean directorios padre. No promete durabilidad ante un
+    corte de energía ni limpieza si el proceso termina de golpe.
     """
     if not isinstance(path, Path):
         raise TypeError("path debe ser un Path")
@@ -99,8 +151,11 @@ def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
         raise TypeError("document debe ser un dict")
 
     text = canonical_json_text(document)
-    if document.get("artifact_type") != E1_CONFIGURABLE_BANK_RESULT:
-        raise ValueError("artifact_type no corresponde a un resultado del banco E1")
+    if document.get("artifact_type") != artifact_type:
+        bank = "E1" if artifact_type == E1_CONFIGURABLE_BANK_RESULT else "E2"
+        raise ValueError(
+            f"artifact_type no corresponde a un resultado del banco {bank}"
+        )
     version = document.get("bank_result_schema_version")
     if isinstance(version, bool) or version != BANK_RESULT_SCHEMA_VERSION:
         raise ValueError(
@@ -135,21 +190,103 @@ def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
     return path
 
 
+def _observed_campaign_manifest(
+    campaign: CampaignSpec,
+    result: CampaignResult,
+    provenance: SoftwareProvenance | None,
+) -> tuple[SoftwareProvenance, dict[str, Any]]:
+    """Usa una sola procedencia y exige que el resultado sea el de esta campaña.
+
+    ``campaign_manifest`` comprueba identidad, cantidad, índices, rótulos y
+    orden. Después, cada corrida terminada se compara con los identificadores
+    y parámetros de su propia especificación. La misma longitud no dice que
+    una corrida corresponda a la otra.
+    """
+    if not isinstance(result, CampaignResult):
+        raise TypeError("result debe ser un CampaignResult")
+    if provenance is not None and not isinstance(provenance, SoftwareProvenance):
+        raise TypeError("provenance debe ser una SoftwareProvenance")
+
+    observed = current_provenance() if provenance is None else provenance
+    manifest = campaign_manifest(campaign, result, provenance=observed).to_dict()
+    _require_completed_results_match_specs(campaign, result)
+    return observed, manifest
+
+
+def _configured_bank_document(
+    *,
+    artifact_type: str,
+    configuration: dict[str, Any],
+    contact_plan_definition: ContactPlanDefinition,
+    provenance: SoftwareProvenance,
+    manifest: dict[str, Any],
+    result: CampaignResult,
+    reference_capacity: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Arma el documento común. La capacidad E2 entra solo cuando ya fue copiada."""
+    document: dict[str, Any] = {
+        "bank_result_schema_version": BANK_RESULT_SCHEMA_VERSION,
+        "artifact_type": artifact_type,
+        "configuration": configuration,
+        "contact_plan_definition": contact_plan_definition.model_dump(mode="json"),
+        "contact_plan_fingerprint": contact_plan_fingerprint(contact_plan_definition),
+        "contact_plan_definition_fingerprint": contact_plan_definition_fingerprint(
+            contact_plan_definition
+        ),
+    }
+    if reference_capacity is not None:
+        document["reference_capacity"] = reference_capacity
+    document["software_provenance"] = {
+        "software_version": provenance.software_version,
+        "source_revision": provenance.source_revision,
+        "source_state": provenance.source_state,
+    }
+    document["campaign_manifest"] = manifest
+    document["run_results"] = [
+        {"result": None if run.result is None else _result_remainder(run.result)}
+        for run in result.runs
+    ]
+    return document
+
+
+def _nominal_mars_to_relay_capacity(capacity: ReferenceCapacity) -> dict[str, Any]:
+    """Copia la capacidad nominal Marte → relé ya resuelta.
+
+    No vuelve a sumar contactos ni lee un formateador. El valor es el
+    efectivo de la resolución: bytes serializables sobre el intervalo, no
+    una constante ni la utilización realizada.
+    """
+    if not isinstance(capacity, ReferenceCapacity):
+        raise TypeError("reference_capacity debe ser una ReferenceCapacity")
+    return {
+        "scenario_id": capacity.scenario_id,
+        "interval_start_sim": capacity.interval_start_sim,
+        "interval_end_sim": capacity.interval_end_sim,
+        "serialized_capacity_bytes": capacity.serialized_capacity_bytes,
+        "contact_count": capacity.contact_count,
+    }
+
+
+def _json_object(document: dict[str, Any]) -> dict[str, Any]:
+    serialized = jsonable(document)
+    if not isinstance(serialized, dict):
+        raise RuntimeError("el resultado del banco debe ser un objeto JSON")
+    return serialized
+
+
 def _require_completed_results_match_specs(
-    resolved: ResolvedE1Campaign,
+    campaign: CampaignSpec,
     result: CampaignResult,
 ) -> None:
     """Verifica los vínculos que existen en una corrida terminada.
 
     Los vínculos de campaña, cantidad, índice y rótulo ya fueron verificados por
     ``campaign_manifest``. Una corrida fallida no contiene un resultado del que
-    puedan contrastarse identidades; queda vinculada por esos campos.
+    puedan contrastarse identidades; queda vinculada por esos campos. La
+    comparación es contra la especificación de esa posición: no exige el
+    mismo dataset entre cargas ni un motor COMPLETED.
     """
-    for planned, finished in zip(
-        resolved.campaign.runs,
-        result.runs,
-        strict=True,
-    ):
+    for planned, finished in zip(campaign.runs, result.runs, strict=True):
         completed = finished.result
         if completed is None:
             continue
