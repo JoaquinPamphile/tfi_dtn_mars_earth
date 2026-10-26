@@ -98,7 +98,6 @@ class ReceiverDrivenRecoveryController:
         self._attempts: dict[str, GapRequestAttemptState] = {}
         self._handled_request_ids: set[str] = set()
         self._receiver_repair_event_ids: set[UUID] = set()
-        self._served_sequences_by_request: dict[str, set[int]] = {}
         engine.register_handler(
             SimulationEventType.TRANSMISSION_STARTED.value,
             self._on_transmission_started,
@@ -188,10 +187,8 @@ class ReceiverDrivenRecoveryController:
         if not repairable or self._submit_repair is None:
             return found
         repaired = self._submit_repair(repairable, request.request_id)
-        served = self._served_sequences_by_request.setdefault(request.request_id, set())
         for event in repaired:
             self._receiver_repair_event_ids.add(event.event_id)
-            served.add(event.sequence_number)
             self.repair_submissions.append(
                 (
                     str(event.event_id),

@@ -231,11 +231,7 @@ def _canonical_campaign_json(spec: CampaignSpec) -> str:
         "campaign_id": spec.campaign_id,
         "description": spec.description,
         "runs": [
-            {"label": run.label, "spec": _spec_payload(run.spec)} for run in spec.runs
+            {"label": run.label, "spec": spec_payload(run.spec)} for run in spec.runs
         ],
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-
-
-def _spec_payload(spec: ScientificRunSpec) -> dict[str, object]:
-    return spec_payload(spec)

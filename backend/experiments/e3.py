@@ -511,8 +511,7 @@ def format_e3(result: E3Result) -> str:
             f"hop {E3_LOSS_HOP}, una ocurrencia."
         ),
         E3_LOSS_NOTE if result.official else (
-            "Sonda. La secuencia perdida no es la 5000 del diseño oficial. "
-            "Sigue siendo un hueco interno, con vecino anterior y posterior."
+            "Sonda. El hueco sigue siendo interno, con vecino anterior y posterior."
         ),
         E3_TIMEOUT_NOTE,
         f"Parada: {StopPolicy.PROFILE_HORIZON_SETTLED.value}. Horizonte: {E1_HORIZON_SECONDS:.0f} s.",
