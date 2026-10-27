@@ -1,12 +1,4 @@
-"""Manejo compartido de las familias científicas oficiales.
-
-``e1``, ``e2``, ``e3`` y ``e3-sensitivity`` construyen su campaña, la
-ejecutan, la evalúan y, si se pide, exportan evidencia. No despacha
-otros comandos.
-"""
-
 from __future__ import annotations
-
 import sys
 import time
 from pathlib import Path
@@ -94,3 +86,48 @@ def _separar_export(tokens: list[str]) -> tuple[bool, list[str]]:
 
 def _evidence_root() -> Path:
     return Path.cwd() / "evidence"
+
+
+_FAMILIAS = frozenset({"e1", "e2", "e3", "e3-sensitivity"})
+
+AYUDA = """\
+Uso:
+  python -m cli.official e1 [--json] [--export-evidence]
+  python -m cli.official e2 [--json] [--export-evidence]
+  python -m cli.official e3 [--json] [--export-evidence]
+  python -m cli.official e3-sensitivity [--json] [--export-evidence]
+
+Comandos:
+  e1                   Ejecuta E1.
+  e2                   Ejecuta E2.
+  e3                   Ejecuta E3.
+  e3-sensitivity       Ejecuta el análisis de sensibilidad de E3.
+
+Opciones de E1, E2, E3 y sensibilidad:
+  --json                                Informe estructurado en JSON.
+  --export-evidence                     Exporta evidencia bajo evidence/.
+
+Ayuda:
+  -h, --help                            Muestra esta ayuda.
+"""
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Ejecuta la consola oficial y devuelve el código de salida."""
+    argumentos = list(sys.argv[1:] if argv is None else argv)
+    if not argumentos:
+        print(AYUDA, end="")
+        return 2
+    if argumentos[0] in {"-h", "--help", "help"}:
+        print(AYUDA, end="")
+        return 0
+    comando = argumentos[0]
+    if comando in _FAMILIAS:
+        return comando_familia(comando, argumentos[1:], ayuda=AYUDA)
+    print(f"comando desconocido: {comando}", file=sys.stderr)
+    print(AYUDA, end="", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

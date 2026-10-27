@@ -1,6 +1,7 @@
 """
 Abre el JSON de una campaña configurable y el plan de contactos que nombra.
 
+``load_bank_campaign`` identifica la sección ya validada y carga esa campaña.
 ``load_e1_campaign`` rechaza un documento E2 o E3 antes de abrir el plan.
 ``load_e2_campaign`` rechaza un documento E1 o E3 antes de resolver esa ruta
 y de abrir el archivo. ``load_e3_campaign`` rechaza un documento E1 o E2
@@ -12,6 +13,9 @@ from pydantic import ValidationError
 from experiments.contact_plan import ContactPlanDefinition
 from experiments.experiment_bank import (
     ExperimentBankDocument,
+    ExperimentBankE2Section,
+    ExperimentBankE3Section,
+    ExperimentBankExperiments,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
@@ -22,6 +26,37 @@ from experiments.experiment_bank import (
     resolve_e2_campaign,
     resolve_e3_campaign,
 )
+
+def load_bank_campaign(
+    config_path: str | Path,
+) -> ResolvedE1Campaign | ResolvedE2Campaign | ResolvedE3Campaign:
+    """Carga la campaña que declara el documento.
+
+    Lee y valida el documento una sola vez, identifica la sección con el
+    modelo ya construido y, solo entonces, abre el plan una sola vez.
+    El resolver de esa sección se llama una sola vez. No vuelve a leer
+    el documento y no ejecuta la campaña.
+    """
+    config_file = Path(config_path)
+    bank = read_bank(config_file)
+    experiments = bank.experiments
+    if isinstance(experiments, ExperimentBankExperiments):
+        resolve = resolve_e1_campaign
+    elif isinstance(experiments, ExperimentBankE2Section):
+        resolve = resolve_e2_campaign
+    elif isinstance(experiments, ExperimentBankE3Section):
+        resolve = resolve_e3_campaign
+    else:
+        raise ValueError(
+            "el documento no selecciona experiments.e1, "
+            "experiments.e2 ni experiments.e3"
+        )
+    plan_file = resolve_contact_plan_path(
+        config_file,
+        bank.scenario.contact_plan_file,
+    )
+    plan = read_contact_plan(plan_file)
+    return resolve(bank, plan)
 
 def load_e1_campaign(config_path: str | Path) -> ResolvedE1Campaign:
     """

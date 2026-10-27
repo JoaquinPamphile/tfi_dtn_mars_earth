@@ -1,15 +1,6 @@
-"""Manejo de los comandos de desarrollo ``run``, ``scientific-run`` y ``scientific-campaign``.
-
-Cada comando reconoce sus argumentos, ejecuta su corrida y presenta el
-resultado. ``run`` es la demostración local. Los otros dos usan
-especificaciones controladas. No despacha otros comandos.
-"""
-
 from __future__ import annotations
-
 import sys
 from dataclasses import dataclass
-
 from core.simulation.engine import SimulationStatus
 from core.sync.strategy import (
     STRATEGY_TYPE_FIXED_BATCH,
@@ -37,12 +28,7 @@ from cli.present import (
     summary_json,
 )
 
-_ESTRATEGIAS = (STRATEGY_TYPE_INDIVIDUAL, STRATEGY_TYPE_FIXED_BATCH)
-
-
-class _AyudaPedida(Exception):
-    """El usuario pidió la ayuda."""
-
+ESTRATEGIAS = (STRATEGY_TYPE_INDIVIDUAL, STRATEGY_TYPE_FIXED_BATCH)
 
 @dataclass(frozen=True, slots=True)
 class _Opciones:
@@ -55,9 +41,7 @@ class _Opciones:
     show_trace: bool
     scientific_summary: bool
 
-
 def comando_scientific_run(tokens: list[str], *, ayuda: str) -> int:
-    """Ejecuta la especificación controlada local. No acepta una campaña."""
     if tokens:
         if tokens == ["-h"] or tokens == ["--help"]:
             print(ayuda, end="")
@@ -73,9 +57,7 @@ def comando_scientific_run(tokens: list[str], *, ayuda: str) -> int:
         return 1
     return 0
 
-
 def comando_scientific_campaign(tokens: list[str], *, ayuda: str) -> int:
-    """Ejecuta la campaña controlada de desarrollo. No acepta una grilla."""
     if tokens:
         if tokens == ["-h"] or tokens == ["--help"]:
             print(ayuda, end="")
@@ -100,14 +82,9 @@ def comando_scientific_campaign(tokens: list[str], *, ayuda: str) -> int:
         return 1
     return 0
 
-
 def comando_run(tokens: list[str], *, ayuda: str) -> int:
-    """Ejecuta la demostración local. No acepta una campaña."""
     try:
         opciones = _parse_opciones(tokens)
-    except _AyudaPedida:
-        print(ayuda, end="")
-        return 0
     except ErrorDeUso as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -143,8 +120,6 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
     while index < len(tokens):
         token = tokens[index]
         opcion = token.split("=", 1)[0]
-        if token in {"-h", "--help"}:
-            raise _AyudaPedida()
         if token == "--json":
             as_json = True
         elif token == "--show-trace":
@@ -153,8 +128,8 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
             scientific_summary = True
         elif opcion == "--strategy":
             valor, index = valor_opcion(tokens, index, "--strategy")
-            if valor not in _ESTRATEGIAS:
-                admitidas = ", ".join(_ESTRATEGIAS)
+            if valor not in ESTRATEGIAS:
+                admitidas = ", ".join(ESTRATEGIAS)
                 raise ErrorDeUso(
                     f"estrategia no admitida: {valor}. Admitidas: {admitidas}."
                 )
@@ -226,3 +201,55 @@ def _emitir(result: RunResult, opciones: _Opciones) -> None:
     if opciones.show_trace:
         print()
         print(format_trace(result))
+
+
+AYUDA = """\
+Uso:
+  python -m cli.development run [opciones]
+  python -m cli.development scientific-run
+  python -m cli.development scientific-campaign
+
+Comandos:
+  run                  Ejecuta una demostración local.
+  scientific-run       Ejecuta la corrida científica controlada.
+  scientific-campaign  Ejecuta la campaña controlada de desarrollo.
+
+Opciones de run:
+  --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
+  --batch-size N                        Tamaño de lote. Obligatorio en fixed_batch.
+  --events N                            Eventos a generar. Por defecto: 10.
+  --recovery {none,sender-driven,receiver-driven}
+                                        Recuperación. Por defecto: none.
+  --fault silent-loss                   Inyecta una pérdida silenciosa.
+  --json                                Resumen operativo en JSON.
+  --show-trace                          Traza: tiempo, índice, tipo y entidad.
+  --scientific-summary                  Métricas científicas de esta corrida.
+
+Ayuda:
+  -h, --help                            Muestra esta ayuda.
+"""
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Ejecuta la consola de desarrollo y devuelve el código de salida."""
+    argumentos = list(sys.argv[1:] if argv is None else argv)
+    if not argumentos:
+        print(AYUDA, end="")
+        return 2
+    if argumentos[0] in {"-h", "--help", "help"}:
+        print(AYUDA, end="")
+        return 0
+    comando = argumentos[0]
+    if comando == "run":
+        return comando_run(argumentos[1:], ayuda=AYUDA)
+    if comando == "scientific-run":
+        return comando_scientific_run(argumentos[1:], ayuda=AYUDA)
+    if comando == "scientific-campaign":
+        return comando_scientific_campaign(argumentos[1:], ayuda=AYUDA)
+    print(f"comando desconocido: {comando}", file=sys.stderr)
+    print(AYUDA, end="", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
