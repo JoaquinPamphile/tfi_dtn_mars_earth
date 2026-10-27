@@ -1,4 +1,4 @@
-"""Texto y JSON del resumen de una corrida, la inspección E1 y E2, y los informes de run-e1 y run-e2.
+"""Texto y JSON del resumen de una corrida, la inspección E1, E2 y E3, y los informes de run-e1, run-e2 y run-e3.
 
 No ejecuta el motor ni lee archivos.
 """
@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 
+from core.failure.plan import FailurePlan
+from core.metrics.recovery import RecoveryEpisodeResult
 from core.metrics.run import ScientificRunMetrics
 from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
 from runner.result import RunResult
@@ -16,7 +18,12 @@ from experiments.contact_plan import (
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
-from experiments.experiment_bank import ResolvedE1Campaign, ResolvedE2Campaign
+from experiments.experiment_bank import (
+    ExperimentBankE3Section,
+    ResolvedE1Campaign,
+    ResolvedE2Campaign,
+    ResolvedE3Campaign,
+)
 from experiments.fingerprint import configuration_hash
 from experiments.report import format_campaign
 
@@ -297,6 +304,59 @@ def format_e2_campaign_inspection(resolved: ResolvedE2Campaign) -> str:
     return "\n".join(lineas).rstrip("\n")
 
 
+def format_e3_campaign_inspection(resolved: ResolvedE3Campaign) -> str:
+    """Resumen de una campaña E3 ya resuelta.
+
+    Lee la spec de cada corrida y el plan ya resuelto. El intervalo es el
+    valor declarado que la resolución conservó: no se obtiene invirtiendo
+    la tasa. No abre archivos, no materializa eventos y no ejecuta.
+    """
+    preparada = resolved.campaign
+    especificacion = preparada.runs[0].spec
+    escenario = especificacion.scenario
+    workload = especificacion.workload
+    plan = resolved.contact_plan_definition
+    horizonte = (
+        "no definido"
+        if escenario.horizon_seconds is None
+        else f"{_numero(escenario.horizon_seconds)} s"
+    )
+    conteo = (
+        "no definido"
+        if workload.max_events is None
+        else str(workload.max_events)
+    )
+    lineas = [
+        "Campaña E3 preparada; simulación no ejecutada.",
+        (
+            "Preparar la campaña no garantiza que la pérdida se active "
+            "ni que la recuperación complete. No corresponde a la evidencia oficial RC1."
+        ),
+        "",
+        f"scenario_id: {escenario.scenario_id}",
+        f"Horizonte: {horizonte}",
+        f"contact_plan_id: {plan.contact_plan_id}",
+        f"Contactos: {len(plan.contacts)}",
+        f"Huella operacional del plan: {contact_plan_fingerprint(plan)}",
+        f"Huella documental del plan: {contact_plan_definition_fingerprint(plan)}",
+        f"Semilla: {especificacion.seed}",
+        f"Identidad del workload: {workload.workload_id}",
+        f"Tipo de evento: {workload.event_type}",
+        f"Flujo: {workload.flow}",
+        f"Conteo: {conteo}",
+        f"Intervalo: {_intervalo_e3(resolved)}",
+        f"Tamaño Individual: {workload.canonical_individual_syncunit_bytes} bytes",
+        f"Secuencia perdida: {_secuencia_configurada(preparada.runs)}",
+        f"campaign_identity: {preparada.campaign_identity}",
+        f"Corridas: {len(preparada.runs)}",
+        "",
+    ]
+    for run in preparada.runs:
+        lineas.extend(_lineas_de_corrida_e3(run))
+        lineas.append("")
+    return "\n".join(lineas).rstrip("\n")
+
+
 def format_configurable_e1_campaign(result: CampaignResult) -> str:
     """Informe de una campaña E1 configurable ya ejecutada.
 
@@ -347,6 +407,29 @@ def format_configurable_e2_campaign(
     ]
     bloques = [
         "\n".join(_lineas_de_resultado_e2(planeada, corrida))
+        for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
+    ]
+    lineas.append("\n\n".join(bloques))
+    return "\n".join(lineas)
+
+
+def format_configurable_e3_campaign(
+    resolved: ResolvedE3Campaign, result: CampaignResult
+) -> str:
+    """Informe de una campaña E3 configurable ya ejecutada.
+
+    La política y el fallo salen de cada spec. Los conteos, el estado,
+    el backlog, la convergencia y los episodios salen del resultado, en
+    el orden recibido. No evalúa la campaña ni calcula métricas nuevas.
+    """
+    lineas = [
+        "Campaña E3 configurable. No corresponde a la evidencia oficial RC1.",
+        "",
+        f"Identidad de campaña: {result.campaign_identity}",
+        "",
+    ]
+    bloques = [
+        "\n".join(_lineas_de_resultado_e3(planeada, corrida))
         for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
     ]
     lineas.append("\n\n".join(bloques))
@@ -466,6 +549,142 @@ def _lineas_de_resultado_e2(
             "Convergió: " + ("sí" if corrida.result.metrics.converged else "no"),
         )
     )
+    return lineas
+
+
+def _lineas_de_resultado_e3(
+    planeada: CampaignRunSpec, corrida: CampaignRunResult
+) -> list[str]:
+    """Una corrida ejecutada, en el orden recibido.
+
+    La política y el fallo se leen de la spec. Una corrida sin resultado
+    muestra el error capturado y no consulta métricas ni episodios.
+    """
+    spec = planeada.spec
+    lineas = [
+        f"[{corrida.index + 1}] {corrida.label}",
+        f"Política de recuperación: {spec.recovery_policy.value}",
+    ]
+    lineas.extend(_lineas_del_fallo_configurado(spec.failure_plan))
+    if corrida.result is None:
+        lineas.extend(
+            (
+                "Estado: falló",
+                f"Tipo: {corrida.error_type}",
+                f"Mensaje: {corrida.error_message}",
+            )
+        )
+        return lineas
+    metrics = corrida.result.metrics
+    lineas.extend(
+        (
+            f"Generados: {corrida.result.events_generated}",
+            f"Persistidos: {corrida.result.events_persisted_earth}",
+            f"Confirmados: {corrida.result.events_confirmed_mars}",
+            f"Estado del motor: {corrida.result.engine_status}",
+            f"Backlog: {metrics.final_backlog}",
+            "Convergió: " + ("sí" if metrics.converged else "no"),
+        )
+    )
+    lineas.extend(_lineas_de_episodios_registrados(metrics))
+    return lineas
+
+
+def _lineas_de_episodios_registrados(metrics: ScientificRunMetrics) -> list[str]:
+    """Episodios ya presentes en el resultado, en el orden recibido.
+
+    La ausencia de episodios no se lee como pérdida inactiva, como
+    ausencia de huecos ni como recuperación lograda.
+    """
+    episodios = metrics.episodes
+    if not episodios:
+        return ["Sin episodios registrados"]
+    lineas = [f"Episodios registrados: {metrics.recovery.episode_count}"]
+    for episodio in episodios:
+        lineas.extend(_lineas_de_episodio(episodio))
+    return lineas
+
+
+def _lineas_de_episodio(episodio: RecoveryEpisodeResult) -> list[str]:
+    """Campos ya publicados del episodio. Los instantes ausentes siguen vacíos."""
+    return [
+        f"Secuencia afectada: {episodio.sequence_number}",
+        f"Disparador de recuperación: {_texto_presente(episodio.recovery_trigger)}",
+        f"Estado del episodio: {episodio.episode_status}",
+        f"Pérdida: {_segundos(episodio.loss_at_sim)}",
+        f"Observación: {_segundos(episodio.gap_observed_at_sim)}",
+        f"Recuperación en Tierra: {_segundos(episodio.earth_recovered_at_sim)}",
+        f"Confirmación en Marte: {_segundos(episodio.origin_confirmed_at_sim)}",
+    ]
+
+
+def _texto_presente(value: str | None) -> str:
+    if value is None:
+        return "no definido"
+    return value
+
+
+def _intervalo_e3(resolved: ResolvedE3Campaign) -> str:
+    """Intervalo declarado en la resolución. No invierte la tasa de la spec."""
+    experiments = resolved.bank_document.experiments
+    if isinstance(experiments, ExperimentBankE3Section):
+        return f"{_numero(experiments.e3.event_interval_seconds)} s"
+    return "no definido"
+
+
+def _secuencia_configurada(runs: tuple[CampaignRunSpec, ...]) -> str:
+    """Secuencia del fallo ya escrito en las specs, en el orden de la campaña."""
+    vistas: list[int] = []
+    for run in runs:
+        for loss in run.spec.failure_plan.silent_forward_delivery_losses:
+            if loss.sequence_number not in vistas:
+                vistas.append(loss.sequence_number)
+    if not vistas:
+        return "no definida"
+    return ", ".join(str(numero) for numero in vistas)
+
+
+def _lineas_de_corrida_e3(run: CampaignRunSpec) -> list[str]:
+    """Una corrida preparada. El ACK auxiliar se aclara solo en receiver-driven."""
+    spec = run.spec
+    lineas = [
+        run.label,
+        f"Política de recuperación: {spec.recovery_policy.value}",
+        f"Estrategia: {spec.strategy_type}",
+        (
+            "Timeout ACK de RetryPolicy: "
+            f"{_numero(spec.retry_policy.ack_timeout_seconds)} s"
+        ),
+    ]
+    if spec.recovery_policy.receiver_driven_enabled:
+        lineas.append(
+            "El ACK de RetryPolicy es auxiliar y no es el timeout del receptor."
+        )
+    if spec.gap_request_timeout_seconds is not None:
+        lineas.append(
+            f"Timeout GapRequest: {_numero(spec.gap_request_timeout_seconds)} s"
+        )
+    lineas.extend(_lineas_del_fallo_configurado(spec.failure_plan))
+    lineas.append(f"configuration_hash: {configuration_hash(spec)}")
+    return lineas
+
+
+def _lineas_del_fallo_configurado(plan: FailurePlan) -> list[str]:
+    """El fallo está escrito en la spec. Preparar no lo activa."""
+    perdidas = plan.silent_forward_delivery_losses
+    if not perdidas and not plan.contact_cuts and not plan.ack_drops:
+        return ["Sin pérdida configurada"]
+    lineas = ["Fallo configurado"]
+    for perdida in perdidas:
+        lineas.extend(
+            (
+                f"Fuente: {perdida.source_id}",
+                f"Secuencia: {perdida.sequence_number}",
+                f"Hop: {perdida.hop}",
+                f"Intento: {perdida.telemetry_attempt_number}",
+                f"Ocurrencias: {perdida.max_occurrences}",
+            )
+        )
     return lineas
 
 

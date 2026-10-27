@@ -4,8 +4,8 @@ La ejecución vive en ``runner``. Este módulo interpreta argumentos,
 despacha el comando y presenta el resultado. El manejo de ``run``,
 ``scientific-run`` y ``scientific-campaign`` vive en ``cli.development``.
 El manejo de ``e1``, ``e2``, ``e3`` y ``e3-sensitivity`` vive en
-``cli.official``. El manejo de ``inspect-e1``, ``inspect-e2``, ``run-e1``
-y ``run-e2`` vive en ``cli.bank``.
+``cli.official``. El manejo de ``inspect-e1``, ``inspect-e2``,
+``inspect-e3``, ``run-e1``, ``run-e2`` y ``run-e3`` vive en ``cli.bank``.
 """
 
 from __future__ import annotations
@@ -15,8 +15,10 @@ import sys
 from cli.bank import (
     comando_inspect_e1,
     comando_inspect_e2,
+    comando_inspect_e3,
     comando_run_e1,
     comando_run_e2,
+    comando_run_e3,
 )
 from cli.development import (
     comando_run,
@@ -36,8 +38,10 @@ Uso:
   python -m cli e3-sensitivity [--json] [--export-evidence]
   python -m cli inspect-e1 --config <archivo.json>
   python -m cli inspect-e2 --config <archivo.json>
+  python -m cli inspect-e3 --config <archivo.json>
   python -m cli run-e1 --config <archivo.json> [--output <resultado.json>]
   python -m cli run-e2 --config <archivo.json> [--output <resultado.json>]
+  python -m cli run-e3 --config <archivo.json> [--output <resultado.json>]
 
 Comandos:
   run                  Ejecuta una demostración local.
@@ -49,8 +53,10 @@ Comandos:
   e3-sensitivity       Ejecuta el análisis de sensibilidad de E3.
   inspect-e1           Prepara e inspecciona una campaña E1, sin ejecutarla.
   inspect-e2           Prepara e inspecciona una campaña E2, sin ejecutarla.
+  inspect-e3           Prepara e inspecciona una campaña E3, sin ejecutarla.
   run-e1               Ejecuta una campaña E1 configurable, muestra los resultados en consola y no genera un paquete reproducible de evidencia.
   run-e2               Ejecuta una campaña E2 configurable, muestra los resultados en consola y no genera un paquete reproducible de evidencia.
+  run-e3               Ejecuta una campaña E3 configurable, muestra los resultados en consola y no genera un paquete reproducible de evidencia.
 
 Opciones de run:
   --strategy {individual,fixed_batch}   Estrategia. Por defecto: individual.
@@ -73,12 +79,19 @@ Opciones de inspect-e1:
 Opciones de inspect-e2:
   --config ARCHIVO                      Configuración E2. Prepara e inspecciona, sin ejecutar.
 
+Opciones de inspect-e3:
+  --config ARCHIVO                      Configuración E3. Prepara e inspecciona, sin ejecutar.
+
 Opciones de run-e1:
   --config ARCHIVO                      Configuración E1. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
   --output ARCHIVO                      Guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo.
 
 Opciones de run-e2:
   --config ARCHIVO                      Configuración E2. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
+  --output ARCHIVO                      Guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo.
+
+Opciones de run-e3:
+  --config ARCHIVO                      Configuración E3. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
   --output ARCHIVO                      Guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo.
 
 Ayuda:
@@ -105,10 +118,14 @@ def main(argv: list[str] | None = None) -> int:
         return comando_inspect_e1(argumentos[1:], ayuda=AYUDA)
     if comando == "inspect-e2":
         return comando_inspect_e2(argumentos[1:], ayuda=AYUDA)
+    if comando == "inspect-e3":
+        return comando_inspect_e3(argumentos[1:], ayuda=AYUDA)
     if comando == "run-e1":
         return comando_run_e1(argumentos[1:], ayuda=AYUDA)
     if comando == "run-e2":
         return comando_run_e2(argumentos[1:], ayuda=AYUDA)
+    if comando == "run-e3":
+        return comando_run_e3(argumentos[1:], ayuda=AYUDA)
     if comando in {"e1", "e2", "e3", "e3-sensitivity"}:
         return comando_familia(comando, argumentos[1:], ayuda=AYUDA)
     print(f"comando desconocido: {comando}", file=sys.stderr)

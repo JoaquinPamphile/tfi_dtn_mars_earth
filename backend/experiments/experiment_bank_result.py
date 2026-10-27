@@ -2,11 +2,13 @@
 
 La construcción es puramente en memoria. ``run_results`` sigue por posición
 el orden de ``campaign_manifest.runs`` y conserva solamente los campos de
-``ScientificRunResult`` que ese manifiesto no serializa.
+``ScientificRunResult`` que ese manifiesto no serializa. E3 usa la forma
+de E1: la capacidad nominal de E2 no entra en ese documento.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from dataclasses import asdict
@@ -14,13 +16,17 @@ from pathlib import Path
 from typing import Any
 
 from experiments.campaign import CampaignResult, CampaignSpec
-from experiments.canonical import canonical_json_text, jsonable
+from experiments.canonical import jsonable
 from experiments.contact_plan import (
     ContactPlanDefinition,
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
-from experiments.experiment_bank import ResolvedE1Campaign, ResolvedE2Campaign
+from experiments.experiment_bank import (
+    ResolvedE1Campaign,
+    ResolvedE2Campaign,
+    ResolvedE3Campaign,
+)
 from experiments.manifest import campaign_manifest
 from experiments.offered_load import ReferenceCapacity
 from experiments.result import ScientificRunResult
@@ -29,6 +35,7 @@ from experiments.software_provenance import SoftwareProvenance, current_provenan
 BANK_RESULT_SCHEMA_VERSION = 1
 E1_CONFIGURABLE_BANK_RESULT = "e1_configurable_bank_result"
 E2_CONFIGURABLE_BANK_RESULT = "e2_configurable_bank_result"
+E3_CONFIGURABLE_BANK_RESULT = "e3_configurable_bank_result"
 
 
 def build_e1_bank_result(
@@ -112,6 +119,69 @@ def build_e2_bank_result(
     return _json_object(document)
 
 
+def build_e3_bank_result(
+    resolved: ResolvedE3Campaign,
+    result: CampaignResult,
+    provenance: SoftwareProvenance | None = None,
+) -> dict[str, Any]:
+    """Combina la campaña E3 resuelta y su resultado, sin ejecutar ni leer archivos.
+
+    El documento sigue la forma de E1. No lleva ``reference_capacity``.
+    Las políticas, los timeouts y los fallos configurados quedan en las
+    especificaciones del manifiesto. Las métricas y los episodios
+    observados quedan en ``manifest.metrics``, que ya los anida en
+    ``recovery``. ``run_results`` conserva los eventos y los demás campos
+    de ``ScientificRunResult`` que el manifiesto no serializa.
+
+    La correspondencia es la de ``campaign_manifest`` y
+    ``_require_completed_results_match_specs``: identidad de campaña,
+    cantidad, índices, rótulos y orden, y después los identificadores y
+    parámetros que cada resultado presente guarda, contra su propia spec.
+    El nombre histórico de ese helper habla de corrida terminada porque
+    ``result`` no es ``None``. No consulta ``engine_status``. Una corrida
+    sin resultado conserva el terminal con su error y ``result`` null.
+
+    Esa comparación alcanza los campos que ``ScientificRunResult``
+    conserva: escenario, workload, semilla, identidades, estrategia, lote,
+    parada, horizonte, política de recuperación y fracción de carga. No
+    alcanza el plan de fallos, el timeout de ACK, el timeout de
+    GapRequest, la traza, el estado del motor, las métricas ni los
+    episodios, porque el resultado no los guarda como campos contrastables
+    con la spec. Esos datos entran por la spec del manifiesto o, si fueron
+    observados, por ``metrics``.
+
+    El constructor guarda lo observado. No exige convergencia, backlog
+    cero, entrega o confirmación completas, dataset observado completo,
+    activación de la pérdida, un episodio en B o D, ni ausencia de
+    episodios en A o C. No evalúa, no compara celdas, no arma rankings y
+    no declara equivalencia con RC1.
+
+    El manifiesto calcula el hash de configuración de cada corrida y la
+    huella del dataset esperado. Las cuatro celdas comparten workload, así
+    que esa huella materializa los eventos esperados en memoria una sola
+    vez por dataset cuando todavía no están en la caché. El coste adicional
+    son las dos huellas del plan ya resuelto y la serialización del
+    documento, incluidos los eventos observados. No abre
+    ``contact_plan_file``, no ejecuta el motor y no recalcula resultados.
+    """
+    if not isinstance(resolved, ResolvedE3Campaign):
+        raise TypeError("resolved debe ser un ResolvedE3Campaign")
+    observed, manifest = _observed_campaign_manifest(
+        resolved.campaign,
+        result,
+        provenance,
+    )
+    document = _configured_bank_document(
+        artifact_type=E3_CONFIGURABLE_BANK_RESULT,
+        configuration=resolved.bank_document.model_dump(mode="json"),
+        contact_plan_definition=resolved.contact_plan_definition,
+        provenance=observed,
+        manifest=manifest,
+        result=result,
+    )
+    return _json_object(document)
+
+
 def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
     """Publica un documento E1 nuevo sin reemplazar ninguna entrada existente.
 
@@ -130,6 +200,16 @@ def write_e2_bank_result(path: Path, document: dict[str, Any]) -> Path:
     return _publish_bank_result(path, document, E2_CONFIGURABLE_BANK_RESULT)
 
 
+def write_e3_bank_result(path: Path, document: dict[str, Any]) -> Path:
+    """Publica un documento E3 ya construido sin reemplazar ninguna entrada existente.
+
+    Acepta la versión 1 y solamente ``e3_configurable_bank_result``. Un
+    resultado E1 o E2 se rechaza antes de crear archivos. No vuelve a
+    validar la campaña, sus episodios ni su correspondencia científica.
+    """
+    return _publish_bank_result(path, document, E3_CONFIGURABLE_BANK_RESULT)
+
+
 def _publish_bank_result(
     path: Path,
     document: dict[str, Any],
@@ -137,22 +217,38 @@ def _publish_bank_result(
 ) -> Path:
     """Escribe y cierra un temporal, luego lo publica con ``os.link``.
 
-    La serialización canónica y las validaciones ocurren antes de crear el
-    temporal, en el mismo directorio del destino. El enlace duro publica el
-    inode completo con creación exclusiva: si ``path`` ya existe, ``os.link``
-    falla y el destino queda intacto. El temporal se elimina al terminar,
-    también si el enlace falla. No hay fallback para filesystems sin enlaces
-    duros, ni se crean directorios padre. No promete durabilidad ante un
-    corte de energía ni limpieza si el proceso termina de golpe.
+    ``jsonable`` recorre el árbol y rechaza tipos ajenos al contrato y
+    flotantes no finitos antes de crear el temporal. No construye el texto.
+    El marcador y la versión se comprueban después, también antes del
+    temporal, sobre el documento original.
+
+    El texto lo emite ``json.JSONEncoder.iterencode`` con las opciones de
+    ``canonical_json_text``: ``sort_keys=True``, ``indent=2``,
+    ``ensure_ascii=True`` y ``allow_nan=False``. Esas opciones se repiten
+    aquí para no tocar el serializador histórico. Cada fragmento se escribe
+    al temporal y el salto de línea final va aparte. El enlace se hace
+    recién cuando el temporal está cerrado.
+
+    Si el codificador o la escritura fallan, el destino no se publica y el
+    temporal se elimina. El enlace duro publica el inode con creación
+    exclusiva: si ``path`` ya existe, ``os.link`` falla y el destino queda
+    intacto. El temporal se elimina al terminar, también si el enlace falla.
+    No hay ``os.replace`` ni fallback para filesystems sin enlaces duros, ni
+    se crean directorios padre. No promete durabilidad ante un corte de
+    energía ni limpieza si el proceso termina de golpe.
     """
     if not isinstance(path, Path):
         raise TypeError("path debe ser un Path")
     if not isinstance(document, dict):
         raise TypeError("document debe ser un dict")
 
-    text = canonical_json_text(document)
+    serialized = jsonable(document)
     if document.get("artifact_type") != artifact_type:
-        bank = "E1" if artifact_type == E1_CONFIGURABLE_BANK_RESULT else "E2"
+        bank = {
+            E1_CONFIGURABLE_BANK_RESULT: "E1",
+            E2_CONFIGURABLE_BANK_RESULT: "E2",
+            E3_CONFIGURABLE_BANK_RESULT: "E3",
+        }[artifact_type]
         raise ValueError(
             f"artifact_type no corresponde a un resultado del banco {bank}"
         )
@@ -178,7 +274,15 @@ def _publish_bank_result(
             newline="\n",
         ) as stream:
             descriptor_open = False
-            stream.write(text)
+            encoder = json.JSONEncoder(
+                sort_keys=True,
+                indent=2,
+                ensure_ascii=True,
+                allow_nan=False,
+            )
+            for chunk in encoder.iterencode(serialized):
+                stream.write(chunk)
+            stream.write("\n")
         os.link(temporary, path)
     finally:
         if descriptor_open:

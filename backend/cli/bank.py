@@ -1,11 +1,12 @@
 """Manejo de los comandos del banco configurable.
 
-``inspect-e1`` y ``inspect-e2`` preparan una campaña y no la ejecutan.
-``run-e1`` ejecuta una campaña E1 configurable y muestra cada corrida en
-consola, sin exportar evidencia. ``run-e2`` hace lo mismo con una campaña
-E2 configurable: no la evalúa ni exporta evidencia. Con ``--output``,
-cada ejecución guarda su resultado autocontenido.
-No despacha otros comandos.
+``inspect-e1``, ``inspect-e2`` e ``inspect-e3`` preparan una campaña y no
+la ejecutan. ``run-e1`` ejecuta una campaña E1 configurable y muestra cada
+corrida en consola, sin exportar evidencia. ``run-e2`` hace lo mismo con
+una campaña E2 configurable: no la evalúa ni exporta evidencia.
+``run-e3`` ejecuta una campaña E3 configurable y muestra cada corrida.
+No la evalúa y no clasifica comparabilidad. Con ``--output``, cada
+ejecución guarda su resultado autocontenido. No despacha otros comandos.
 """
 
 from __future__ import annotations
@@ -21,18 +22,26 @@ from experiments.experiment_bank_interpretation import assess_e1_bank_comparison
 from experiments.experiment_bank_result import (
     build_e1_bank_result,
     build_e2_bank_result,
+    build_e3_bank_result,
     write_e1_bank_result,
     write_e2_bank_result,
+    write_e3_bank_result,
 )
-from experiments.experiment_campaign_loader import load_e1_campaign, load_e2_campaign
+from experiments.experiment_campaign_loader import (
+    load_e1_campaign,
+    load_e2_campaign,
+    load_e3_campaign,
+)
 
 from cli.arguments import ErrorDeUso, valor_opcion
 from cli.present import (
     format_configurable_e1_campaign,
     format_configurable_e2_campaign,
+    format_configurable_e3_campaign,
     format_e1_bank_comparison,
     format_e1_campaign_inspection,
     format_e2_campaign_inspection,
+    format_e3_campaign_inspection,
 )
 
 
@@ -71,6 +80,25 @@ def comando_inspect_e2(tokens: list[str], *, ayuda: str) -> int:
         print(str(exc), file=sys.stderr)
         return 1
     print(format_e2_campaign_inspection(resuelta))
+    return 0
+
+
+def comando_inspect_e3(tokens: list[str], *, ayuda: str) -> int:
+    """Prepara una campaña E3 y muestra el resumen. No ejecuta el motor."""
+    if tokens == ["-h"] or tokens == ["--help"]:
+        print(ayuda, end="")
+        return 0
+    try:
+        config_path = _ruta_de_config(tokens, comando="inspect-e3")
+    except ErrorDeUso as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        resuelta = load_e3_campaign(config_path)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(format_e3_campaign_inspection(resuelta))
     return 0
 
 
@@ -135,6 +163,42 @@ def comando_run_e2(tokens: list[str], *, ayuda: str) -> int:
     if output_path is not None and not _publicar_resultado(
         build_e2_bank_result,
         write_e2_bank_result,
+        resuelta,
+        resultado,
+        output_path,
+    ):
+        return 1
+    return 0 if _todas_las_corridas_completaron(resultado) else 1
+
+
+def comando_run_e3(tokens: list[str], *, ayuda: str) -> int:
+    """Carga una campaña E3, la ejecuta una vez y muestra cada corrida.
+
+    Con ``--output`` guarda el documento ya construido. No evalúa la
+    campaña, no clasifica comparabilidad y no exporta evidencia. El
+    parseo termina antes de cargar o ejecutar.
+    """
+    if tokens == ["-h"] or tokens == ["--help"]:
+        print(ayuda, end="")
+        return 0
+    try:
+        config_path, output_path = _opciones_de_campana(tokens, comando="run-e3")
+    except ErrorDeUso as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
+        resuelta = load_e3_campaign(config_path)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    resultado = execute_campaign(resuelta.campaign)
+    print(format_configurable_e3_campaign(resuelta, resultado))
+    fallos = _resumen_de_fallos(resultado)
+    if fallos:
+        print(fallos, file=sys.stderr)
+    if output_path is not None and not _publicar_resultado(
+        build_e3_bank_result,
+        write_e3_bank_result,
         resuelta,
         resultado,
         output_path,
