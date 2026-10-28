@@ -8,18 +8,21 @@ Uso:
   python -m cli run --config <archivo.json> [--output <resultado.json>]
 
 Comandos:
-  inspect                               Prepara e inspecciona la campaña que declara el documento, sin ejecutarla.
-  run                                   Ejecuta la campaña que declara el documento, muestra los resultados en consola y no genera un paquete reproducible de evidencia.
+  inspect                               Prepara e inspecciona la campaña que declara el documento, sin ejecutarla. Una suite muestra cada campaña en el orden declarado, sin ejecutarla.
+  run                                   Ejecuta la campaña que declara el documento, muestra los resultados en consola y no genera un paquete reproducible de evidencia. Una suite ejecuta las campañas en el orden declarado.
 
 Opciones de inspect:
-  --config ARCHIVO                      Documento del banco. La sección experiments.e1, experiments.e2 o experiments.e3 selecciona la campaña. Prepara e inspecciona, sin ejecutar.
+  --config ARCHIVO                      Documento individual del banco o documento de suite. La sección experiments.e1, experiments.e2, experiments.e3 o experiments.e3_sensitivity selecciona la campaña individual. Prepara e inspecciona, sin ejecutar.
 
 Opciones de run:
-  --config ARCHIVO                      Documento del banco. La sección experiments.e1, experiments.e2 o experiments.e3 selecciona la campaña. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
-  --output ARCHIVO                      Guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo.
+  --config ARCHIVO                      Documento individual del banco o documento de suite. La sección experiments.e1, experiments.e2, experiments.e3 o experiments.e3_sensitivity selecciona la campaña individual. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
+  --output ARCHIVO                      Documento individual: guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo. Suite: directorio nuevo cuyo padre ya existe.
 
 Ayuda:
   -h, --help                            Muestra esta ayuda.
+
+Otras entradas:
+  python -m cli.development --help
 """
 
 def main(argv: list[str] | None = None) -> int:

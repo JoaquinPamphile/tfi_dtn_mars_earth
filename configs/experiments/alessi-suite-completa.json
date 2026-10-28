@@ -1,0 +1,22 @@
+{
+  "suite_schema_version": 1,
+  "suite_id": "alessi-e1-e2-e3-sensibilidad",
+  "experiments": [
+    {
+      "id": "e1",
+      "config_file": "alessi-e1.json"
+    },
+    {
+      "id": "e2",
+      "config_file": "alessi-e2.json"
+    },
+    {
+      "id": "e3",
+      "config_file": "alessi-e3.json"
+    },
+    {
+      "id": "e3_sensitivity",
+      "config_file": "alessi-e3-sensitivity.json"
+    }
+  ]
+}

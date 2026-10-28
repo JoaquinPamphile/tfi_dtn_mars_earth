@@ -1,44 +1,72 @@
 """
-Abre el JSON de una campaña configurable y el plan de contactos que nombra.
+Abre el JSON de una campaña configurable, o de una suite, y el plan que nombra.
 
-``load_bank_campaign`` identifica la sección ya validada y carga esa campaña.
-``load_e1_campaign`` rechaza un documento E2 o E3 antes de abrir el plan.
-``load_e2_campaign`` rechaza un documento E1 o E3 antes de resolver esa ruta
-y de abrir el archivo. ``load_e3_campaign`` rechaza un documento E1 o E2
-antes de resolver esa ruta y de abrir el archivo. Ninguno ejecuta la campaña.
+``load_declared_configuration`` es la entrada de ``inspect`` y ``run``.
+Lee el archivo una vez y, por el discriminador explícito, carga esa campaña
+o una suite. No prueba el otro modelo si el primero no valida.
+
+Una suite valida cada entrada antes de devolverse. Rechaza una sección distinta
+de la declarada y una suite anidada antes de abrir el plan de esa entrada.
+No ejecuta el motor.
 """
 from __future__ import annotations
+
+import json
 from pathlib import Path
+from typing import Any, Literal
+
 from pydantic import ValidationError
+
 from experiments.contact_plan import ContactPlanDefinition
 from experiments.experiment_bank import (
     ExperimentBankDocument,
     ExperimentBankE2Section,
     ExperimentBankE3Section,
+    ExperimentBankE3SensitivitySection,
     ExperimentBankExperiments,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
-    require_e1_bank_selection,
-    require_e2_bank_selection,
-    require_e3_bank_selection,
+    ResolvedE3SensitivityCampaign,
     resolve_e1_campaign,
     resolve_e2_campaign,
     resolve_e3_campaign,
+    resolve_e3_sensitivity_campaign,
+)
+from experiments.experiment_suite import (
+    ResolvedSuite,
+    ResolvedSuiteEntry,
+    suite_from_text,
 )
 
-def load_bank_campaign(
-    config_path: str | Path,
-) -> ResolvedE1Campaign | ResolvedE2Campaign | ResolvedE3Campaign:
-    """Carga la campaña que declara el documento.
+DocumentKind = Literal["campaign", "suite"]
+ResolvedCampaign = (
+    ResolvedE1Campaign
+    | ResolvedE2Campaign
+    | ResolvedE3Campaign
+    | ResolvedE3SensitivityCampaign
+)
 
-    Lee y valida el documento una sola vez, identifica la sección con el
-    modelo ya construido y, solo entonces, abre el plan una sola vez.
-    El resolver de esa sección se llama una sola vez. No vuelve a leer
-    el documento y no ejecuta la campaña.
+def load_declared_configuration(
+    config_path: str | Path,
+) -> ResolvedCampaign | ResolvedSuite:
+    """Carga la campaña o la suite que declara el archivo.
+
+    Lee el archivo una sola vez. El discriminador es la clave presente:
+    ``schema_version`` o ``suite_schema_version``. No prueba el otro
+    modelo si el primero no valida. Una suite carga cada configuración
+    una vez y, con ella, su plan una vez. No ejecuta el motor.
     """
     config_file = Path(config_path)
-    bank = read_bank(config_file)
+    text = read_utf8(config_file, "la configuración")
+    return _load_declared_text(config_file, text, nested=False)
+
+
+def resolve_loaded_bank(
+    config_file: Path,
+    bank: ExperimentBankDocument,
+) -> ResolvedCampaign:
+    """Resuelve la sección ya validada y abre su plan una sola vez."""
     experiments = bank.experiments
     if isinstance(experiments, ExperimentBankExperiments):
         resolve = resolve_e1_campaign
@@ -46,10 +74,12 @@ def load_bank_campaign(
         resolve = resolve_e2_campaign
     elif isinstance(experiments, ExperimentBankE3Section):
         resolve = resolve_e3_campaign
+    elif isinstance(experiments, ExperimentBankE3SensitivitySection):
+        resolve = resolve_e3_sensitivity_campaign
     else:
         raise ValueError(
             "el documento no selecciona experiments.e1, "
-            "experiments.e2 ni experiments.e3"
+            "experiments.e2, experiments.e3 ni experiments.e3_sensitivity"
         )
     plan_file = resolve_contact_plan_path(
         config_file,
@@ -58,62 +88,138 @@ def load_bank_campaign(
     plan = read_contact_plan(plan_file)
     return resolve(bank, plan)
 
-def load_e1_campaign(config_path: str | Path) -> ResolvedE1Campaign:
-    """
-    Carga la campaña E1 descripta en config_path.
 
-    Un documento que selecciona E2 o E3 se rechaza antes de abrir el
-    ContactPlan y antes de resolver la campaña.
-    """
-    config_file = Path(config_path)
-    bank = read_bank(config_file)
-    require_e1_bank_selection(bank)
-    plan_file = resolve_contact_plan_path(config_file, bank.scenario.contact_plan_file)
-    plan = read_contact_plan(plan_file)
-    return resolve_e1_campaign(bank, plan)
+def document_kind(payload: dict[str, Any]) -> DocumentKind:
+    """Elige campaña o suite por la clave presente. No valida ninguno de los dos."""
+    has_campaign = "schema_version" in payload
+    has_suite = "suite_schema_version" in payload
+    if has_campaign and has_suite:
+        raise ValueError(
+            "el documento declara schema_version y suite_schema_version; "
+            "debe declarar exactamente uno"
+        )
+    if has_suite:
+        return "suite"
+    if has_campaign:
+        return "campaign"
+    raise ValueError(
+        "el documento debe declarar schema_version o suite_schema_version"
+    )
 
-def load_e2_campaign(config_path: str | Path) -> ResolvedE2Campaign:
-    """
-    Carga la campaña E2 descripta en config_path.
 
-    Un documento que selecciona E1 o E3 se rechaza antes de resolver la
-    ruta del ContactPlan y antes de abrirlo.
-    """
-    config_file = Path(config_path)
-    bank = read_bank(config_file)
-    require_e2_bank_selection(bank)
-    plan_file = resolve_contact_plan_path(config_file, bank.scenario.contact_plan_file)
-    plan = read_contact_plan(plan_file)
-    return resolve_e2_campaign(bank, plan)
-
-def load_e3_campaign(config_path: str | Path) -> ResolvedE3Campaign:
-    """
-    Carga la campaña E3 descripta en config_path.
-
-    Un documento que selecciona E1 o E2 se rechaza antes de resolver la
-    ruta del ContactPlan y antes de abrirlo.
-    """
-    config_file = Path(config_path)
-    bank = read_bank(config_file)
-    require_e3_bank_selection(bank)
-    plan_file = resolve_contact_plan_path(config_file, bank.scenario.contact_plan_file)
-    plan = read_contact_plan(plan_file)
-    return resolve_e3_campaign(bank, plan)
-
-def resolve_contact_plan_path(config_file: Path, contact_plan_file: str) -> Path:
-    reference = Path(contact_plan_file)
+def resolve_suite_config_path(suite_file: Path, config_file: str) -> Path:
+    """Resuelve ``config_file`` respecto de la suite. Una ruta absoluta se usa tal cual."""
+    reference = Path(config_file)
     if reference.is_absolute():
         return reference
-    return config_file.parent / reference
+    return suite_file.parent / reference
 
-def read_bank(config_file: Path) -> ExperimentBankDocument:
-    text = read_utf8(config_file, "la configuración")
+
+def _load_declared_text(
+    config_file: Path,
+    text: str,
+    *,
+    nested: bool,
+) -> ResolvedCampaign | ResolvedSuite:
+    payload = _json_object(text, config_file)
+    kind = document_kind(payload)
+    if kind == "suite":
+        if nested:
+            raise ValueError(f"no se admiten suites anidadas: {config_file}")
+        return _load_suite(config_file, text)
+    return _load_campaign_text(config_file, text, expected_id=None)
+
+
+def _load_suite(suite_file: Path, text: str) -> ResolvedSuite:
+    document = suite_from_text(text, suite_file)
+    entries: list[ResolvedSuiteEntry] = []
+    for item in document.experiments:
+        child = resolve_suite_config_path(suite_file, item.config_file)
+        child_text = read_utf8(child, "la configuración")
+        resolved = _load_campaign_entry(child, child_text, item.id)
+        entries.append(
+            ResolvedSuiteEntry(
+                experiment_id=item.id,
+                config_file=item.config_file,
+                resolved=resolved,
+            )
+        )
+    return ResolvedSuite(document=document, entries=tuple(entries))
+
+
+def _load_campaign_entry(
+    config_file: Path,
+    text: str,
+    expected_id: str,
+) -> ResolvedCampaign:
+    payload = _json_object(text, config_file)
+    if document_kind(payload) == "suite":
+        raise ValueError(f"no se admiten suites anidadas: {config_file}")
+    return _load_campaign_text(config_file, text, expected_id=expected_id)
+
+
+def _load_campaign_text(
+    config_file: Path,
+    text: str,
+    *,
+    expected_id: str | None,
+) -> ResolvedCampaign:
+    bank = bank_from_text(text, config_file)
+    if expected_id is not None:
+        actual = _bank_section(bank)
+        if actual != expected_id:
+            raise ValueError(
+                f"la entrada {expected_id} no coincide con la sección "
+                f"experiments.{actual} de {config_file}"
+            )
+    return resolve_loaded_bank(config_file, bank)
+
+
+def _bank_section(bank: ExperimentBankDocument) -> str:
+    experiments = bank.experiments
+    if isinstance(experiments, ExperimentBankExperiments):
+        return "e1"
+    if isinstance(experiments, ExperimentBankE2Section):
+        return "e2"
+    if isinstance(experiments, ExperimentBankE3Section):
+        return "e3"
+    if isinstance(experiments, ExperimentBankE3SensitivitySection):
+        return "e3_sensitivity"
+    raise ValueError(
+        "el documento no selecciona experiments.e1, "
+        "experiments.e2, experiments.e3 ni experiments.e3_sensitivity"
+    )
+
+
+def _json_object(text: str, path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"no se pudo validar la configuración: {path}\n{error}"
+        ) from error
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"no se pudo validar la configuración: {path}\n"
+            "el documento debe ser un objeto JSON"
+        )
+    return payload
+
+
+def bank_from_text(text: str, config_file: Path) -> ExperimentBankDocument:
     try:
         return ExperimentBankDocument.model_validate_json(text)
     except ValidationError as error:
         raise ValueError(
             f"no se pudo validar la configuración: {config_file}\n{error}"
         ) from error
+
+
+def resolve_contact_plan_path(config_file: Path, contact_plan_file: str) -> Path:
+    reference = Path(contact_plan_file)
+    if reference.is_absolute():
+        return reference
+    return config_file.parent / reference
 
 def read_contact_plan(plan_file: Path) -> ContactPlanDefinition:
     text = read_utf8(plan_file, "el ContactPlan")

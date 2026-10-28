@@ -26,6 +26,7 @@ from experiments.experiment_bank import (
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
+    ResolvedE3SensitivityCampaign,
 )
 from experiments.manifest import campaign_manifest
 from experiments.offered_load import ReferenceCapacity
@@ -36,6 +37,7 @@ BANK_RESULT_SCHEMA_VERSION = 1
 E1_CONFIGURABLE_BANK_RESULT = "e1_configurable_bank_result"
 E2_CONFIGURABLE_BANK_RESULT = "e2_configurable_bank_result"
 E3_CONFIGURABLE_BANK_RESULT = "e3_configurable_bank_result"
+E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT = "e3_sensitivity_configurable_bank_result"
 
 
 def build_e1_bank_result(
@@ -182,6 +184,35 @@ def build_e3_bank_result(
     return _json_object(document)
 
 
+def build_e3_sensitivity_bank_result(
+    resolved: ResolvedE3SensitivityCampaign,
+    result: CampaignResult,
+    provenance: SoftwareProvenance | None = None,
+) -> dict[str, Any]:
+    """Combina la sensibilidad resuelta y su resultado, sin ejecutar ni leer archivos.
+
+    Reutiliza la estructura de E3. Las métricas y los episodios quedan en
+    el manifiesto. No llama al evaluador histórico, no arma rankings y no
+    exige un episodio, recuperación completa ni motor COMPLETED.
+    """
+    if not isinstance(resolved, ResolvedE3SensitivityCampaign):
+        raise TypeError("resolved debe ser un ResolvedE3SensitivityCampaign")
+    observed, manifest = _observed_campaign_manifest(
+        resolved.campaign,
+        result,
+        provenance,
+    )
+    document = _configured_bank_document(
+        artifact_type=E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT,
+        configuration=resolved.bank_document.model_dump(mode="json"),
+        contact_plan_definition=resolved.contact_plan_definition,
+        provenance=observed,
+        manifest=manifest,
+        result=result,
+    )
+    return _json_object(document)
+
+
 def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
     """Publica un documento E1 nuevo sin reemplazar ninguna entrada existente.
 
@@ -210,17 +241,32 @@ def write_e3_bank_result(path: Path, document: dict[str, Any]) -> Path:
     return _publish_bank_result(path, document, E3_CONFIGURABLE_BANK_RESULT)
 
 
+def write_e3_sensitivity_bank_result(path: Path, document: dict[str, Any]) -> Path:
+    """Publica sensibilidad ya construida sin reemplazar un archivo existente.
+
+    Acepta la versión 1 y solamente ``e3_sensitivity_configurable_bank_result``.
+    Un resultado E1, E2 o E3 se rechaza antes de crear archivos. No amplía
+    los marcadores de esos escritores.
+    """
+    return _publish_bank_result(
+        path,
+        document,
+        E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT,
+    )
+
+
 def _publish_bank_result(
     path: Path,
     document: dict[str, Any],
     artifact_type: str,
 ) -> Path:
-    """Escribe y cierra un temporal, luego lo publica con ``os.link``.
+    """Comprueba el marcador del banco y publica con creación exclusiva.
 
     ``jsonable`` recorre el árbol y rechaza tipos ajenos al contrato y
     flotantes no finitos antes de crear el temporal. No construye el texto.
     El marcador y la versión se comprueban después, también antes del
-    temporal, sobre el documento original.
+    temporal, sobre el documento original. La escritura es
+    ``write_exclusive_canonical_json``; E1, E2 y E3 no aceptan otro marcador.
 
     El texto lo emite ``json.JSONEncoder.iterencode`` con las opciones de
     ``canonical_json_text``: ``sort_keys=True``, ``indent=2``,
@@ -248,6 +294,7 @@ def _publish_bank_result(
             E1_CONFIGURABLE_BANK_RESULT: "E1",
             E2_CONFIGURABLE_BANK_RESULT: "E2",
             E3_CONFIGURABLE_BANK_RESULT: "E3",
+            E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT: "sensibilidad de E3",
         }[artifact_type]
         raise ValueError(
             f"artifact_type no corresponde a un resultado del banco {bank}"
@@ -258,6 +305,32 @@ def _publish_bank_result(
             "bank_result_schema_version no soportada: "
             f"se requiere {BANK_RESULT_SCHEMA_VERSION}"
         )
+    return write_exclusive_canonical_json(path, serialized)
+
+
+def write_exclusive_canonical_json(path: Path, serialized: Any) -> Path:
+    """Publica un objeto ya aceptado, con creación exclusiva e incremental.
+
+    No interpreta marcadores. Los escritores E1, E2 y E3 comprueban el suyo
+    antes de llamar. El resumen de suite usa esta misma publicación y no
+    entra en esos marcadores.
+
+    El texto lo emite ``json.JSONEncoder.iterencode`` con las opciones de
+    ``canonical_json_text``: ``sort_keys=True``, ``indent=2``,
+    ``ensure_ascii=True`` y ``allow_nan=False``. Cada fragmento se escribe
+    al temporal y el salto de línea final va aparte. El enlace se hace
+    recién cuando el temporal está cerrado.
+
+    Si el codificador o la escritura fallan, el destino no se publica y el
+    temporal se elimina. El enlace duro publica el inode con creación
+    exclusiva: si ``path`` ya existe, ``os.link`` falla y el destino queda
+    intacto. El temporal se elimina al terminar, también si el enlace falla.
+    No hay ``os.replace`` ni fallback para filesystems sin enlaces duros, ni
+    se crean directorios padre. No promete durabilidad ante un corte de
+    energía ni limpieza si el proceso termina de golpe.
+    """
+    if not isinstance(path, Path):
+        raise TypeError("path debe ser un Path")
 
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.",

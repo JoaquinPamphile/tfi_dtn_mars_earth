@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "seed": 1,
+  "scenario": {
+    "id": "research-alessi-baseline",
+    "horizon_seconds": 86400.0,
+    "contact_plan_file": "../contact-plans/alessi-baseline.json",
+    "description": "Línea base de tres nodos en tiempo físico, derivada del análisis de prestaciones DTN de comunicaciones multi-activo Marte–Tierra. Corte representativo del orbitador 1: lander 143, orbitador 141 y un extremo Tierra que reúne GS1 (201), GS2 (202), GS3 (203) y EDRS (105). Los instantes salen de una reconstrucción de la figura 5, redondeada al múltiplo de 5 s de esa figura y pasada a tiempo físico multiplicando por 60. No son una tabla exacta de contactos ni un efemérides orbital. No reproduce la red de nueve nodos y no usa el orbitador 2.",
+    "notes": "Clasificación. Intervalos Marte–relé: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos relé–Tierra: tiempo SOURCE_APPROXIMATED de la unión reconstruida y topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+  },
+  "experiments": {
+    "e3_sensitivity": {
+      "event_count": 10000,
+      "event_interval_seconds": 2.048,
+      "sender_ack_timeout_seconds": 8250.0,
+      "gap_request_timeout_seconds": 6694.0,
+      "loss_sequence_numbers": [1, 5000, 9998],
+      "start_time_sim": 0.0,
+      "individual_syncunit_bytes": 4096,
+      "workload_id": "alessi-normal-tm",
+      "event_type": "research.alessi.normal_tm",
+      "flow": "alessi.normal_tm"
+    }
+  }
+}

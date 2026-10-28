@@ -20,10 +20,13 @@ from experiments.contact_plan import (
 )
 from experiments.experiment_bank import (
     ExperimentBankE3Section,
+    ExperimentBankE3SensitivitySection,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
+    ResolvedE3SensitivityCampaign,
 )
+from experiments.experiment_suite import ResolvedSuite, SuiteSummaryEntry
 from experiments.fingerprint import configuration_hash
 from experiments.report import format_campaign
 
@@ -436,6 +439,143 @@ def format_configurable_e3_campaign(
     return "\n".join(lineas)
 
 
+def format_e3_sensitivity_campaign_inspection(
+    resolved: ResolvedE3SensitivityCampaign,
+) -> str:
+    """Resumen de una sensibilidad de E3 ya resuelta. No ejecuta el motor.
+
+    Reutiliza las líneas de cada corrida E3. El encabezado deja explícito
+    que es sensibilidad por parejas, no un cuarto experimento.
+    """
+    preparada = resolved.campaign
+    especificacion = preparada.runs[0].spec
+    escenario = especificacion.scenario
+    workload = especificacion.workload
+    plan = resolved.contact_plan_definition
+    horizonte = (
+        "no definido"
+        if escenario.horizon_seconds is None
+        else f"{_numero(escenario.horizon_seconds)} s"
+    )
+    conteo = (
+        "no definido"
+        if workload.max_events is None
+        else str(workload.max_events)
+    )
+    lineas = [
+        "Sensibilidad de E3 preparada; simulación no ejecutada.",
+        (
+            "Cada secuencia declarada arma una pareja sender-driven y "
+            "receiver-driven, en ese orden, con la misma pérdida. "
+            "No es un experimento independiente ni corresponde a la evidencia oficial RC1."
+        ),
+        "",
+        f"scenario_id: {escenario.scenario_id}",
+        f"Horizonte: {horizonte}",
+        f"contact_plan_id: {plan.contact_plan_id}",
+        f"Contactos: {len(plan.contacts)}",
+        f"Huella operacional del plan: {contact_plan_fingerprint(plan)}",
+        f"Huella documental del plan: {contact_plan_definition_fingerprint(plan)}",
+        f"Semilla: {especificacion.seed}",
+        f"Identidad del workload: {workload.workload_id}",
+        f"Tipo de evento: {workload.event_type}",
+        f"Flujo: {workload.flow}",
+        f"Conteo: {conteo}",
+        f"Intervalo: {_intervalo_e3_sensitivity(resolved)}",
+        f"Tamaño Individual: {workload.canonical_individual_syncunit_bytes} bytes",
+        f"Secuencias perdidas: {_secuencia_configurada(preparada.runs)}",
+        f"campaign_identity: {preparada.campaign_identity}",
+        f"Corridas: {len(preparada.runs)}",
+        "",
+    ]
+    for run in preparada.runs:
+        lineas.extend(_lineas_de_corrida_e3(run))
+        lineas.append("")
+    return "\n".join(lineas).rstrip("\n")
+
+
+def format_configurable_e3_sensitivity_campaign(
+    resolved: ResolvedE3SensitivityCampaign, result: CampaignResult
+) -> str:
+    """Informe de una sensibilidad ya ejecutada, en el orden recibido.
+
+    Muestra secuencia, política, estado del motor, métricas básicas y
+    episodios observados con el formato de cada corrida E3. No evalúa
+    parejas ni calcula rankings.
+    """
+    lineas = [
+        "Sensibilidad de E3 configurable. No corresponde a la evidencia oficial RC1.",
+        "",
+        f"Identidad de campaña: {result.campaign_identity}",
+        "",
+    ]
+    bloques = [
+        "\n".join(_lineas_de_resultado_e3(planeada, corrida))
+        for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
+    ]
+    lineas.append("\n\n".join(bloques))
+    return "\n".join(lineas)
+
+
+def format_suite_inspection(suite: ResolvedSuite) -> str:
+    """Muestra la suite y el informe de inspección de cada campaña ya resuelta.
+
+    No abre archivos, no ejecuta el motor y no escribe resultados.
+    """
+    lineas = [
+        f"suite_id: {suite.document.suite_id}",
+        "Suite preparada; simulación no ejecutada.",
+        "Orden:",
+    ]
+    for indice, entrada in enumerate(suite.entries, start=1):
+        lineas.append(f"{indice}. {entrada.experiment_id} {entrada.config_file}")
+    informes = [
+        _informe_de_inspeccion(entrada.resolved) for entrada in suite.entries
+    ]
+    return "\n\n".join(["\n".join(lineas), *informes])
+
+
+def format_suite_execution_summary(
+    suite_id: str,
+    entries: tuple[SuiteSummaryEntry, ...] | list[SuiteSummaryEntry],
+) -> str:
+    """Resumen breve de una suite ya ejecutada. No repite métricas ni eventos."""
+    lineas = [
+        f"suite_id: {suite_id}",
+        "Ejecución secuencial terminada. No es evidencia oficial RC1.",
+    ]
+    for entrada in entries:
+        motores = "sí" if entrada.all_runs_engine_completed else "no"
+        lineas.append(
+            f"{entrada.experiment_id}: campaña {entrada.campaign_status}; "
+            f"corridas con resultado {entrada.completed_run_count}/{entrada.run_count}; "
+            f"motor COMPLETED en todas: {motores}"
+        )
+    return "\n".join(lineas)
+
+
+def _informe_de_inspeccion(
+    resolved: (
+        ResolvedE1Campaign
+        | ResolvedE2Campaign
+        | ResolvedE3Campaign
+        | ResolvedE3SensitivityCampaign
+    ),
+) -> str:
+    if isinstance(resolved, ResolvedE1Campaign):
+        return format_e1_campaign_inspection(resolved)
+    if isinstance(resolved, ResolvedE2Campaign):
+        return format_e2_campaign_inspection(resolved)
+    if isinstance(resolved, ResolvedE3Campaign):
+        return format_e3_campaign_inspection(resolved)
+    if isinstance(resolved, ResolvedE3SensitivityCampaign):
+        return format_e3_sensitivity_campaign_inspection(resolved)
+    raise TypeError(
+        "la campaña resuelta no es E1, E2, E3 ni sensibilidad de E3: "
+        f"{type(resolved).__name__}"
+    )
+
+
 def format_e1_bank_comparison(assessment: dict[str, object]) -> str:
     """Resumen de comparabilidad, sin agregar reglas a la evaluación."""
     if assessment["comparable"] is True:
@@ -629,6 +769,14 @@ def _intervalo_e3(resolved: ResolvedE3Campaign) -> str:
     experiments = resolved.bank_document.experiments
     if isinstance(experiments, ExperimentBankE3Section):
         return f"{_numero(experiments.e3.event_interval_seconds)} s"
+    return "no definido"
+
+
+def _intervalo_e3_sensitivity(resolved: ResolvedE3SensitivityCampaign) -> str:
+    """Intervalo declarado. No invierte la tasa de la spec."""
+    experiments = resolved.bank_document.experiments
+    if isinstance(experiments, ExperimentBankE3SensitivitySection):
+        return f"{_numero(experiments.e3_sensitivity.event_interval_seconds)} s"
     return "no definido"
 
 

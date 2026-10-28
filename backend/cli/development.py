@@ -30,6 +30,10 @@ from cli.present import (
 
 ESTRATEGIAS = (STRATEGY_TYPE_INDIVIDUAL, STRATEGY_TYPE_FIXED_BATCH)
 
+
+class _AyudaPedida(Exception):
+    """El usuario pidió la ayuda de la demostración local."""
+
 @dataclass(frozen=True, slots=True)
 class _Opciones:
     strategy: str
@@ -85,6 +89,9 @@ def comando_scientific_campaign(tokens: list[str], *, ayuda: str) -> int:
 def comando_run(tokens: list[str], *, ayuda: str) -> int:
     try:
         opciones = _parse_opciones(tokens)
+    except _AyudaPedida:
+        print(ayuda, end="")
+        return 0
     except ErrorDeUso as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -120,6 +127,8 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
     while index < len(tokens):
         token = tokens[index]
         opcion = token.split("=", 1)[0]
+        if token in {"-h", "--help"}:
+            raise _AyudaPedida()
         if token == "--json":
             as_json = True
         elif token == "--show-trace":
