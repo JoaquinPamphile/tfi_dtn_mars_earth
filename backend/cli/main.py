@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sys
-from cli.bank import comando_inspect, comando_run
+from cli.bank import comando_banco
 
 AYUDA = """\
 Uso:
@@ -36,9 +36,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     comando = argumentos[0]
     if comando == "inspect":
-        return comando_inspect(argumentos[1:], ayuda=AYUDA)
+        return comando_banco(argumentos[1:], ayuda=AYUDA, comando="inspect")
     if comando == "run":
-        return comando_run(argumentos[1:], ayuda=AYUDA)
+        return comando_banco(argumentos[1:], ayuda=AYUDA, comando="run")
     print(f"comando desconocido: {comando}", file=sys.stderr)
     print(AYUDA, end="", file=sys.stderr)
     return 2

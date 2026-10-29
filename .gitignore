@@ -7,3 +7,7 @@ workspace/campaigns/*
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Pruebas y auditorías locales. Siguen en el disco y no se versionan.
+backend/tests/
+workspace/audit/
