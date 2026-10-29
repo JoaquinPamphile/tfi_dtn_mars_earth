@@ -29,7 +29,6 @@ from core.domain.gap import (
     MissingSequenceRange,
     intersect_missing_ranges,
     normalize_missing_ranges,
-    subtract_missing_ranges,
 )
 
 
@@ -52,18 +51,6 @@ class GapRequestTracker:
         for item in self._open.get(source_id, ()):
             ranges.extend(item.remaining)
         return normalize_missing_ranges(ranges)
-
-    def outstanding_requests_for_source(self, source_id: str) -> tuple[GapRequest, ...]:
-        return tuple(item.request for item in self._open.get(source_id, ()))
-
-    def uncovered_ranges(
-        self,
-        source_id: str,
-        current_gaps: Sequence[object],
-    ) -> tuple[MissingSequenceRange, ...]:
-        return subtract_missing_ranges(
-            current_gaps, self.outstanding_ranges_for_source(source_id)
-        )
 
     def record(self, request: GapRequest) -> None:
         self._open.setdefault(request.target_source_id, []).append(

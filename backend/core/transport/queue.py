@@ -108,9 +108,6 @@ class OrderedFitQueue:
         """Unidades encoladas, incluidas las bloqueadas en el contacto actual."""
         return tuple(self._units[uid] for uid in self._queued_ids)
 
-    def blocked_ids(self) -> frozenset[str]:
-        return frozenset(self._blocked)
-
     def _activate_contact(self, contact_id: str) -> None:
         if self._blocked_contact_id == contact_id:
             return

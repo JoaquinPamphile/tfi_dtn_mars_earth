@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from experiments.canonical import spec_payload
@@ -223,6 +224,39 @@ def execute_campaign(spec: CampaignSpec) -> CampaignResult:
         campaign_identity=spec.campaign_identity,
         runs=tuple(outcomes),
     )
+
+
+def present_result_spec_differences(
+    result: ScientificRunResult,
+    spec: ScientificRunSpec,
+) -> tuple[tuple[str, Any, Any], ...]:
+    """Diferencias de un resultado presente contra los campos que puede contrastar.
+
+    Cada elemento es ``(campo, esperado, observado)``. El orden es escenario,
+    workload, semilla, identidades, estrategia, lote, parada, horizonte,
+    recuperación y fracción de carga. No consulta ``engine_status``,
+    métricas, episodios, fallos ni timeouts.
+    """
+    expected = {
+        "scenario_id": spec.scenario.scenario_id,
+        "workload_id": spec.workload.workload_id,
+        "seed": spec.seed,
+        "dataset_identity": spec.dataset_identity,
+        "experiment_identity": spec.experiment_identity,
+        "execution_identity": spec.execution_identity,
+        "strategy_type": spec.strategy_type,
+        "batch_size_events": spec.batch_size_events,
+        "stop_policy": spec.stop_policy.value,
+        "horizon_seconds": spec.horizon_seconds,
+        "recovery_policy": spec.recovery_policy.value,
+        "offered_load_fraction": spec.workload.offered_load_fraction,
+    }
+    differences: list[tuple[str, Any, Any]] = []
+    for field, expected_value in expected.items():
+        observed = getattr(result, field)
+        if observed != expected_value:
+            differences.append((field, expected_value, observed))
+    return tuple(differences)
 
 
 def _canonical_campaign_json(spec: CampaignSpec) -> str:

@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol, Self
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from core.domain.event import TelemetryEvent
 
 STRATEGY_TYPE_INDIVIDUAL = "individual"
@@ -29,17 +29,6 @@ class UnknownSyncStrategyError(ValueError):
 
 class InvalidSyncStrategyConfigError(ValueError):
     """La estrategia existe, pero su configuración propia no es válida."""
-
-class SyncPlanningContext(BaseModel):
-    """Contexto disponible al planificar. Esta política no lo usa para agrupar.
-    ``simulation_time`` está en segundos de simulación, es mayor o igual que
-    0 y no se lee de un reloj global. ``source_id`` es el origen informado
-    por el llamador. Ninguno de los dos cambia qué eventos entran en cada
-    plan ni en qué orden.
-    """
-    model_config = ConfigDict(frozen=True, extra="forbid")
-    simulation_time: float = Field(ge=0)
-    source_id: str
 
 class SyncPlan(BaseModel):
     """Agrupación, independiente del transporte, de eventos para una unidad.
@@ -76,7 +65,6 @@ class SyncStrategy(Protocol):
     def plan(
         self,
         eligible_events: Sequence[TelemetryEvent],
-        context: SyncPlanningContext,
     ) -> Sequence[SyncPlan]: ...
 
 def create_sync_strategy(

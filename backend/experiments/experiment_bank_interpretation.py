@@ -12,7 +12,7 @@ from typing import Any
 
 from core.simulation.engine import SimulationStatus
 
-from experiments.campaign import CampaignResult
+from experiments.campaign import CampaignResult, present_result_spec_differences
 from experiments.canonical import spec_payload
 from experiments.experiment_bank import ResolvedE1Campaign
 from experiments.fingerprint import (
@@ -207,24 +207,8 @@ def _check_result_specification(
     result: ScientificRunResult,
     inconsistencies: list[str],
 ) -> None:
-    expected = {
-        "scenario_id": spec.scenario.scenario_id,
-        "workload_id": spec.workload.workload_id,
-        "seed": spec.seed,
-        "dataset_identity": spec.dataset_identity,
-        "experiment_identity": spec.experiment_identity,
-        "execution_identity": spec.execution_identity,
-        "strategy_type": spec.strategy_type,
-        "batch_size_events": spec.batch_size_events,
-        "stop_policy": spec.stop_policy.value,
-        "horizon_seconds": spec.horizon_seconds,
-        "recovery_policy": spec.recovery_policy.value,
-        "offered_load_fraction": spec.workload.offered_load_fraction,
-    }
-    for field, expected_value in expected.items():
-        observed = getattr(result, field)
-        if observed != expected_value:
-            inconsistencies.append(
-                f"tratamiento {label!r}: resultado no coincide con su spec en "
-                f"{field} (esperado={expected_value!r}, observado={observed!r})"
-            )
+    for field, expected_value, observed in present_result_spec_differences(result, spec):
+        inconsistencies.append(
+            f"tratamiento {label!r}: resultado no coincide con su spec en "
+            f"{field} (esperado={expected_value!r}, observado={observed!r})"
+        )

@@ -44,10 +44,6 @@ class ReferenceCapacity:
     serialized_capacity_bytes: float
     contact_count: int
 
-    @property
-    def interval_duration_seconds(self) -> float:
-        return self.interval_end_sim - self.interval_start_sim
-
 
 def mars_to_relay_contacts(scenario: Scenario) -> tuple[Contact, ...]:
     """Contactos dirigidos Marte → relé, en el orden del escenario."""

@@ -14,12 +14,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from experiments.canonical import jsonable
-from experiments.experiment_bank import (
-    ResolvedE1Campaign,
-    ResolvedE2Campaign,
-    ResolvedE3Campaign,
-    ResolvedE3SensitivityCampaign,
-)
+from experiments.experiment_bank import ResolvedCampaign
 from experiments.experiment_bank_result import write_exclusive_canonical_json
 
 SUITE_SCHEMA_VERSION = 1
@@ -35,12 +30,6 @@ _PUBLICATION_STATUSES = frozenset(
         PUBLICATION_PUBLISHED,
         PUBLICATION_FAILED,
     }
-)
-ResolvedCampaign = (
-    ResolvedE1Campaign
-    | ResolvedE2Campaign
-    | ResolvedE3Campaign
-    | ResolvedE3SensitivityCampaign
 )
 
 

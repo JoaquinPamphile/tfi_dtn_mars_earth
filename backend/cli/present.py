@@ -21,6 +21,7 @@ from experiments.contact_plan import (
 from experiments.experiment_bank import (
     ExperimentBankE3Section,
     ExperimentBankE3SensitivitySection,
+    ResolvedCampaign,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
@@ -530,7 +531,7 @@ def format_suite_inspection(suite: ResolvedSuite) -> str:
     for indice, entrada in enumerate(suite.entries, start=1):
         lineas.append(f"{indice}. {entrada.experiment_id} {entrada.config_file}")
     informes = [
-        _informe_de_inspeccion(entrada.resolved) for entrada in suite.entries
+        format_campaign_inspection(entrada.resolved) for entrada in suite.entries
     ]
     return "\n\n".join(["\n".join(lineas), *informes])
 
@@ -554,14 +555,8 @@ def format_suite_execution_summary(
     return "\n".join(lineas)
 
 
-def _informe_de_inspeccion(
-    resolved: (
-        ResolvedE1Campaign
-        | ResolvedE2Campaign
-        | ResolvedE3Campaign
-        | ResolvedE3SensitivityCampaign
-    ),
-) -> str:
+def format_campaign_inspection(resolved: ResolvedCampaign) -> str:
+    """Informe de inspección de una campaña ya resuelta. No ejecuta el motor."""
     if isinstance(resolved, ResolvedE1Campaign):
         return format_e1_campaign_inspection(resolved)
     if isinstance(resolved, ResolvedE2Campaign):

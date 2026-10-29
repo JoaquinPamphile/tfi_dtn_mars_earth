@@ -1146,6 +1146,14 @@ class ResolvedE3SensitivityCampaign:
     campaign: CampaignSpec
 
 
+ResolvedCampaign = (
+    ResolvedE1Campaign
+    | ResolvedE2Campaign
+    | ResolvedE3Campaign
+    | ResolvedE3SensitivityCampaign
+)
+
+
 def require_e3_sensitivity_bank_selection(
     bank_document: ExperimentBankDocument,
 ) -> ExperimentBankE3Sensitivity:

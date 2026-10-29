@@ -7,13 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from core.simulation.engine import SimulationStatus
-from experiments.campaign import (
-    CAMPAIGN_COMPLETED,
-    CAMPAIGN_COMPLETED_WITH_FAILURES,
-    CampaignResult,
-    execute_campaign,
-)
+from experiments.campaign import CampaignResult, execute_campaign
 from experiments.experiment_bank import (
+    ResolvedCampaign,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
@@ -43,24 +39,14 @@ from experiments.experiment_suite import (
 )
 from cli.arguments import ErrorDeUso, valor_opcion
 from cli.present import (
+    format_campaign_inspection,
     format_configurable_e1_campaign,
     format_configurable_e2_campaign,
     format_configurable_e3_campaign,
     format_configurable_e3_sensitivity_campaign,
     format_e1_bank_comparison,
-    format_e1_campaign_inspection,
-    format_e2_campaign_inspection,
-    format_e3_campaign_inspection,
-    format_e3_sensitivity_campaign_inspection,
     format_suite_execution_summary,
     format_suite_inspection,
-)
-
-ResolvedCampaign = (
-    ResolvedE1Campaign
-    | ResolvedE2Campaign
-    | ResolvedE3Campaign
-    | ResolvedE3SensitivityCampaign
 )
 
 
@@ -82,19 +68,7 @@ def comando_inspect(tokens: list[str], *, ayuda: str) -> int:
     if isinstance(declarado, ResolvedSuite):
         print(format_suite_inspection(declarado))
         return 0
-    if isinstance(declarado, ResolvedE1Campaign):
-        print(format_e1_campaign_inspection(declarado))
-    elif isinstance(declarado, ResolvedE2Campaign):
-        print(format_e2_campaign_inspection(declarado))
-    elif isinstance(declarado, ResolvedE3Campaign):
-        print(format_e3_campaign_inspection(declarado))
-    elif isinstance(declarado, ResolvedE3SensitivityCampaign):
-        print(format_e3_sensitivity_campaign_inspection(declarado))
-    else:
-        raise TypeError(
-            "la campaña resuelta no es E1, E2, E3 ni sensibilidad de E3: "
-            f"{type(declarado).__name__}"
-        )
+    print(format_campaign_inspection(declarado))
     return 0
 
 
@@ -148,7 +122,7 @@ def ejecutar_suite(suite: ResolvedSuite, output_path: str | None) -> int:
         del procesada
     if directorio is None:
         print(format_suite_execution_summary(suite.document.suite_id, registros))
-        return _codigo_de_suite(registros, resumen_fallo=False)
+        return _codigo_de_suite(registros)
     document = build_suite_summary(suite.document, registros)
     try:
         written = write_suite_summary(directorio / "suite-summary.json", document)
@@ -158,7 +132,7 @@ def ejecutar_suite(suite: ResolvedSuite, output_path: str | None) -> int:
     finally:
         del document
     print(f"Resumen de suite guardado: {written}", file=sys.stderr)
-    return _codigo_de_suite(registros, resumen_fallo=False)
+    return _codigo_de_suite(registros)
 
 
 def procesar_campana_resuelta(
@@ -216,10 +190,10 @@ def procesar_campana_resuelta(
     procesada = ProcessedCampaign(
         campaign_id=resultado.campaign_id,
         campaign_identity=resultado.campaign_identity,
-        campaign_status=_estado_de_campana(resultado),
-        run_count=len(resultado.runs),
-        completed_run_count=sum(1 for run in resultado.runs if run.result is not None),
-        failed_run_count=sum(1 for run in resultado.runs if run.result is None),
+        campaign_status=resultado.status,
+        run_count=resultado.run_count,
+        completed_run_count=resultado.completed_count,
+        failed_run_count=resultado.failed_count,
         all_runs_engine_completed=todas_las_corridas_completaron(resultado),
         publication_status=publication_status,
         publication_error=publication_error,
@@ -278,12 +252,6 @@ def _entrada_de_resumen(
     )
 
 
-def _estado_de_campana(resultado: CampaignResult) -> str:
-    if any(run.result is None for run in resultado.runs):
-        return CAMPAIGN_COMPLETED_WITH_FAILURES
-    return CAMPAIGN_COMPLETED
-
-
 def _codigo_de_campana(procesada: ProcessedCampaign) -> int:
     if procesada.publication_status == PUBLICATION_FAILED:
         return 1
@@ -292,13 +260,7 @@ def _codigo_de_campana(procesada: ProcessedCampaign) -> int:
     return 0
 
 
-def _codigo_de_suite(
-    registros: list[SuiteSummaryEntry],
-    *,
-    resumen_fallo: bool,
-) -> int:
-    if resumen_fallo:
-        return 1
+def _codigo_de_suite(registros: list[SuiteSummaryEntry]) -> int:
     if any(entrada.publication_status == PUBLICATION_FAILED for entrada in registros):
         return 1
     if any(not entrada.all_runs_engine_completed for entrada in registros):

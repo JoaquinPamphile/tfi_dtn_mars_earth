@@ -24,10 +24,7 @@ from experiments.experiment_bank import (
     ExperimentBankE3Section,
     ExperimentBankE3SensitivitySection,
     ExperimentBankExperiments,
-    ResolvedE1Campaign,
-    ResolvedE2Campaign,
-    ResolvedE3Campaign,
-    ResolvedE3SensitivityCampaign,
+    ResolvedCampaign,
     resolve_e1_campaign,
     resolve_e2_campaign,
     resolve_e3_campaign,
@@ -40,12 +37,7 @@ from experiments.experiment_suite import (
 )
 
 DocumentKind = Literal["campaign", "suite"]
-ResolvedCampaign = (
-    ResolvedE1Campaign
-    | ResolvedE2Campaign
-    | ResolvedE3Campaign
-    | ResolvedE3SensitivityCampaign
-)
+
 
 def load_declared_configuration(
     config_path: str | Path,
@@ -59,7 +51,7 @@ def load_declared_configuration(
     """
     config_file = Path(config_path)
     text = read_utf8(config_file, "la configuración")
-    return _load_declared_text(config_file, text, nested=False)
+    return _load_declared_text(config_file, text)
 
 
 def resolve_loaded_bank(
@@ -81,7 +73,7 @@ def resolve_loaded_bank(
             "el documento no selecciona experiments.e1, "
             "experiments.e2, experiments.e3 ni experiments.e3_sensitivity"
         )
-    plan_file = resolve_contact_plan_path(
+    plan_file = resolve_declared_path(
         config_file,
         bank.scenario.contact_plan_file,
     )
@@ -107,25 +99,25 @@ def document_kind(payload: dict[str, Any]) -> DocumentKind:
     )
 
 
-def resolve_suite_config_path(suite_file: Path, config_file: str) -> Path:
-    """Resuelve ``config_file`` respecto de la suite. Una ruta absoluta se usa tal cual."""
-    reference = Path(config_file)
-    if reference.is_absolute():
-        return reference
-    return suite_file.parent / reference
+def resolve_declared_path(declaring_file: Path, reference: str) -> Path:
+    """Resuelve ``reference`` respecto del archivo que la declara.
+
+    Sirve para ``config_file`` de una suite y para ``contact_plan_file``
+    de una campaña. Una ruta absoluta se usa tal cual.
+    """
+    path = Path(reference)
+    if path.is_absolute():
+        return path
+    return declaring_file.parent / path
 
 
 def _load_declared_text(
     config_file: Path,
     text: str,
-    *,
-    nested: bool,
 ) -> ResolvedCampaign | ResolvedSuite:
     payload = _json_object(text, config_file)
     kind = document_kind(payload)
     if kind == "suite":
-        if nested:
-            raise ValueError(f"no se admiten suites anidadas: {config_file}")
         return _load_suite(config_file, text)
     return _load_campaign_text(config_file, text, expected_id=None)
 
@@ -134,7 +126,7 @@ def _load_suite(suite_file: Path, text: str) -> ResolvedSuite:
     document = suite_from_text(text, suite_file)
     entries: list[ResolvedSuiteEntry] = []
     for item in document.experiments:
-        child = resolve_suite_config_path(suite_file, item.config_file)
+        child = resolve_declared_path(suite_file, item.config_file)
         child_text = read_utf8(child, "la configuración")
         resolved = _load_campaign_entry(child, child_text, item.id)
         entries.append(
@@ -214,12 +206,6 @@ def bank_from_text(text: str, config_file: Path) -> ExperimentBankDocument:
             f"no se pudo validar la configuración: {config_file}\n{error}"
         ) from error
 
-
-def resolve_contact_plan_path(config_file: Path, contact_plan_file: str) -> Path:
-    reference = Path(contact_plan_file)
-    if reference.is_absolute():
-        return reference
-    return config_file.parent / reference
 
 def read_contact_plan(plan_file: Path) -> ContactPlanDefinition:
     text = read_utf8(plan_file, "el ContactPlan")

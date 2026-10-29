@@ -15,7 +15,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from experiments.campaign import CampaignResult, CampaignSpec
+from experiments.campaign import (
+    CampaignResult,
+    CampaignSpec,
+    present_result_spec_differences,
+)
 from experiments.canonical import jsonable
 from experiments.contact_plan import (
     ContactPlanDefinition,
@@ -467,27 +471,12 @@ def _require_completed_results_match_specs(
         completed = finished.result
         if completed is None:
             continue
-        spec = planned.spec
-        expected = {
-            "scenario_id": spec.scenario.scenario_id,
-            "workload_id": spec.workload.workload_id,
-            "seed": spec.seed,
-            "dataset_identity": spec.dataset_identity,
-            "experiment_identity": spec.experiment_identity,
-            "execution_identity": spec.execution_identity,
-            "strategy_type": spec.strategy_type,
-            "batch_size_events": spec.batch_size_events,
-            "stop_policy": spec.stop_policy.value,
-            "horizon_seconds": spec.horizon_seconds,
-            "recovery_policy": spec.recovery_policy.value,
-            "offered_load_fraction": spec.workload.offered_load_fraction,
-        }
-        for field, expected_value in expected.items():
-            if getattr(completed, field) != expected_value:
-                raise ValueError(
-                    "el resultado de la corrida no coincide con su especificación: "
-                    f"label={planned.label}, campo={field}"
-                )
+        differences = present_result_spec_differences(completed, planned.spec)
+        if differences:
+            raise ValueError(
+                "el resultado de la corrida no coincide con su especificación: "
+                f"label={planned.label}, campo={differences[0][0]}"
+            )
 
 
 def _result_remainder(result: ScientificRunResult) -> dict[str, Any]:

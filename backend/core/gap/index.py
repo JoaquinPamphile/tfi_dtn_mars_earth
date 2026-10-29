@@ -76,7 +76,11 @@ class IncrementalGapIndex:
 
     @property
     def count(self) -> int:
-        """Cantidad de enteros faltantes por debajo del máximo observado."""
+        """Cantidad de enteros faltantes por debajo del máximo observado.
+
+        Suma la amplitud de cada rango. No recorre esa amplitud ni las
+        secuencias recibidas.
+        """
         return sum(item.count for item in self._ranges)
 
     def _fill_internal(self, sequence: int) -> None:
@@ -133,6 +137,14 @@ class EarthGapRangeStore:
         if index is None:
             return ()
         return index.ranges()
+
+    def count(self) -> int:
+        """Enteros faltantes de todas las fuentes ya observadas.
+
+        Suma ``IncrementalGapIndex.count``. Crece con los rangos, no con
+        su amplitud ni con los eventos. El almacén vacío vale 0.
+        """
+        return sum(index.count for index in self._by_source.values())
 
     def clear(self) -> None:
         self._by_source.clear()

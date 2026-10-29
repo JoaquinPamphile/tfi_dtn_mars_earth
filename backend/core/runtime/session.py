@@ -63,7 +63,7 @@ from core.sync.codec import (
     is_telemetry_unit,
 )
 from core.sync.individual import IndividualSyncStrategy
-from core.sync.strategy import SyncPlan, SyncPlanningContext, SyncStrategy
+from core.sync.strategy import SyncPlan, SyncStrategy
 from core.sync.unit import SyncUnit
 from core.trace.types import SimulationEventType
 from core.transport.emulated import EmulatedTransport, TransportDelivery
@@ -243,11 +243,7 @@ class TelemetrySyncSession:
             parents.append(parent)
         if not repairable:
             return ()
-        context = SyncPlanningContext(
-            simulation_time=self.engine.now,
-            source_id=self.mars.source_id,
-        )
-        plans = IndividualSyncStrategy().plan(repairable, context)
+        plans = IndividualSyncStrategy().plan(repairable)
         parent_by_event = {
             event.event_id: parent
             for event, parent in zip(repairable, parents, strict=True)
@@ -499,11 +495,7 @@ class TelemetrySyncSession:
             )
         if not fresh:
             return submitted
-        context = SyncPlanningContext(
-            simulation_time=self.engine.now,
-            source_id=self.mars.source_id,
-        )
-        submitted += self._execute_plans(self.strategy.plan(fresh, context))
+        submitted += self._execute_plans(self.strategy.plan(fresh))
         return submitted
 
     def _partition_retry_cohorts(

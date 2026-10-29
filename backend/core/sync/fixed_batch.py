@@ -5,7 +5,6 @@ from core.domain.event import TelemetryEvent
 from core.sync.strategy import (
     STRATEGY_TYPE_FIXED_BATCH,
     SyncPlan,
-    SyncPlanningContext,
 )
 
 class FixedBatchSyncStrategy:
@@ -36,10 +35,7 @@ class FixedBatchSyncStrategy:
     def plan(
         self,
         eligible_events: Sequence[TelemetryEvent],
-        context: SyncPlanningContext,
     ) -> tuple[SyncPlan, ...]:
-        # El contexto no decide qué eventos entran ni en qué orden.
-        del context
         ordered: list[TelemetryEvent] = []
         seen: set[UUID] = set()
         for event in eligible_events:
