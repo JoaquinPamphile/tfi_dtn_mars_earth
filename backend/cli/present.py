@@ -547,14 +547,14 @@ def lineas_de_resultado_e2(
     """
     spec = planeada.spec
     workload = spec.workload
-    fraccion = (
+    fraccion_texto = (
         "no definida"
         if workload.offered_load_fraction is None
         else fraccion(workload.offered_load_fraction)
     )
     lineas = [
         f"[{corrida.index + 1}] {corrida.label}",
-        f"Fracción de carga: {fraccion}",
+        f"Fracción de carga: {fraccion_texto}",
         f"Estrategia: {spec.strategy_type}",
     ]
     if spec.batch_size_events is not None:
@@ -803,7 +803,7 @@ def lineas_del_fallo_configurado(plan: FailurePlan) -> list[str]:
 def lineas_de_corrida_e2(run: CampaignRunSpec) -> list[str]:
     spec = run.spec
     workload = spec.workload
-    fraccion = (
+    fraccion_texto = (
         "no definida"
         if workload.offered_load_fraction is None
         else fraccion(workload.offered_load_fraction)
@@ -811,7 +811,7 @@ def lineas_de_corrida_e2(run: CampaignRunSpec) -> list[str]:
     conteo = "no definido" if workload.max_events is None else str(workload.max_events)
     lineas = [
         run.label,
-        f"Fracción de carga: {fraccion}",
+        f"Fracción de carga: {fraccion_texto}",
         f"Estrategia: {spec.strategy_type}",
     ]
     if spec.batch_size_events is not None:
