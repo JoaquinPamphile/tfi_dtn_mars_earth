@@ -37,7 +37,7 @@ from experiments.experiment_suite import (
     build_suite_summary,
     write_suite_summary,
 )
-from cli.arguments import valor_opcion, error_de_uso
+from cli.utils import valor_opcion, error_de_uso
 from cli.present import (
     format_campaign_inspection,
     format_configurable_e1_campaign,
