@@ -20,7 +20,7 @@ from runner.config import RECOVERY_MODES
 from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
 from runner.result import RunResult
 
-from cli.arguments import ErrorDeUso, valor_opcion
+from cli.utils import error_de_uso, valor_opcion
 from cli.present import (
     format_scientific_summary,
     format_summary,
@@ -92,7 +92,7 @@ def comando_run(tokens: list[str], *, ayuda: str) -> int:
     except _AyudaPedida:
         print(ayuda, end="")
         return 0
-    except ErrorDeUso as exc:
+    except Exception as exc:
         print(str(exc), file=sys.stderr)
         return 2
     try:
@@ -139,7 +139,7 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
             valor, index = valor_opcion(tokens, index, "--strategy")
             if valor not in ESTRATEGIAS:
                 admitidas = ", ".join(ESTRATEGIAS)
-                raise ErrorDeUso(
+                raise ValueError(
                     f"estrategia no admitida: {valor}. Admitidas: {admitidas}."
                 )
             strategy = valor
@@ -154,26 +154,26 @@ def _parse_opciones(tokens: list[str]) -> _Opciones:
             valor, index = valor_opcion(tokens, index, "--recovery")
             if valor not in RECOVERY_MODES:
                 admitidas = ", ".join(RECOVERY_MODES)
-                raise ErrorDeUso(
+                raise ValueError(
                     f"recuperación no admitida: {valor}. Admitidas: {admitidas}."
                 )
             recovery = valor
         elif opcion == "--fault":
             valor, index = valor_opcion(tokens, index, "--fault")
             if valor not in FAULT_MODES or valor == FAULT_NONE:
-                raise ErrorDeUso(
+                raise ValueError(
                     f"falla no admitida: {valor}. Admitida: silent-loss."
                 )
             fault = valor
         else:
-            raise ErrorDeUso(f"argumento no reconocido: {token}")
+            error_de_uso(1, token)
         index += 1
     if events < 1:
-        raise ErrorDeUso("la cantidad de eventos debe ser al menos 1")
+        raise ValueError("la cantidad de eventos debe ser al menos 1")
     if strategy == STRATEGY_TYPE_FIXED_BATCH and not batch_informado:
-        raise ErrorDeUso("fixed_batch requiere --batch-size")
+        raise ValueError("fixed_batch requiere --batch-size")
     if strategy == STRATEGY_TYPE_INDIVIDUAL and batch_informado:
-        raise ErrorDeUso("individual no admite --batch-size")
+        raise ValueError("individual no admite --batch-size")
     return _Opciones(
         strategy=strategy,
         batch_size=batch_size,
@@ -190,7 +190,7 @@ def _entero(valor: str, flag: str) -> int:
     try:
         return int(valor)
     except ValueError:
-        raise ErrorDeUso(f"el valor de {flag} debe ser un entero") from None
+        raise ValueError(f"el valor de {flag} debe ser un entero") from None
 
 
 def _emitir(result: RunResult, opciones: _Opciones) -> None:

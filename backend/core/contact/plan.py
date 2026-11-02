@@ -32,8 +32,6 @@ class ContactPlan:
 
     def get(self, contact_id: str) -> Contact:
         """Devuelve el contacto con ese identificador.
-
-        Lanza ``KeyError`` si no existe.
         """
         for contact in self._contacts:
             if contact.contact_id == contact_id:
@@ -51,8 +49,6 @@ class ContactPlan:
         destination: LogicalNode,
     ) -> Contact | None:
         """Primer contacto del sentido cuyo inicio es estrictamente posterior a ``time_sim``.
-
-        El desempate es ``(start_time_sim, contact_id)``.
         Un contacto ya iniciado no se devuelve.
         """
         return self._next_contact(time_sim, source, destination, inclusive_start=False)
@@ -64,8 +60,6 @@ class ContactPlan:
         destination: LogicalNode,
     ) -> Contact | None:
         """Primer contacto del sentido cuyo inicio es mayor o igual que ``time_sim``.
-
-        El desempate es ``(start_time_sim, contact_id)``.
         Un contacto ya iniciado, con inicio anterior a ``time_sim``, no se devuelve.
         """
         return self._next_contact(time_sim, source, destination, inclusive_start=True)
