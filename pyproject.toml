@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["backend"]
-include = ["core*", "runner*", "cli*", "experiments*"]
+include = ["core*", "runner*", "cli*", "experiments*","importers*"]
 
 [tool.setuptools.package-data]
 experiments = ["VERSION"]

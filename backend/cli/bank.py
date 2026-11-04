@@ -37,7 +37,7 @@ from experiments.experiment_suite import (
     build_suite_summary,
     write_suite_summary,
 )
-from cli.utils import valor_opcion, error_de_uso
+from cli.utils import parse_path_options
 from cli.present import (
     format_campaign_inspection,
     format_configurable_e1_campaign,
@@ -244,29 +244,12 @@ OPCIONES = frozenset({"--config", "--output"})
 def rutas_de_opciones(tokens: list[str], *, comando: str) -> dict[str, str]:
     """Devuelve la ruta de --config y --output"""
     permitidas = frozenset({"--config"}) if comando == "inspect" else OPCIONES
-    rutas: dict[str, str] = {}
-    index = 0
-    while index < len(tokens):
-        token = tokens[index]
-        opcion = token.split("=", 1)[0]
-        if opcion not in permitidas:
-            error_de_uso(1, token)
-        if opcion in rutas:
-            error_de_uso(2, opcion)
-        if not token.startswith(opcion + "=") and index + 1 < len(tokens):
-            siguiente = tokens[index + 1]
-            if siguiente.startswith("-"):
-                error_de_uso(4, opcion)
-        valor, index = valor_opcion(tokens, index, opcion)
-        if valor.strip() == "":
-            error_de_uso(5, opcion)
-        if valor.startswith("-"):
-            error_de_uso(1, valor)
-        rutas[opcion] = valor
-        index += 1
-    if "--config" not in rutas:
-        error_de_uso(3, comando)
-    return rutas
+    return parse_path_options(
+        tokens,
+        allowed=permitidas,
+        command_name=comando,
+        require_output=False,
+    )
 
 
 def publicar_resultado(

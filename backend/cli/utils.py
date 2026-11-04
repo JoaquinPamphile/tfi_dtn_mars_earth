@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Collection
+
 MENSAJES_DE_ERROR = {
     1: "argumento no reconocido: {param}",
     2: "{param} está repetido",
     3: "{param} requiere --config",
     4: "falta el valor de {param}",
     5: "la ruta de {param} no debe estar vacía",
+    6: "{param} requiere --output",
 }
 
 def error_de_uso(codigo: int, param: str = "", **datos: str) -> None:
@@ -23,6 +26,40 @@ def valor_opcion(tokens: list[str], index: int, flag: str) -> tuple[str, int]:
     if index + 1 >= len(tokens):
         error_de_uso(4,flag)
     return tokens[index + 1], index + 1
+
+
+def parse_path_options(
+    tokens: list[str],
+    *,
+    allowed: Collection[str],
+    command_name: str,
+    require_output: bool = False,
+) -> dict[str, str]:
+    rutas: dict[str, str] = {}
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        opcion = token.split("=", 1)[0]
+        if opcion not in allowed:
+            error_de_uso(1, token)
+        if opcion in rutas:
+            error_de_uso(2, opcion)
+        if not token.startswith(opcion + "=") and index + 1 < len(tokens):
+            siguiente = tokens[index + 1]
+            if siguiente.startswith("-"):
+                error_de_uso(4, opcion)
+        valor, index = valor_opcion(tokens, index, opcion)
+        if valor.strip() == "":
+            error_de_uso(5, opcion)
+        if valor.startswith("-"):
+            error_de_uso(1, valor)
+        rutas[opcion] = valor
+        index += 1
+    if "--config" not in rutas:
+        error_de_uso(3, command_name)
+    if require_output and "--output" not in rutas:
+        error_de_uso(6, command_name)
+    return rutas
 
 
 def numero(value: float) -> str:
