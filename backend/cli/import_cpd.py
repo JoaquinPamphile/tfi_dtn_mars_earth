@@ -13,6 +13,7 @@ from experiments.experiment_bank_result import write_exclusive_canonical_json
 from importers.cpd.native import (
     CpdImportError,
     CpdNativeImportRequest,
+    _require_exact_keys,
     import_cpd_native_contact_plan,
 )
 from importers.cpd.support import CpdSupportError, loads_strict_utf8_json
@@ -27,6 +28,14 @@ _OPTIONAL_FIELDS = (
     "generation_declaration",
     "audit_image_ref",
 )
+_REQUIRED_FIELDS = (
+    "plan_path",
+    "node_mapping",
+    "contact_plan_id",
+    "cpd_revision",
+    "plan_artifact_ref",
+)
+_ALLOWED_CONFIG_KEYS = frozenset(_REQUIRED_FIELDS) | frozenset(_OPTIONAL_FIELDS)
 
 
 class ImportCpdConfigError(ValueError):
@@ -95,6 +104,12 @@ def _load_import_request(config_path: Path) -> CpdNativeImportRequest:
     if not isinstance(document, dict):
         raise ImportCpdConfigError("la configuración debe ser un objeto JSON")
 
+    _require_exact_keys(
+        document,
+        frozenset(document) & _ALLOWED_CONFIG_KEYS,
+        scope="configuración",
+    )
+    
     try:
         plan_path = _resolve_plan_path(config_path, document["plan_path"])
         node_mapping = _convert_node_mapping(document["node_mapping"])

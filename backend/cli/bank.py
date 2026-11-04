@@ -8,6 +8,10 @@ from typing import Any
 
 from core.simulation.engine import SimulationStatus
 from experiments.campaign import CampaignResult, execute_campaign
+from experiments.campaign_persistence import (
+    PersistedCampaignResult,
+    execute_campaign_persisted,
+)
 from experiments.experiment_bank import (
     ResolvedCampaign,
     ResolvedE1Campaign,
@@ -73,9 +77,54 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
             print(format_campaign_inspection(declarado))
         return 0
     output_path = rutas.get("--output")
+    output_dir = rutas.get("--output-dir")
     if isinstance(declarado, ResolvedSuite):
+        if output_dir is not None:
+            print(
+                "--output-dir no admite suites; declare una campaña E1, E2 o E3",
+                file=sys.stderr,
+            )
+            return 1
         return ejecutar_suite(declarado, output_path)
+    if output_dir is not None:
+        return ejecutar_campana_persistida(declarado, output_dir)
     return codigo_de_salida(procesar_campana_resuelta(declarado, output_path))
+
+def ejecutar_campana_persistida(
+    resuelta: ResolvedCampaign,
+    output_dir: str,
+) -> int:
+    """Ejecuta con persistencia por corrida. No construye el JSON monolítico."""
+    try:
+        directorio = crear_directorio_exclusivo(Path(output_dir))
+    except OSError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    try:
+        persisted = execute_campaign_persisted(resuelta.campaign, directorio)
+    except (OSError, TypeError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    return codigo_de_salida_persistida(persisted)
+
+def presentar_campana_persistida(persisted: PersistedCampaignResult) -> None:
+    """Resumen breve sin recargar resultados ni construir el monolítico."""
+    print(f"Estado: {persisted.status}")
+    print(f"Corridas completadas: {persisted.completed_count}")
+    print(f"Corridas fallidas: {persisted.failed_count}")
+    print(f"Directorio: {persisted.directory}")
+    if persisted.index_path is not None:
+        print(f"Índice: {persisted.index_path}")
+
+def codigo_de_salida_persistida(persisted: PersistedCampaignResult) -> int:
+    presentar_campana_persistida(persisted)
+    if persisted.index_path is None:
+        print(
+            "Ejecución incompleta: no se publicó el índice.",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 def ejecutar_suite(suite: ResolvedSuite, output_path: str | None) -> int:
     """
@@ -238,7 +287,7 @@ def codigo_de_salida(*entradas: ProcessedCampaign | SuiteSummaryEntry) -> int:
     return 0
 
 
-OPCIONES = frozenset({"--config", "--output"})
+OPCIONES = frozenset({"--config", "--output", "--output-dir"})
 
 
 def rutas_de_opciones(tokens: list[str], *, comando: str) -> dict[str, str]:

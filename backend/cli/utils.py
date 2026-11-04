@@ -9,6 +9,7 @@ MENSAJES_DE_ERROR = {
     4: "falta el valor de {param}",
     5: "la ruta de {param} no debe estar vacía",
     6: "{param} requiere --output",
+    7: "{param} no admite --output junto con --output-dir",
 }
 
 def error_de_uso(codigo: int, param: str = "", **datos: str) -> None:
@@ -59,6 +60,8 @@ def parse_path_options(
         error_de_uso(3, command_name)
     if require_output and "--output" not in rutas:
         error_de_uso(6, command_name)
+    if "--output" in rutas and "--output-dir" in rutas:
+        error_de_uso(7, command_name)
     return rutas
 
 

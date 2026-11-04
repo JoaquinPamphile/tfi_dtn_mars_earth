@@ -20,31 +20,35 @@ class EventScheduler:
     tiempo, se ejecuta primero la que se programó antes.
     """
     def __init__(self) -> None:
-        self._heap: list[tuple[float, int, ScheduledAction]] = []
+        self._heap: list[tuple[float, int, int]] = []
+        self._pending: dict[int, ScheduledAction] = {}
         self._next_tie_breaker = 0
         self._type_counts: dict[str, int] = {}
 
     def __len__(self) -> int:
-        return len(self._heap)
+        return len(self._pending)
 
     def is_empty(self) -> bool:
-        return not self._heap
+        return not self._pending
 
     def peek_time(self) -> float | None:
+        self._discard_cancelled_head()
         if not self._heap:
             return None
         return self._heap[0][0]
 
     def peek(self) -> ScheduledAction | None:
+        self._discard_cancelled_head()
         if not self._heap:
             return None
-        return self._heap[0][2]
+        return self._pending[self._heap[0][2]]
 
     def peek_time_matching(
         self, predicate: Callable[[ScheduledAction], bool]
     ) -> float | None:
         """Tiempo más temprano cuya acción cumple el predicado, o None."""
-        times = [action.time for _, _, action in self._heap if predicate(action)]
+        times = [action.time for _, _, key in self._heap
+                 if (action := self._pending.get(key)) is not None and predicate(action)]
         if not times:
             return None
         return min(times)
@@ -72,29 +76,65 @@ class EventScheduler:
             entity_id=entity_id,
         )
         self._next_tie_breaker += 1
-        heappush(self._heap, (action.time, action.tie_breaker, action))
+        # tie_breaker is unique and immutable in the heap, even if the caller
+        # mutates the returned action. The issued integer is the cancellation handle.
+        self._pending[action.tie_breaker] = action
+        heappush(self._heap, (action.time, action.tie_breaker, action.tie_breaker))
         self._type_counts[event_type] = self._type_counts.get(event_type, 0) + 1
         return action
 
     def pop_next(self) -> ScheduledAction | None:
+        self._discard_cancelled_head()
         if not self._heap:
             return None
-        action = heappop(self._heap)[2]
+        action = self._pending.pop(heappop(self._heap)[2])
         self._note_removed(action.event_type)
+        self._compact_if_needed()
         return action
+
+    def cancel_scheduled(self, handle: int | None) -> int:
+        """Cancel a schedule's tie_breaker, scoped to this scheduler.
+
+        Handles are monotonic and never reused. Missing, repeated or already
+        popped handles return 0. Lookup is O(1), cleanup amortized O(1).
+        """
+        action = self._pending.pop(handle, None)
+        if action is None:
+            return 0
+        self._note_removed(action.event_type)
+        self._compact_if_needed()
+        return 1
+
+    def _discard_cancelled_head(self) -> None:
+        while self._heap and self._heap[0][2] not in self._pending:
+            heappop(self._heap)
+
+    def _compact_if_needed(self) -> None:
+        # At least half the entries (or the small floor) must be dead before
+        # paying O(heap). Charge rebuilds to those removals, including pops.
+        if len(self._heap) > max(64, 2 * len(self._pending)):
+            self._heap = [item for item in self._heap if item[2] in self._pending]
+            heapify(self._heap)
 
     def cancel(self, predicate: Callable[[ScheduledAction], bool]) -> int:
         """Quita las acciones futuras que cumplen el predicado. Devuelve cuántas canceló."""
-        kept: list[tuple[float, int, ScheduledAction]] = []
+        kept: list[tuple[float, int, int]] = []
+        removed: list[int] = []
         cancelled = 0
         for item in self._heap:
-            if predicate(item[2]):
+            action = self._pending.get(item[2])
+            if action is None:
+                continue
+            if predicate(action):
                 cancelled += 1
-                self._note_removed(item[2].event_type)
+                self._note_removed(action.event_type)
+                removed.append(item[2])
             else:
                 kept.append(item)
         heapify(kept)
         self._heap = kept
+        for key in removed:
+            del self._pending[key]
         return cancelled
 
     def _note_removed(self, event_type: str) -> None:

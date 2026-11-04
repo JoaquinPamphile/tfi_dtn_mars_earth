@@ -6,7 +6,7 @@ from cli.import_cpd import comando_import_cpd
 AYUDA = """\
 Uso:
   python -m cli inspect --config <archivo.json>
-  python -m cli run --config <archivo.json> [--output <resultado.json>]
+  python -m cli run --config <archivo.json> [--output <resultado.json> | --output-dir <directorio>]
   python -m cli import-cpd --config <importacion.json> --output <contact-plan.json>
 
 Comandos:
@@ -20,7 +20,7 @@ Opciones de inspect:
 Opciones de run:
   --config ARCHIVO                      Documento individual del banco o documento de suite. La sección experiments.e1, experiments.e2, experiments.e3 o experiments.e3_sensitivity selecciona la campaña individual. Muestra cada corrida en consola y no genera un paquete reproducible de evidencia.
   --output ARCHIVO                      Documento individual: guarda el resultado autocontenido. La ruta es relativa al directorio de trabajo. Suite: directorio nuevo cuyo padre ya existe.
-
+  --output-dir DIRECTORIO               Documento individual (E1, E2 o E3): conserva un resultado por corrida en un directorio nuevo. El formato (campaign_run_set) difiere del JSON monolítico de --output. No admite suites ni --output en la misma invocación.
 Opciones de import-cpd:
   --config ARCHIVO                      Documento JSON de importación CPD (plan_path, node_mapping, contact_plan_id, cpd_revision, plan_artifact_ref y metadatos opcionales declarados). plan_path se resuelve respecto del directorio de este archivo.
   --output ARCHIVO                      Destino del ContactPlanDefinition. No sobrescribe un archivo existente. Relativo al directorio de trabajo.

@@ -142,7 +142,7 @@ class TelemetrySyncSession:
         self.retry_policy = retry_policy if retry_policy is not None else RetryPolicy()
         self.recovery = recovery
         self.sender_driven = sender_driven
-        self._timeout_scheduled: set[str] = set()
+        self._timeout_scheduled: dict[str, int] = {}
         self._retry_eval_pending: set[str] = set()
         self._sync_units_created = 0
         self._telemetry_syncunit_bytes_created = 0
@@ -355,7 +355,7 @@ class TelemetrySyncSession:
         if not self.sender_driven:
             return
         attempt_id = str(action.payload.get("attempt_id", ""))
-        self._timeout_scheduled.discard(attempt_id)
+        self._timeout_scheduled.pop(attempt_id, None)
         attempt = self.mars.get_sync_attempt(attempt_id)
         if attempt is None:
             return
@@ -811,23 +811,18 @@ class TelemetrySyncSession:
         }
         if sync_unit_id is not None:
             payload["sync_unit_id"] = sync_unit_id
-        self.engine.schedule(
+        action = self.engine.schedule_action(
             timeout_at,
             SimulationEventType.ACK_TIMEOUT.value,
             payload=payload,
             entity_id=attempt.attempt_id,
         )
-        self._timeout_scheduled.add(attempt.attempt_id)
+        self._timeout_scheduled[attempt.attempt_id] = action.tie_breaker
 
     def _cancel_ack_timeout(self, attempt_id: str) -> None:
         """Quita el ``ACK_TIMEOUT`` futuro de ese intento. Si ya corrió, no queda nada."""
-        self.engine.cancel(
-            lambda action: (
-                action.event_type == SimulationEventType.ACK_TIMEOUT.value
-                and action.payload.get("attempt_id") == attempt_id
-            )
-        )
-        self._timeout_scheduled.discard(attempt_id)
+        self.engine.cancel_scheduled(self._timeout_scheduled.get(attempt_id))
+        self._timeout_scheduled.pop(attempt_id, None)
 
     def _mars_transmitting(self, sync_unit_id: str) -> bool:
         """Indica si esa unidad todavía está en vuelo saliendo de Marte."""

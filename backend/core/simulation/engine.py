@@ -185,10 +185,19 @@ class SimulationEngine:
         los rechaza el scheduler.
         Si el motor ya había completado la cola, vuelve a ``PAUSED``.
         """
+        self.schedule_action(time, event_type, payload, entity_id)
+
+    def schedule_action(
+        self,
+        time: float,
+        event_type: str,
+        payload: dict[str, Any] | None = None,
+        entity_id: str | None = None,
+    ) -> ScheduledAction:
         self._ensure_not_terminal()
         if time < self.now:
             raise ValueError("no se puede programar una acción en el pasado")
-        self._scheduler.schedule(
+        action = self._scheduler.schedule(
             time=time,
             event_type=event_type,
             payload=payload,
@@ -196,6 +205,7 @@ class SimulationEngine:
         )
         if self._status is SimulationStatus.COMPLETED:
             self._status = SimulationStatus.PAUSED
+        return action
 
     def register_handler(self, event_type: str, handler: EventHandler) -> None:
         """Agrega un handler para ese ``event_type``. El orden es el de registro."""
@@ -209,6 +219,10 @@ class SimulationEngine:
         """Quita las acciones futuras que cumplen el predicado. Devuelve cuántas."""
         self._ensure_not_terminal()
         return self._scheduler.cancel(predicate)
+
+    def cancel_scheduled(self, handle: int | None) -> int:
+        self._ensure_not_terminal()
+        return self._scheduler.cancel_scheduled(handle)
 
     def emit_trace(
         self,

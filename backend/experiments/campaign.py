@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -224,6 +225,14 @@ def execute_campaign(spec: CampaignSpec) -> CampaignResult:
         campaign_identity=spec.campaign_identity,
         runs=tuple(outcomes),
     )
+
+
+def execute_campaign_persisted(spec: CampaignSpec, directory: Path, **kwargs: Any):
+    from experiments.campaign_persistence import (
+        execute_campaign_persisted as _execute_campaign_persisted,
+    )
+
+    return _execute_campaign_persisted(spec, directory, **kwargs)
 
 
 def present_result_spec_differences(
