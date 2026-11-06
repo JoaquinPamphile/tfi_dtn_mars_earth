@@ -11,3 +11,4 @@ __pycache__/
 # Pruebas y auditorías locales. Siguen en el disco y no se versionan.
 backend/tests/
 workspace/audit/
+workspace/
