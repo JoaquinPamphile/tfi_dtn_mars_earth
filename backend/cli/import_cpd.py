@@ -9,11 +9,10 @@ from experiments.contact_plan import (
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
-from experiments.experiment_bank_result import write_exclusive_canonical_json
+from experiments.publication import write_exclusive_canonical_json
 from importers.cpd.native import (
     CpdImportError,
     CpdNativeImportRequest,
-    _require_exact_keys,
     import_cpd_native_contact_plan,
 )
 from importers.cpd.support import CpdSupportError, loads_strict_utf8_json
@@ -104,11 +103,11 @@ def _load_import_request(config_path: Path) -> CpdNativeImportRequest:
     if not isinstance(document, dict):
         raise ImportCpdConfigError("la configuración debe ser un objeto JSON")
 
-    _require_exact_keys(
-        document,
-        frozenset(document) & _ALLOWED_CONFIG_KEYS,
-        scope="configuración",
-    )
+    extra = frozenset(document) - _ALLOWED_CONFIG_KEYS
+    if extra:
+        raise CpdImportError(
+            f"configuración: conjunto de claves inválido; sobran {sorted(extra)}"
+        )
     
     try:
         plan_path = _resolve_plan_path(config_path, document["plan_path"])

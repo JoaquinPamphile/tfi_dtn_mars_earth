@@ -11,11 +11,12 @@ from experiments.campaign import (
     CAMPAIGN_COMPLETED,
     CAMPAIGN_COMPLETED_WITH_FAILURES,
     CampaignSpec,
+    _expected_result_spec_values,
     present_result_spec_differences,
 )
 from experiments.canonical import jsonable
 from experiments.execute import execute_scientific_run
-from experiments.experiment_bank_result import write_exclusive_canonical_json
+from experiments.publication import write_exclusive_canonical_json
 from experiments.fingerprint import (
     dataset_event_count,
     dataset_fingerprint,
@@ -656,20 +657,7 @@ def _document_spec_differences(
     spec: ScientificRunSpec,
 ) -> tuple[tuple[str, Any, Any], ...]:
     """Misma contraste que ``present_result_spec_differences``, sobre el JSON."""
-    expected = {
-        "scenario_id": spec.scenario.scenario_id,
-        "workload_id": spec.workload.workload_id,
-        "seed": spec.seed,
-        "dataset_identity": spec.dataset_identity,
-        "experiment_identity": spec.experiment_identity,
-        "execution_identity": spec.execution_identity,
-        "strategy_type": spec.strategy_type,
-        "batch_size_events": spec.batch_size_events,
-        "stop_policy": spec.stop_policy.value,
-        "horizon_seconds": spec.horizon_seconds,
-        "recovery_policy": spec.recovery_policy.value,
-        "offered_load_fraction": spec.workload.offered_load_fraction,
-    }
+    expected = _expected_result_spec_values(spec)
     differences: list[tuple[str, Any, Any]] = []
     for field, expected_value in expected.items():
         observed = body.get(field)

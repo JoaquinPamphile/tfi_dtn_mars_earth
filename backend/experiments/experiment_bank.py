@@ -598,6 +598,38 @@ def require_e1_bank_selection(
     raise ValueError("el documento no selecciona experiments.e1")
 
 
+def _finite_workload_from_interval(
+    *,
+    event_interval_seconds: float,
+    workload_id: str,
+    event_type: str,
+    flow: str,
+    start_time_sim: float,
+    event_count: int,
+    individual_syncunit_bytes: int,
+) -> Workload:
+    """Construye la carga finita común a E1, E3 y su sensibilidad."""
+    rate_events_per_second = 1.0 / event_interval_seconds
+    if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
+        raise ValueError(
+            "la tasa derivada debe ser finita y positiva: "
+            f"event_interval_seconds={event_interval_seconds}, "
+            f"rate_events_per_second={rate_events_per_second}"
+        )
+    return Workload(
+        workload_id=workload_id,
+        event_type=event_type,
+        flow=flow,
+        priority=TelemetryPriority.NORMAL,
+        start_time_sim=start_time_sim,
+        duration_seconds=None,
+        max_events=event_count,
+        rate_events_per_second=rate_events_per_second,
+        canonical_individual_syncunit_bytes=individual_syncunit_bytes,
+        offered_load_fraction=None,
+    )
+
+
 def resolve_e1_campaign(
     bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
@@ -625,25 +657,14 @@ def resolve_e1_campaign(
         notes=scenario_config.notes,
     )
 
-    rate_events_per_second = 1.0 / e1_config.event_interval_seconds
-    if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
-        raise ValueError(
-            "la tasa derivada debe ser finita y positiva: "
-            f"event_interval_seconds={e1_config.event_interval_seconds}, "
-            f"rate_events_per_second={rate_events_per_second}"
-        )
-
-    workload = Workload(
+    workload = _finite_workload_from_interval(
+        event_interval_seconds=e1_config.event_interval_seconds,
         workload_id=e1_config.workload_id,
         event_type=e1_config.event_type,
         flow=e1_config.flow,
-        priority=TelemetryPriority.NORMAL,
         start_time_sim=e1_config.start_time_sim,
-        duration_seconds=None,
-        max_events=e1_config.event_count,
-        rate_events_per_second=rate_events_per_second,
-        canonical_individual_syncunit_bytes=e1_config.individual_syncunit_bytes,
-        offered_load_fraction=None,
+        event_count=e1_config.event_count,
+        individual_syncunit_bytes=e1_config.individual_syncunit_bytes,
     )
     retry_policy = RetryPolicy(
         ack_timeout_seconds=e1_config.sender_ack_timeout_seconds
@@ -1034,25 +1055,14 @@ def resolve_e3_campaign(
         notes=scenario_config.notes,
     )
 
-    rate_events_per_second = 1.0 / e3_config.event_interval_seconds
-    if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
-        raise ValueError(
-            "la tasa derivada debe ser finita y positiva: "
-            f"event_interval_seconds={e3_config.event_interval_seconds}, "
-            f"rate_events_per_second={rate_events_per_second}"
-        )
-
-    workload = Workload(
+    workload = _finite_workload_from_interval(
+        event_interval_seconds=e3_config.event_interval_seconds,
         workload_id=e3_config.workload_id,
         event_type=e3_config.event_type,
         flow=e3_config.flow,
-        priority=TelemetryPriority.NORMAL,
         start_time_sim=e3_config.start_time_sim,
-        duration_seconds=None,
-        max_events=e3_config.event_count,
-        rate_events_per_second=rate_events_per_second,
-        canonical_individual_syncunit_bytes=e3_config.individual_syncunit_bytes,
-        offered_load_fraction=None,
+        event_count=e3_config.event_count,
+        individual_syncunit_bytes=e3_config.individual_syncunit_bytes,
     )
     quiet = FailurePlan()
     loss = _e3_silent_loss_plan(
@@ -1217,24 +1227,14 @@ def resolve_e3_sensitivity_campaign(
         description=scenario_config.description,
         notes=scenario_config.notes,
     )
-    rate_events_per_second = 1.0 / config.event_interval_seconds
-    if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
-        raise ValueError(
-            "la tasa derivada debe ser finita y positiva: "
-            f"event_interval_seconds={config.event_interval_seconds}, "
-            f"rate_events_per_second={rate_events_per_second}"
-        )
-    workload = Workload(
+    workload = _finite_workload_from_interval(
+        event_interval_seconds=config.event_interval_seconds,
         workload_id=config.workload_id,
         event_type=config.event_type,
         flow=config.flow,
-        priority=TelemetryPriority.NORMAL,
         start_time_sim=config.start_time_sim,
-        duration_seconds=None,
-        max_events=config.event_count,
-        rate_events_per_second=rate_events_per_second,
-        canonical_individual_syncunit_bytes=config.individual_syncunit_bytes,
-        offered_load_fraction=None,
+        event_count=config.event_count,
+        individual_syncunit_bytes=config.individual_syncunit_bytes,
     )
     sender_retry = RetryPolicy(ack_timeout_seconds=config.sender_ack_timeout_seconds)
     receiver_retry = RetryPolicy(

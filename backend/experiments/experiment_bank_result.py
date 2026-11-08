@@ -8,9 +8,6 @@ de E1: la capacidad nominal de E2 no entra en ese documento.
 
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -21,6 +18,7 @@ from experiments.campaign import (
     present_result_spec_differences,
 )
 from experiments.canonical import jsonable
+from experiments.publication import write_exclusive_canonical_json
 from experiments.contact_plan import (
     ContactPlanDefinition,
     contact_plan_definition_fingerprint,
@@ -310,65 +308,6 @@ def _publish_bank_result(
             f"se requiere {BANK_RESULT_SCHEMA_VERSION}"
         )
     return write_exclusive_canonical_json(path, serialized)
-
-
-def write_exclusive_canonical_json(path: Path, serialized: Any) -> Path:
-    """Publica un objeto ya aceptado, con creación exclusiva e incremental.
-
-    No interpreta marcadores. Los escritores E1, E2 y E3 comprueban el suyo
-    antes de llamar. El resumen de suite usa esta misma publicación y no
-    entra en esos marcadores.
-
-    El texto lo emite ``json.JSONEncoder.iterencode`` con las opciones de
-    ``canonical_json_text``: ``sort_keys=True``, ``indent=2``,
-    ``ensure_ascii=True`` y ``allow_nan=False``. Cada fragmento se escribe
-    al temporal y el salto de línea final va aparte. El enlace se hace
-    recién cuando el temporal está cerrado.
-
-    Si el codificador o la escritura fallan, el destino no se publica y el
-    temporal se elimina. El enlace duro publica el inode con creación
-    exclusiva: si ``path`` ya existe, ``os.link`` falla y el destino queda
-    intacto. El temporal se elimina al terminar, también si el enlace falla.
-    No hay ``os.replace`` ni fallback para filesystems sin enlaces duros, ni
-    se crean directorios padre. No promete durabilidad ante un corte de
-    energía ni limpieza si el proceso termina de golpe.
-    """
-    if not isinstance(path, Path):
-        raise TypeError("path debe ser un Path")
-
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-    )
-    temporary = Path(temporary_name)
-    descriptor_open = True
-    try:
-        with os.fdopen(
-            descriptor,
-            mode="w",
-            encoding="utf-8",
-            newline="\n",
-        ) as stream:
-            descriptor_open = False
-            encoder = json.JSONEncoder(
-                sort_keys=True,
-                indent=2,
-                ensure_ascii=True,
-                allow_nan=False,
-            )
-            for chunk in encoder.iterencode(serialized):
-                stream.write(chunk)
-            stream.write("\n")
-        os.link(temporary, path)
-    finally:
-        if descriptor_open:
-            os.close(descriptor)
-        try:
-            temporary.unlink()
-        except FileNotFoundError:
-            pass
-    return path
 
 
 def _observed_campaign_manifest(

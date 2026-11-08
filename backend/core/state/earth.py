@@ -5,17 +5,11 @@ duplicado y no registra un pedido de reparación.
 """
 from __future__ import annotations
 from collections.abc import Sequence
-from dataclasses import dataclass
 from uuid import UUID
 from core.domain.event import TelemetryEvent
 from core.domain.gap import MissingSequenceRange
 from core.gap.index import EarthGapRangeStore
 from core.state.ports import EarthIngestResult, EarthPersistenceRecord, EarthStateRepository
-
-@dataclass
-class _EarthRow:
-    event: TelemetryEvent
-    first_persisted_at_sim: float
 
 class FastEarthStateRepository:
     """Estado lógico de Tierra dentro de una corrida, solo en memoria.
@@ -23,7 +17,7 @@ class FastEarthStateRepository:
     sobreviva a una caída del proceso.
     """
     def __init__(self) -> None:
-        self._by_id: dict[UUID, _EarthRow] = {}
+        self._by_id: dict[UUID, TelemetryEvent] = {}
         self._by_source_sequence: dict[tuple[str, int], UUID] = {}
         self._gap_ranges = EarthGapRangeStore()
         self._unique_count = 0
@@ -84,10 +78,7 @@ class FastEarthStateRepository:
 
     def get_event(self, event_id: UUID) -> TelemetryEvent | None:
         """El mismo objeto de la primera aceptación, o ``None`` si no está."""
-        row = self._by_id.get(event_id)
-        if row is None:
-            return None
-        return row.event
+        return self._by_id.get(event_id)
 
     def event_count(self) -> int:
         """Cantidad de eventos únicos persistidos."""
@@ -160,8 +151,7 @@ class FastEarthStateRepository:
         return self._gap_ranges.count()
 
     def _commit_unique(self, event: TelemetryEvent, ingested_at_sim: float) -> None:
-        row = _EarthRow(event=event, first_persisted_at_sim=ingested_at_sim)
-        self._by_id[event.event_id] = row
+        self._by_id[event.event_id] = event
         self._by_source_sequence[(event.source_id, event.sequence_number)] = event.event_id
         self._records.append(
             EarthPersistenceRecord(

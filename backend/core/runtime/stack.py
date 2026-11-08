@@ -93,7 +93,25 @@ class SimulationStack:
         ``failures`` ausente deja un runtime vacío: el round trip no cambia.
         Un ``FailurePlan`` se envuelve sin copiar sus definiciones a otro
         objeto mutable. Un ``FailureRuntime`` se usa tal cual.
+
+        Se rechazan contact_cuts no vacíos y ack_drops con count > 0 antes
+        de crear componentes o vincular identidades. count=0 es un no-op.
+        El rechazo es ValueError y precede a otros errores de construcción:
+        cambia deliberadamente la aceptación anterior de fallos inertes.
+        Solo se comprueba el plan efectivo al construir; no se vigilan
+        sustituciones posteriores de FailureRuntime.plan.
         """
+        failure_runtime = _resolve_failures(failures)
+        unsupported: list[str] = []
+        if failure_runtime.plan.contact_cuts:
+            unsupported.append("contact_cuts")
+        if any(drop.count > 0 for drop in failure_runtime.plan.ack_drops):
+            unsupported.append("ack_drops")
+        if unsupported:
+            raise ValueError(
+                "SimulationStack.build no aplica automáticamente los mecanismos declarados: "
+                + ", ".join(unsupported)
+            )
         resolved = (
             strategy
             if strategy is not None
@@ -105,7 +123,6 @@ class SimulationStack:
         if experiment_identity is not None:
             mars_node.bind_experiment_identity(experiment_identity)
         transport = EmulatedTransport(engine, contact_plan)
-        failure_runtime = _resolve_failures(failures)
         transport.bind_failures(failure_runtime)
         relay = RelayNode(engine, transport)
         recovery = None

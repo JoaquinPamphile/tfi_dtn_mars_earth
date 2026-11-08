@@ -235,18 +235,8 @@ def execute_campaign_persisted(spec: CampaignSpec, directory: Path, **kwargs: An
     return _execute_campaign_persisted(spec, directory, **kwargs)
 
 
-def present_result_spec_differences(
-    result: ScientificRunResult,
-    spec: ScientificRunSpec,
-) -> tuple[tuple[str, Any, Any], ...]:
-    """Diferencias de un resultado presente contra los campos que puede contrastar.
-
-    Cada elemento es ``(campo, esperado, observado)``. El orden es escenario,
-    workload, semilla, identidades, estrategia, lote, parada, horizonte,
-    recuperación y fracción de carga. No consulta ``engine_status``,
-    métricas, episodios, fallos ni timeouts.
-    """
-    expected = {
+def _expected_result_spec_values(spec: ScientificRunSpec) -> dict[str, Any]:
+    return {
         "scenario_id": spec.scenario.scenario_id,
         "workload_id": spec.workload.workload_id,
         "seed": spec.seed,
@@ -260,6 +250,20 @@ def present_result_spec_differences(
         "recovery_policy": spec.recovery_policy.value,
         "offered_load_fraction": spec.workload.offered_load_fraction,
     }
+
+
+def present_result_spec_differences(
+    result: ScientificRunResult,
+    spec: ScientificRunSpec,
+) -> tuple[tuple[str, Any, Any], ...]:
+    """Diferencias de un resultado presente contra los campos que puede contrastar.
+
+    Cada elemento es ``(campo, esperado, observado)``. El orden es escenario,
+    workload, semilla, identidades, estrategia, lote, parada, horizonte,
+    recuperación y fracción de carga. No consulta ``engine_status``,
+    métricas, episodios, fallos ni timeouts.
+    """
+    expected = _expected_result_spec_values(spec)
     differences: list[tuple[str, Any, Any]] = []
     for field, expected_value in expected.items():
         observed = getattr(result, field)

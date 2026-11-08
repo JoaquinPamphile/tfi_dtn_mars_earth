@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from experiments.canonical import jsonable
 from experiments.experiment_bank import ResolvedCampaign
-from experiments.experiment_bank_result import write_exclusive_canonical_json
+from experiments.publication import write_exclusive_canonical_json
 
 SUITE_SCHEMA_VERSION = 1
 SUITE_SUMMARY_SCHEMA_VERSION = 1

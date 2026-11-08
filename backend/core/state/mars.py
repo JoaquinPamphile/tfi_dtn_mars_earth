@@ -56,7 +56,6 @@ class _SourceIndex:
     event_ids_by_sequence: list[UUID] = field(default_factory=list)
     pending_event_ids: list[UUID] = field(default_factory=list)
     pending_set: set[UUID] = field(default_factory=set)
-    confirmed_event_ids: set[UUID] = field(default_factory=set)
     generated: int = 0
     pending: int = 0
     confirmed: int = 0
@@ -404,7 +403,6 @@ class FastMarsStateRepository:
             if event_id in index.pending_set:
                 index.pending_set.discard(event_id)
                 index.pending -= 1
-            index.confirmed_event_ids.add(event_id)
             index.confirmed += 1
             if index.max_confirmed_at_sim is None or at_sim > index.max_confirmed_at_sim:
                 index.max_confirmed_at_sim = at_sim
