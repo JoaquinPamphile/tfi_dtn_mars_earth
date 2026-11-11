@@ -246,7 +246,9 @@ def format_configurable_e3_sensitivity_campaign(
     )
 
 
-def format_suite_inspection(suite: ResolvedSuite) -> str:
+def format_suite_inspection(
+    suite: ResolvedSuite,
+) -> str:
     """Muestra la suite y el informe de inspección de cada campaña ya resuelta.
 
     No abre archivos, no ejecuta el motor y no escribe resultados.
@@ -453,12 +455,15 @@ def intervalo_declarado(
 ) -> str:
     """Intervalo declarado en la resolución. No invierte la tasa de la spec."""
     experiments = resolved.bank_document.experiments
-    if isinstance(experiments, ExperimentBankE3Section):
-        intervalo = experiments.e3.event_interval_seconds
-    elif isinstance(experiments, ExperimentBankE3SensitivitySection):
-        intervalo = experiments.e3_sensitivity.event_interval_seconds
-    else:
+    attribute = (
+        "e3"
+        if isinstance(resolved, ResolvedE3Campaign)
+        else "e3_sensitivity"
+    )
+    configuration = getattr(experiments, attribute, None)
+    if configuration is None:
         return "no definido"
+    intervalo = configuration.event_interval_seconds
     return f"{numero(intervalo)} s"
 
 

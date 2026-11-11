@@ -18,6 +18,7 @@ from experiments.experiment_bank import (
     ResolvedE2Campaign,
     ResolvedE3Campaign,
     ResolvedE3SensitivityCampaign,
+    ResolvedExperimentBank,
 )
 from experiments.experiment_bank_interpretation import assess_e1_bank_comparison
 from experiments.experiment_bank_result import (
@@ -73,6 +74,11 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
     if comando == "inspect":
         if isinstance(declarado, ResolvedSuite):
             print(format_suite_inspection(declarado))
+        elif isinstance(declarado, ResolvedExperimentBank):
+            print("\n\n".join(
+                format_campaign_inspection(resolved)
+                for _, resolved in declarado.entries
+            ))
         else:
             print(format_campaign_inspection(declarado))
         return 0
@@ -86,6 +92,11 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
             )
             return 1
         return ejecutar_suite(declarado, output_path)
+    if isinstance(declarado, ResolvedExperimentBank):
+        if output_dir is not None:
+            print("--output-dir no admite bancos multi-experimento", file=sys.stderr)
+            return 1
+        return ejecutar_banco(declarado, output_path)
     if output_dir is not None:
         return ejecutar_campana_persistida(declarado, output_dir)
     return codigo_de_salida(procesar_campana_resuelta(declarado, output_path))
@@ -126,7 +137,33 @@ def codigo_de_salida_persistida(persisted: PersistedCampaignResult) -> int:
         return 1
     return 0
 
-def ejecutar_suite(suite: ResolvedSuite, output_path: str | None) -> int:
+
+def ejecutar_banco(
+    bank: ResolvedExperimentBank,
+    output_path: str | None,
+) -> int:
+    """Ejecuta la colección directamente, sin fabricar una suite."""
+    directorio: Path | None = None
+    if output_path is not None:
+        try:
+            directorio = crear_directorio_exclusivo(Path(output_path))
+        except OSError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+    registros: list[ProcessedCampaign] = []
+    for experiment_id, resolved in bank.entries:
+        destino = (
+            None
+            if directorio is None
+            else str(directorio / f"{experiment_id}.json")
+        )
+        registros.append(procesar_campana_resuelta(resolved, destino))
+    return codigo_de_salida(*registros)
+
+def ejecutar_suite(
+    suite: ResolvedSuite,
+    output_path: str | None,
+) -> int:
     """
     Distribuye la ejecuón de las campañas en orden y luego invoca la contrucción del resumen de los resultados. 
     """

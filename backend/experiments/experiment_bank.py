@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from pydantic import (
     BaseModel,
@@ -44,6 +44,7 @@ from experiments.spec import ScientificRunSpec
 from experiments.workload import Workload
 
 EXPERIMENT_BANK_SCHEMA_VERSION = 1
+EXPERIMENT_BANK_SCHEMA_VERSION_V2 = 2
 # Defaults propios de la versión 1 del contrato de entrada. Inicialmente
 # coinciden con E1 oficial, pero no se derivan de su builder histórico.
 EXPERIMENT_BANK_DEFAULT_SEED = 1
@@ -480,7 +481,7 @@ class ExperimentBankE3SensitivitySection(_BankInputModel):
     e3_sensitivity: ExperimentBankE3Sensitivity
 
 
-class ExperimentBankDocument(_BankInputModel):
+class LegacyExperimentBankDocument(_BankInputModel):
     """Documento validado, no una configuración efectiva de ejecución.
 
     Contiene exactamente una sección: E1, E2, E3 o sensibilidad de E3.
@@ -561,41 +562,163 @@ class ExperimentBankDocument(_BankInputModel):
         return self
 
 
+class ExperimentBankE3V2(ExperimentBankE3):
+    """E3 v2 exige declarar el ACK auxiliar receiver-driven."""
+
+    receiver_ack_timeout_seconds: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+
+
+class ExperimentBankE3SensitivityV2(ExperimentBankE3Sensitivity):
+    """Sensibilidad v2 exige declarar el ACK auxiliar receiver-driven."""
+
+    receiver_ack_timeout_seconds: float = Field(
+        gt=0,
+        allow_inf_nan=False,
+        strict=True,
+    )
+
+
+class ExperimentBankExperimentsV2(_BankInputModel):
+    """Selección v2. Cada bloque presente es una campaña solicitada."""
+
+    e1: ExperimentBankE1 | None = None
+    e2: ExperimentBankE2 | None = None
+    e3: ExperimentBankE3V2 | None = None
+    e3_sensitivity: ExperimentBankE3SensitivityV2 | None = None
+
+    @model_validator(mode="after")
+    def selected_protocols_are_explicit(self) -> Self:
+        selected = [
+            item
+            for item in (
+                self.e1,
+                self.e2,
+                self.e3,
+                self.e3_sensitivity,
+            )
+            if item is not None
+        ]
+        if not selected:
+            raise ValueError("experiments debe declarar al menos un experimento")
+        for configuration in selected:
+            missing = set(type(configuration).model_fields).difference(
+                configuration.model_fields_set
+            )
+            if missing:
+                raise ValueError(
+                    "la configuración v2 debe declarar explícitamente: "
+                    + ", ".join(sorted(missing))
+                )
+        return self
+
+
+class ExperimentBankDocument(_BankInputModel):
+    """Entrada v2 multi-experimento sin presets ni referencias a suites."""
+
+    schema_version: int = Field(strict=True)
+    seed: int = Field(strict=True)
+    scenario: ExperimentBankScenario
+    experiments: ExperimentBankExperimentsV2
+
+    @field_validator("schema_version", "seed", mode="before")
+    @classmethod
+    def integers_must_not_be_boolean(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("los enteros no admiten booleanos")
+        return value
+
+    @model_validator(mode="after")
+    def supported_schema_version(self) -> Self:
+        if self.schema_version != EXPERIMENT_BANK_SCHEMA_VERSION_V2:
+            raise ValueError(
+                "schema_version no soportada para el banco v2: "
+                f"se requiere {EXPERIMENT_BANK_SCHEMA_VERSION_V2}"
+            )
+        return self
+
+
+ExperimentBankSourceDocument = LegacyExperimentBankDocument | ExperimentBankDocument
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedE1Campaign:
     """Resolución inmutable con sus dos documentos de entrada y el spec efectivo."""
 
-    bank_document: ExperimentBankDocument
+    bank_document: ExperimentBankSourceDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
 
 
+_LEGACY_SECTION_EXECUTION_LABEL = {
+    "e1": "una campaña E1",
+    "e2": "una campaña E2",
+    "e3": "una campaña E3",
+    "e3_sensitivity": "una sensibilidad de E3",
+}
+
+
+def _legacy_selected_configuration(
+    bank_document: LegacyExperimentBankDocument,
+) -> tuple[
+    str,
+    ExperimentBankE1
+    | ExperimentBankE2
+    | ExperimentBankE3
+    | ExperimentBankE3Sensitivity,
+] | tuple[None, None]:
+    """Identifica la única sección v1 ya validada, o ``(None, None)`` si no aplica."""
+    experiments = bank_document.experiments
+    if isinstance(experiments, ExperimentBankExperiments):
+        return "e1", experiments.e1
+    if isinstance(experiments, ExperimentBankE2Section):
+        return "e2", experiments.e2
+    if isinstance(experiments, ExperimentBankE3Section):
+        return "e3", experiments.e3
+    if isinstance(experiments, ExperimentBankE3SensitivitySection):
+        return "e3_sensitivity", experiments.e3_sensitivity
+    return None, None
+
+
+def _require_legacy_bank_selection(
+    bank_document: LegacyExperimentBankDocument,
+    *,
+    expected: str,
+    resolver_name: str,
+) -> (
+    ExperimentBankE1
+    | ExperimentBankE2
+    | ExperimentBankE3
+    | ExperimentBankE3Sensitivity
+):
+    """Devuelve la sección ``expected`` o rechaza otra selección v1 con el mismo mensaje."""
+    selected, configuration = _legacy_selected_configuration(bank_document)
+    if selected == expected and configuration is not None:
+        return configuration
+    if selected is None:
+        raise ValueError(f"el documento no selecciona experiments.{expected}")
+    raise ValueError(
+        f"el documento selecciona experiments.{selected}; "
+        f"{resolver_name} solo acepta experiments.{expected} "
+        f"y no construye ni ejecuta {_LEGACY_SECTION_EXECUTION_LABEL[selected]}"
+    )
+
+
 def require_e1_bank_selection(
-    bank_document: ExperimentBankDocument,
+    bank_document: LegacyExperimentBankDocument,
 ) -> ExperimentBankE1:
     """Devuelve la sección E1 o rechaza un documento que selecciona E2 o E3."""
-    experiments = bank_document.experiments
-    if isinstance(experiments, ExperimentBankE2Section):
-        raise ValueError(
-            "el documento selecciona experiments.e2; "
-            "resolve_e1_campaign solo acepta experiments.e1 "
-            "y no construye ni ejecuta una campaña E2"
-        )
-    if isinstance(experiments, ExperimentBankE3Section):
-        raise ValueError(
-            "el documento selecciona experiments.e3; "
-            "resolve_e1_campaign solo acepta experiments.e1 "
-            "y no construye ni ejecuta una campaña E3"
-        )
-    if isinstance(experiments, ExperimentBankE3SensitivitySection):
-        raise ValueError(
-            "el documento selecciona experiments.e3_sensitivity; "
-            "resolve_e1_campaign solo acepta experiments.e1 "
-            "y no construye ni ejecuta una sensibilidad de E3"
-        )
-    if isinstance(experiments, ExperimentBankExperiments):
-        return experiments.e1
-    raise ValueError("el documento no selecciona experiments.e1")
+    return cast(
+        ExperimentBankE1,
+        _require_legacy_bank_selection(
+            bank_document,
+            expected="e1",
+            resolver_name="resolve_e1_campaign",
+        ),
+    )
 
 
 def _finite_workload_from_interval(
@@ -631,8 +754,10 @@ def _finite_workload_from_interval(
 
 
 def resolve_e1_campaign(
-    bank_document: ExperimentBankDocument,
+    bank_document: ExperimentBankSourceDocument,
     contact_plan_definition: ContactPlanDefinition,
+    *,
+    configuration: ExperimentBankE1 | None = None,
 ) -> ResolvedE1Campaign:
     """Convierte en memoria una entrada validada del banco en una campaña E1.
 
@@ -647,7 +772,11 @@ def resolve_e1_campaign(
     identifica la sección E3. La identidad del workload es la
     declarada en ``experiments.e1`` o, si falta, la de este banco.
     """
-    e1_config = require_e1_bank_selection(bank_document)
+    e1_config = (
+        require_e1_bank_selection(bank_document)
+        if configuration is None
+        else configuration
+    )
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -729,43 +858,31 @@ def resolve_e1_campaign(
 class ResolvedE2Campaign:
     """Resolución E2 inmutable. No guarda resultados ni métricas de una corrida."""
 
-    bank_document: ExperimentBankDocument
+    bank_document: ExperimentBankSourceDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
     reference_capacity: ReferenceCapacity
 
 
 def require_e2_bank_selection(
-    bank_document: ExperimentBankDocument,
+    bank_document: LegacyExperimentBankDocument,
 ) -> ExperimentBankE2:
     """Devuelve la sección E2 o rechaza un documento que selecciona E1 o E3."""
-    experiments = bank_document.experiments
-    if isinstance(experiments, ExperimentBankExperiments):
-        raise ValueError(
-            "el documento selecciona experiments.e1; "
-            "resolve_e2_campaign solo acepta experiments.e2 "
-            "y no construye ni ejecuta una campaña E1"
-        )
-    if isinstance(experiments, ExperimentBankE3Section):
-        raise ValueError(
-            "el documento selecciona experiments.e3; "
-            "resolve_e2_campaign solo acepta experiments.e2 "
-            "y no construye ni ejecuta una campaña E3"
-        )
-    if isinstance(experiments, ExperimentBankE3SensitivitySection):
-        raise ValueError(
-            "el documento selecciona experiments.e3_sensitivity; "
-            "resolve_e2_campaign solo acepta experiments.e2 "
-            "y no construye ni ejecuta una sensibilidad de E3"
-        )
-    if isinstance(experiments, ExperimentBankE2Section):
-        return experiments.e2
-    raise ValueError("el documento no selecciona experiments.e2")
+    return cast(
+        ExperimentBankE2,
+        _require_legacy_bank_selection(
+            bank_document,
+            expected="e2",
+            resolver_name="resolve_e2_campaign",
+        ),
+    )
 
 
 def resolve_e2_campaign(
-    bank_document: ExperimentBankDocument,
+    bank_document: ExperimentBankSourceDocument,
     contact_plan_definition: ContactPlanDefinition,
+    *,
+    configuration: ExperimentBankE2 | None = None,
 ) -> ResolvedE2Campaign:
     """Convierte una entrada E2 validada en una campaña, sin ejecutarla.
 
@@ -783,7 +900,11 @@ def resolve_e2_campaign(
     La identidad del workload es la declarada en ``experiments.e2`` o, si
     falta, la de este banco. No se lee del builder oficial.
     """
-    e2_config = require_e2_bank_selection(bank_document)
+    e2_config = (
+        require_e2_bank_selection(bank_document)
+        if configuration is None
+        else configuration
+    )
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -979,42 +1100,30 @@ def _e2_workload_for_fraction(
 class ResolvedE3Campaign:
     """Resolución E3 inmutable. Conserva las entradas y el spec; no guarda resultados."""
 
-    bank_document: ExperimentBankDocument
+    bank_document: ExperimentBankSourceDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
 
 
 def require_e3_bank_selection(
-    bank_document: ExperimentBankDocument,
+    bank_document: LegacyExperimentBankDocument,
 ) -> ExperimentBankE3:
     """Devuelve la sección E3 o rechaza un documento que selecciona E1 o E2."""
-    experiments = bank_document.experiments
-    if isinstance(experiments, ExperimentBankExperiments):
-        raise ValueError(
-            "el documento selecciona experiments.e1; "
-            "resolve_e3_campaign solo acepta experiments.e3 "
-            "y no construye ni ejecuta una campaña E1"
-        )
-    if isinstance(experiments, ExperimentBankE2Section):
-        raise ValueError(
-            "el documento selecciona experiments.e2; "
-            "resolve_e3_campaign solo acepta experiments.e3 "
-            "y no construye ni ejecuta una campaña E2"
-        )
-    if isinstance(experiments, ExperimentBankE3SensitivitySection):
-        raise ValueError(
-            "el documento selecciona experiments.e3_sensitivity; "
-            "resolve_e3_campaign solo acepta experiments.e3 "
-            "y no construye ni ejecuta una sensibilidad de E3"
-        )
-    if isinstance(experiments, ExperimentBankE3Section):
-        return experiments.e3
-    raise ValueError("el documento no selecciona experiments.e3")
+    return cast(
+        ExperimentBankE3,
+        _require_legacy_bank_selection(
+            bank_document,
+            expected="e3",
+            resolver_name="resolve_e3_campaign",
+        ),
+    )
 
 
 def resolve_e3_campaign(
-    bank_document: ExperimentBankDocument,
+    bank_document: ExperimentBankSourceDocument,
     contact_plan_definition: ContactPlanDefinition,
+    *,
+    configuration: ExperimentBankE3 | None = None,
 ) -> ResolvedE3Campaign:
     """Convierte en memoria una entrada E3 validada en cuatro celdas, sin ejecutarlas.
 
@@ -1045,7 +1154,11 @@ def resolve_e3_campaign(
     recuperación, completitud o convergencia. Un plan vacío o sin retorno
     sigue siendo válido. No se llama a ``e3_result``.
     """
-    e3_config = require_e3_bank_selection(bank_document)
+    e3_config = (
+        require_e3_bank_selection(bank_document)
+        if configuration is None
+        else configuration
+    )
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -1073,7 +1186,11 @@ def resolve_e3_campaign(
         ack_timeout_seconds=e3_config.sender_ack_timeout_seconds
     )
     receiver_retry = RetryPolicy(
-        ack_timeout_seconds=E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS
+        ack_timeout_seconds=getattr(
+            e3_config,
+            "receiver_ack_timeout_seconds",
+            E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS,
+        )
     )
     shared_run_parameters = {
         "scenario": scenario,
@@ -1151,7 +1268,7 @@ def resolve_e3_campaign(
 class ResolvedE3SensitivityCampaign:
     """Resolución de sensibilidad E3. Conserva las entradas y el spec."""
 
-    bank_document: ExperimentBankDocument
+    bank_document: ExperimentBankSourceDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
 
@@ -1165,39 +1282,24 @@ ResolvedCampaign = (
 
 
 def require_e3_sensitivity_bank_selection(
-    bank_document: ExperimentBankDocument,
+    bank_document: LegacyExperimentBankDocument,
 ) -> ExperimentBankE3Sensitivity:
     """Devuelve la sección de sensibilidad o rechaza E1, E2 o E3."""
-    experiments = bank_document.experiments
-    if isinstance(experiments, ExperimentBankExperiments):
-        raise ValueError(
-            "el documento selecciona experiments.e1; "
-            "resolve_e3_sensitivity_campaign solo acepta "
-            "experiments.e3_sensitivity "
-            "y no construye ni ejecuta una campaña E1"
-        )
-    if isinstance(experiments, ExperimentBankE2Section):
-        raise ValueError(
-            "el documento selecciona experiments.e2; "
-            "resolve_e3_sensitivity_campaign solo acepta "
-            "experiments.e3_sensitivity "
-            "y no construye ni ejecuta una campaña E2"
-        )
-    if isinstance(experiments, ExperimentBankE3Section):
-        raise ValueError(
-            "el documento selecciona experiments.e3; "
-            "resolve_e3_sensitivity_campaign solo acepta "
-            "experiments.e3_sensitivity "
-            "y no construye ni ejecuta una campaña E3"
-        )
-    if isinstance(experiments, ExperimentBankE3SensitivitySection):
-        return experiments.e3_sensitivity
-    raise ValueError("el documento no selecciona experiments.e3_sensitivity")
+    return cast(
+        ExperimentBankE3Sensitivity,
+        _require_legacy_bank_selection(
+            bank_document,
+            expected="e3_sensitivity",
+            resolver_name="resolve_e3_sensitivity_campaign",
+        ),
+    )
 
 
 def resolve_e3_sensitivity_campaign(
-    bank_document: ExperimentBankDocument,
+    bank_document: ExperimentBankSourceDocument,
     contact_plan_definition: ContactPlanDefinition,
+    *,
+    configuration: ExperimentBankE3Sensitivity | None = None,
 ) -> ResolvedE3SensitivityCampaign:
     """Arma una pareja sender/receiver por cada secuencia, sin ejecutarla.
 
@@ -1218,7 +1320,11 @@ def resolve_e3_sensitivity_campaign(
     no exige que la pérdida se active, que el retorno alcance ni que haya
     convergencia. No llama al evaluador histórico.
     """
-    config = require_e3_sensitivity_bank_selection(bank_document)
+    config = (
+        require_e3_sensitivity_bank_selection(bank_document)
+        if configuration is None
+        else configuration
+    )
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -1238,7 +1344,11 @@ def resolve_e3_sensitivity_campaign(
     )
     sender_retry = RetryPolicy(ack_timeout_seconds=config.sender_ack_timeout_seconds)
     receiver_retry = RetryPolicy(
-        ack_timeout_seconds=E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS
+        ack_timeout_seconds=getattr(
+            config,
+            "receiver_ack_timeout_seconds",
+            E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS,
+        )
     )
     shared_run_parameters = {
         "scenario": scenario,
@@ -1376,3 +1486,69 @@ def _require_e3_last_event_inside_horizon(
             f"last_generation_at_sim={last_generation_at_sim}, "
             f"horizon_seconds={horizon_seconds}"
         )
+
+@dataclass(frozen=True, slots=True)
+class ResolvedExperimentBank:
+    """Colección ordenada de campañas; no es una suite ni un documento puente."""
+
+    document: ExperimentBankDocument
+    entries: tuple[tuple[str, ResolvedCampaign], ...]
+
+
+def resolve_experiment_bank(
+    document: ExperimentBankDocument,
+    contact_plan_definition: ContactPlanDefinition,
+) -> ResolvedExperimentBank:
+    """Resuelve en orden canónico E1, E2, E3 y sensibilidad.
+
+    Sólo incluye bloques presentes. El orden es fijo y no depende del orden
+    textual de las claves JSON.
+    """
+    selected = document.experiments
+    entries: list[tuple[str, ResolvedCampaign]] = []
+    if selected.e1 is not None:
+        entries.append(
+            (
+                "e1",
+                resolve_e1_campaign(
+                    document,
+                    contact_plan_definition,
+                    configuration=selected.e1,
+                ),
+            )
+        )
+    if selected.e2 is not None:
+        entries.append(
+            (
+                "e2",
+                resolve_e2_campaign(
+                    document,
+                    contact_plan_definition,
+                    configuration=selected.e2,
+                ),
+            )
+        )
+    if selected.e3 is not None:
+        entries.append(
+            (
+                "e3",
+                resolve_e3_campaign(
+                    document,
+                    contact_plan_definition,
+                    configuration=selected.e3,
+                ),
+            )
+        )
+    if selected.e3_sensitivity is not None:
+        entries.append(
+            (
+                "e3_sensitivity",
+                resolve_e3_sensitivity_campaign(
+                    document,
+                    contact_plan_definition,
+                    configuration=selected.e3_sensitivity,
+                ),
+            )
+        )
+    return ResolvedExperimentBank(document=document, entries=tuple(entries))
+
