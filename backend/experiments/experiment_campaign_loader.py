@@ -11,6 +11,7 @@ No ejecuta el motor.
 """
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Literal
@@ -44,6 +45,8 @@ DocumentKind = Literal["campaign", "suite"]
 
 def load_declared_configuration(
     config_path: str | Path,
+    *,
+    input_sources: dict[str, dict[str, str]] | None = None,
 ) -> ResolvedCampaign | ResolvedSuite | ResolvedExperimentBank:
     """Carga la campaña v1, banco v2 o suite que declara el archivo.
 
@@ -51,22 +54,43 @@ def load_declared_configuration(
     o la versión de ``schema_version``. No prueba modelos alternativos si el
     declarado no valida. Una suite v1 carga cada configuración y su plan; una
     entrada v2 abre el plan compartido una vez. No ejecuta el motor.
+
+    ``input_sources`` es un colector opcional: para V2 recibe solo ruta/hash
+    de configuración y plan leídos; no cambia el retorno. Sin ese parámetro
+    se conserva el camino anterior. V1/suite no producen contexto de índice.
     """
     config_file = Path(config_path)
-    text = read_utf8(config_file, "la configuración")
-    return _load_declared_text(config_file, text)
+    if input_sources is None:
+        text = read_utf8(config_file, "la configuración")
+        return _load_declared_text(config_file, text)
+    input_sources.clear()
+    config_source: dict[str, str] = {}
+    text = read_utf8(config_file, "la configuración", source=config_source)
+    resolved = _load_declared_text(config_file, text, input_sources=input_sources)
+    if isinstance(resolved, ResolvedExperimentBank):
+        input_sources["configuration"] = config_source
+    else:
+        input_sources.clear()
+    return resolved
 
 
 def resolve_loaded_bank(
     config_file: Path,
     bank: LegacyExperimentBankDocument | ExperimentBankDocument,
+    *,
+    input_sources: dict[str, dict[str, str]] | None = None,
 ) -> ResolvedCampaign | ResolvedExperimentBank:
     """Resuelve la sección ya validada y abre su plan una sola vez."""
     plan_file = resolve_declared_path(
         config_file,
         bank.scenario.contact_plan_file,
     )
-    plan = read_contact_plan(plan_file)
+    if isinstance(bank, ExperimentBankDocument) and input_sources is not None:
+        source: dict[str, str] = {}
+        plan = read_contact_plan(plan_file, source=source)
+        input_sources["contact_plan"] = source
+    else:
+        plan = read_contact_plan(plan_file)
     if isinstance(bank, ExperimentBankDocument):
         return resolve_experiment_bank(bank, plan)
     section = _bank_section(bank)
@@ -112,12 +136,14 @@ def resolve_declared_path(declaring_file: Path, reference: str) -> Path:
 def _load_declared_text(
     config_file: Path,
     text: str,
+    *,
+    input_sources: dict[str, dict[str, str]] | None = None,
 ) -> ResolvedCampaign | ResolvedSuite | ResolvedExperimentBank:
     payload = _json_object(text, config_file)
     kind = document_kind(payload)
     if kind == "suite":
         return _load_suite(config_file, text)
-    return _load_campaign_text(config_file, text, expected_id=None)
+    return _load_campaign_text(config_file, text, expected_id=None, input_sources=input_sources)
 
 
 
@@ -157,6 +183,7 @@ def _load_campaign_text(
     text: str,
     *,
     expected_id: str | None,
+    input_sources: dict[str, dict[str, str]] | None = None,
 ) -> ResolvedCampaign | ResolvedExperimentBank:
     bank = bank_from_text(text, config_file)
     if expected_id is not None:
@@ -166,7 +193,9 @@ def _load_campaign_text(
                 f"la entrada {expected_id} no coincide con la sección "
                 f"experiments.{actual} de {config_file}"
             )
-    return resolve_loaded_bank(config_file, bank)
+    if input_sources is None:
+        return resolve_loaded_bank(config_file, bank)
+    return resolve_loaded_bank(config_file, bank, input_sources=input_sources)
 
 
 def _bank_section(bank: LegacyExperimentBankDocument) -> str:
@@ -219,8 +248,11 @@ def bank_from_text(
         ) from error
 
 
-def read_contact_plan(plan_file: Path) -> ContactPlanDefinition:
-    text = read_utf8(plan_file, "el ContactPlan")
+def read_contact_plan(
+    plan_file: Path, *, source: dict[str, str] | None = None,
+) -> ContactPlanDefinition:
+    text = (read_utf8(plan_file, "el ContactPlan") if source is None
+            else read_utf8(plan_file, "el ContactPlan", source=source))
     try:
         return ContactPlanDefinition.model_validate_json(text)
     except ValidationError as error:
@@ -228,8 +260,19 @@ def read_contact_plan(plan_file: Path) -> ContactPlanDefinition:
             f"no se pudo validar el ContactPlan: {plan_file}\n{error}"
         ) from error
 
-def read_utf8(path: Path, description: str) -> str:
+def read_utf8(
+    path: Path, description: str, *, source: dict[str, str] | None = None,
+) -> str:
     try:
-        return path.read_text(encoding="utf-8")
+        if source is None:
+            return path.read_text(encoding="utf-8")
+        # Los mismos bytes se hashean y se decodifican una sola vez. TextIOWrapper
+        # conserva la normalización universal de saltos de Path.read_text.
+        from experiments.experiment_bank_run_index import source_from_bytes
+        raw = path.read_bytes()
+        with io.TextIOWrapper(io.BytesIO(raw), encoding="utf-8") as stream:
+            text = stream.read()
+        source.update(source_from_bytes(str(path), raw))
+        return text
     except UnicodeDecodeError as error:
         raise ValueError(f"no se pudo leer {description} como UTF-8: {path}\n{error}") from error

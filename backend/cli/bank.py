@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,8 @@ from experiments.experiment_bank_result import (
     write_e3_sensitivity_bank_result,
 )
 from experiments.experiment_campaign_loader import load_declared_configuration
+from experiments import experiment_bank_run_index as bank_index
+from experiments.software_provenance import SoftwareProvenance, current_provenance
 from experiments.experiment_suite import (
     PUBLICATION_FAILED,
     PUBLICATION_NOT_REQUESTED,
@@ -67,7 +70,11 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     try:
-        declarado = load_declared_configuration(config_path)
+        input_sources: dict[str, dict[str, str]] = {}
+        if comando == "run" and rutas.get("--output") is not None:
+            declarado = load_declared_configuration(config_path, input_sources=input_sources)
+        else:
+            declarado = load_declared_configuration(config_path)
     except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -96,6 +103,8 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
         if output_dir is not None:
             print("--output-dir no admite bancos multi-experimento", file=sys.stderr)
             return 1
+        if output_path is not None:
+            return ejecutar_banco(declarado, output_path, input_sources=input_sources)
         return ejecutar_banco(declarado, output_path)
     if output_dir is not None:
         return ejecutar_campana_persistida(declarado, output_dir)
@@ -141,15 +150,30 @@ def codigo_de_salida_persistida(persisted: PersistedCampaignResult) -> int:
 def ejecutar_banco(
     bank: ResolvedExperimentBank,
     output_path: str | None,
+    *,
+    input_sources: dict[str, dict[str, str]] | None = None,
 ) -> int:
     """Ejecuta la colección directamente, sin fabricar una suite."""
     directorio: Path | None = None
     if output_path is not None:
         try:
+            if input_sources is None or set(input_sources) != {"configuration", "contact_plan"}:
+                raise ValueError("el índice requiere hashes capturados por el loader")
+            provenance = current_provenance()
+            confirmed = bank_index.build_initial_index(
+                bank, configuration_source=input_sources["configuration"],
+                contact_plan_source=input_sources["contact_plan"], provenance=provenance,
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"Contexto de ejecución indexada inválido: {exc}", file=sys.stderr)
+            return 1
+        try:
             directorio = crear_directorio_exclusivo(Path(output_path))
         except OSError as exc:
             print(str(exc), file=sys.stderr)
             return 1
+    if directorio is not None:
+        return ejecutar_banco_indexado(bank, directorio, confirmed, provenance)
     registros: list[ProcessedCampaign] = []
     for experiment_id, resolved in bank.entries:
         destino = (
@@ -159,6 +183,70 @@ def ejecutar_banco(
         )
         registros.append(procesar_campana_resuelta(resolved, destino))
     return codigo_de_salida(*registros)
+
+
+def ejecutar_banco_indexado(
+    bank: ResolvedExperimentBank,
+    directory: Path,
+    confirmed: dict[str, Any],
+    provenance: SoftwareProvenance,
+) -> int:
+    """Solo V2 + --output. Estado confirmado avanza tras cada escritura exitosa."""
+    try:
+        bank_index.write_bank_run_index(directory, confirmed)
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"No se pudo publicar el índice inicial: {exc}", file=sys.stderr)
+        return 1
+    records: list[ProcessedCampaign] = []
+    integrity_failed = False
+    for position, (family, resolved) in enumerate(bank.entries):
+        entry = deepcopy(confirmed["entries"][position])
+        aborted = False
+        try:
+            processed = procesar_campana_resuelta(
+                resolved, str(directory / f"{family}.json"),
+                index_entry=entry, provenance=provenance,
+            )
+            records.append(processed)
+        except Exception as exc:
+            # KeyboardInterrupt/SystemExit no se interceptan: un cierre abrupto
+            # deja el último checkpoint y cualquier archivo recién publicado.
+            aborted = True
+            if entry["execution_status"] == "pending":
+                entry.update(execution_status="failed", execution_error={
+                    "type": type(exc).__name__, "message": str(exc),
+                })
+            elif entry["publication_status"] == "pending":
+                entry.update(publication_status="failed", publication_error=str(exc))
+            print(f"Campaña abortada: {type(exc).__name__}: {exc}", file=sys.stderr)
+        try:
+            following = bank_index.advance_index(confirmed, entry)
+            bank_index.write_bank_run_index(directory, following, previous=confirmed)
+        except (OSError, TypeError, ValueError) as exc:
+            print(f"No se pudo publicar el checkpoint: {exc}", file=sys.stderr)
+            return 1
+        confirmed = following
+        integrity_failed |= entry["publication_status"] == "unverified"
+        if aborted:
+            # Solo se cierra si este era el último desenlace; nunca se sigue
+            # ejecutando tras una excepción de campaña no controlada previamente.
+            if position == len(bank.entries) - 1:
+                _publicar_indice_final(directory, confirmed)
+            return 1
+    if not _publicar_indice_final(directory, confirmed):
+        return 1
+    return 1 if integrity_failed else codigo_de_salida(*records)
+
+
+def _publicar_indice_final(directory: Path, confirmed: dict[str, Any]) -> bool:
+    try:
+        final = bank_index.finalize_index(confirmed)
+        written = bank_index.write_bank_run_index(directory, final, previous=confirmed)
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"No se pudo publicar el índice final: {exc}", file=sys.stderr)
+        return False
+    print(f"Índice de banco guardado: {written}", file=sys.stderr)
+    return True
 
 def ejecutar_suite(
     suite: ResolvedSuite,
@@ -200,6 +288,9 @@ def ejecutar_suite(
 def procesar_campana_resuelta(
     resuelta: ResolvedCampaign,
     output_path: str | None,
+    *,
+    index_entry: dict[str, Any] | None = None,
+    provenance: SoftwareProvenance | None = None,
 ) -> "ProcessedCampaign":
     """Ejecuta una campaña ya resuelta, la presenta y, si hay ruta, la publica.
 
@@ -208,6 +299,20 @@ def procesar_campana_resuelta(
     antes de la campaña siguiente.
     """
     resultado = execute_campaign(resuelta.campaign)
+    if index_entry is not None:
+        index_entry.update(execution_status="returned", campaign_status=resultado.status)
+        if (resultado.campaign_id != index_entry["campaign_id"]
+                or resultado.campaign_identity != index_entry["campaign_identity"]
+                or len(resultado.runs) != len(index_entry["runs"])):
+            raise ValueError("el retorno no corresponde a la campaña planificada")
+        for target, run in zip(index_entry["runs"], resultado.runs, strict=True):
+            if target["index"] != run.index or target["label"] != run.label:
+                raise ValueError("el retorno no respeta el orden planificado")
+            target["terminal"] = {
+                "completed": run.completed,
+                "engine_status": None if run.result is None else run.result.engine_status,
+                "error_type": run.error_type, "error_message": run.error_message,
+            }
     if isinstance(resuelta, ResolvedE1Campaign):
         comparabilidad = assess_e1_bank_comparison(resuelta, resultado)
         print(format_configurable_e1_campaign(resultado))
@@ -237,18 +342,31 @@ def procesar_campana_resuelta(
     publication_status = PUBLICATION_NOT_REQUESTED
     publication_error: str | None = None
     if output_path is not None:
-        publication_error = publicar_resultado(
-            construir,
-            escribir,
-            resuelta,
-            resultado,
-            output_path,
-        )
+        arguments = (construir, escribir, resuelta, resultado, output_path)
+        if index_entry is None:
+            publication_error = publicar_resultado(*arguments)
+        else:
+            publication_error = publicar_resultado(
+                *arguments, index_entry=index_entry, provenance=provenance,
+            )
         publication_status = (
             PUBLICATION_FAILED
             if publication_error is not None
             else PUBLICATION_PUBLISHED
         )
+        if index_entry is not None:
+            index_entry.update(publication_status=publication_status, publication_error=publication_error)
+            if publication_status == PUBLICATION_PUBLISHED:
+                try:
+                    index_entry["artifact"] = bank_index.artifact_metadata(
+                        Path(output_path).parent, index_entry["experiment_id"],
+                    )
+                except (OSError, ValueError) as exc:
+                    index_entry.update(
+                        publication_status="unverified", integrity_error=f"{type(exc).__name__}: {exc}",
+                        artifact={"relative_path": Path(output_path).name, "size_bytes": None, "sha256": None},
+                    )
+                    print(f"Resultado publicado sin hash confirmado: {exc}", file=sys.stderr)
     procesada = ProcessedCampaign(
         campaign_id=resultado.campaign_id,
         campaign_identity=resultado.campaign_identity,
@@ -344,10 +462,17 @@ def publicar_resultado(
     resuelta: object,
     resultado: CampaignResult,
     output_path: str,
+    *,
+    index_entry: dict[str, Any] | None = None,
+    provenance: SoftwareProvenance | None = None,
 ) -> str | None:
     """Publica el resultado. Devuelve None si terminó, o el texto del error."""
     try:
-        document = construir(resuelta, resultado)
+        if index_entry is None:
+            document = construir(resuelta, resultado)
+        else:
+            document = construir(resuelta, resultado, provenance=provenance)
+            _proyectar_manifiesto(index_entry, document)
         written = escribir(Path(output_path), document)
     except (OSError, TypeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
@@ -356,6 +481,25 @@ def publicar_resultado(
         document = None
     print(f"Resultado guardado: {written}", file=sys.stderr)
     return None
+
+
+def _proyectar_manifiesto(entry: dict[str, Any], document: dict[str, Any]) -> None:
+    """Copia únicamente escalares ya calculados; no retiene manifiestos/eventos."""
+    manifest = document["campaign_manifest"]
+    if (manifest["campaign_id"] != entry["campaign_id"]
+            or manifest["campaign_identity"] != entry["campaign_identity"]
+            or manifest["status"] != entry["campaign_status"]):
+        raise ValueError("manifiesto no corresponde al desenlace planificado")
+    for target, observed in zip(entry["runs"], manifest["runs"], strict=True):
+        body = observed["manifest"]
+        if observed["index"] != target["index"] or observed["label"] != target["label"]:
+            raise ValueError("manifiesto no respeta el orden planificado")
+        for key in ("dataset_identity", "experiment_identity", "execution_identity", "configuration_hash"):
+            if body[key] != target[key]:
+                raise ValueError(f"manifiesto difiere de la planificación en {key}")
+        if body["terminal"] != target["terminal"]:
+            raise ValueError("terminal de manifiesto difiere del retorno observado")
+        target["dataset_fingerprint"] = body["dataset_fingerprint"]
 
 def resumen_de_fallos(resultado: CampaignResult) -> str:
     lineas: list[str] = []

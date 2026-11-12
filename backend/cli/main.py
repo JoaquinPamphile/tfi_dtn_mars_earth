@@ -1,7 +1,5 @@
 from __future__ import annotations
 import sys
-from cli.bank import comando_banco
-from cli.import_cpd import comando_import_cpd
 
 AYUDA = """\
 Uso:
@@ -19,7 +17,7 @@ Opciones de inspect:
 
 Opciones de run:
   --config ARCHIVO                      Documento individual v1, banco multi-experimento v2 o suite v1. Ejecuta las campañas declaradas y no genera evidencia oficial.
-  --output RUTA                         Documento individual v1: archivo autocontenido. Banco v2: directorio nuevo con un JSON por experimento y sin índice global. Suite v1: directorio nuevo con resumen. El padre debe existir.
+  --output RUTA                         Documento individual v1: archivo autocontenido. Banco v2: directorio nuevo con un JSON por experimento, índices parciales inmutables e índice global final. Suite v1: directorio nuevo con resumen. El padre debe existir.
   --output-dir DIRECTORIO               Documento individual (E1, E2 o E3): conserva un resultado por corrida en un directorio nuevo. El formato (campaign_run_set) difiere del JSON monolítico de --output. No admite suites ni --output en la misma invocación.
 Opciones de import-cpd:
   --config ARCHIVO                      Documento JSON de importación CPD (plan_path, node_mapping, contact_plan_id, cpd_revision, plan_artifact_ref y metadatos opcionales declarados). plan_path se resuelve respecto del directorio de este archivo.
@@ -43,10 +41,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     comando = argumentos[0]
     if comando == "inspect":
+        from cli.bank import comando_banco
         return comando_banco(argumentos[1:], ayuda=AYUDA, comando="inspect")
     if comando == "run":
+        from cli.bank import comando_banco
         return comando_banco(argumentos[1:], ayuda=AYUDA, comando="run")
     if comando == "import-cpd":
+        from cli.import_cpd import comando_import_cpd
         return comando_import_cpd(argumentos[1:], ayuda=AYUDA)
     print(f"comando desconocido: {comando}", file=sys.stderr)
     print(AYUDA, end="", file=sys.stderr)

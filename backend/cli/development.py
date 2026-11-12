@@ -21,7 +21,7 @@ from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_c
 from runner.result import RunResult
 
 from cli.utils import error_de_uso, valor_opcion
-from cli.present import (
+from cli.present.development import (
     format_scientific_summary,
     format_summary,
     format_trace,
