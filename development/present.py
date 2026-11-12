@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 
 from core.metrics.run import ScientificRunMetrics
-from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
-from runner.result import RunResult
+from development.runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
+from development.runner.result import RunResult
 
 from cli.utils import cantidad, entero, fila, numero, segundos
 

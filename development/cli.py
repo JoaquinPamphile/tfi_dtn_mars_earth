@@ -9,19 +9,19 @@ from core.sync.strategy import (
     UnknownSyncStrategyError,
 )
 from experiments.campaign import execute_campaign
-from experiments.controlled import (
+from development.controlled import (
     controlled_development_campaign,
     controlled_local_run_spec,
 )
 from experiments.execute import execute_scientific_run
 from experiments.report import format_campaign, format_scientific_run
-from runner import execute_run
-from runner.config import RECOVERY_MODES
-from runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
-from runner.result import RunResult
+from development.runner import execute_run
+from development.runner.config import RECOVERY_MODES
+from development.runner.demo import DEMO_DEFAULT_EVENTS, FAULT_MODES, FAULT_NONE, demo_run_config
+from development.runner.result import RunResult
 
 from cli.utils import error_de_uso, valor_opcion
-from cli.present.development import (
+from development.present import (
     format_scientific_summary,
     format_summary,
     format_trace,
@@ -214,9 +214,9 @@ def _emitir(result: RunResult, opciones: _Opciones) -> None:
 
 AYUDA = """\
 Uso:
-  python -m cli.development run [opciones]
-  python -m cli.development scientific-run
-  python -m cli.development scientific-campaign
+  python -m development.cli run [opciones]
+  python -m development.cli scientific-run
+  python -m development.cli scientific-campaign
 
 Comandos:
   run                  Ejecuta una demostración local.
