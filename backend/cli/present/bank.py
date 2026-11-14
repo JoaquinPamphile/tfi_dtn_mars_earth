@@ -10,15 +10,12 @@ from experiments.contact_plan import (
     contact_plan_fingerprint,
 )
 from experiments.experiment_bank import (
-    ExperimentBankE3Section,
-    ExperimentBankE3SensitivitySection,
     ResolvedCampaign,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
     ResolvedE3SensitivityCampaign,
 )
-from experiments.experiment_suite import ResolvedSuite, SuiteSummaryEntry
 from experiments.fingerprint import configuration_hash
 from experiments.report import format_campaign
 from experiments.scenario import Scenario
@@ -165,6 +162,15 @@ def format_configurable_e2_campaign(
     Los conteos, el estado, el backlog y la convergencia salen del
     resultado. No vuelve a calcular nada y no arma un segundo informe.
     """
+    bloques = [
+        "\n".join(lineas_de_resultado_e2(planeada, corrida))
+        for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
+    ]
+    return format_e2_campaign_blocks(resolved, result.campaign_identity, bloques)
+
+
+def format_e2_campaign_blocks(resolved, campaign_identity, bloques) -> str:
+    """Mismo informe E2, con bloques ligeros ya observados por tratamiento."""
     capacidad = resolved.reference_capacity
     lineas = [
         "Campaña E2 configurable. No corresponde a la evidencia oficial RC1.",
@@ -183,12 +189,8 @@ def format_configurable_e2_campaign(
             "Capacidad nominal MARS → RELAY: "
             f"{numero(capacidad.serialized_capacity_bytes)} bytes"
         ),
-        f"Identidad de campaña: {result.campaign_identity}",
+        f"Identidad de campaña: {campaign_identity}",
         "",
-    ]
-    bloques = [
-        "\n".join(lineas_de_resultado_e2(planeada, corrida))
-        for planeada, corrida in zip(resolved.campaign.runs, result.runs, strict=True)
     ]
     lineas.append("\n\n".join(bloques))
     return "\n".join(lineas)
@@ -244,45 +246,6 @@ def format_configurable_e3_sensitivity_campaign(
         result,
         titulo="Sensibilidad de E3 configurable. No corresponde a la evidencia oficial RC1.",
     )
-
-
-def format_suite_inspection(
-    suite: ResolvedSuite,
-) -> str:
-    """Muestra la suite y el informe de inspección de cada campaña ya resuelta.
-
-    No abre archivos, no ejecuta el motor y no escribe resultados.
-    """
-    lineas = [
-        f"suite_id: {suite.document.suite_id}",
-        "Suite preparada; simulación no ejecutada.",
-        "Orden:",
-    ]
-    for indice, entrada in enumerate(suite.entries, start=1):
-        lineas.append(f"{indice}. {entrada.experiment_id} {entrada.config_file}")
-    informes = [
-        format_campaign_inspection(entrada.resolved) for entrada in suite.entries
-    ]
-    return "\n\n".join(["\n".join(lineas), *informes])
-
-
-def format_suite_execution_summary(
-    suite_id: str,
-    entries: tuple[SuiteSummaryEntry, ...] | list[SuiteSummaryEntry],
-) -> str:
-    """Resumen breve de una suite ya ejecutada. No repite métricas ni eventos."""
-    lineas = [
-        f"suite_id: {suite_id}",
-        "Ejecución secuencial terminada. No es evidencia oficial RC1.",
-    ]
-    for entrada in entries:
-        motores = "sí" if entrada.all_runs_engine_completed else "no"
-        lineas.append(
-            f"{entrada.experiment_id}: campaña {entrada.campaign_status}; "
-            f"corridas con resultado {entrada.completed_run_count}/{entrada.run_count}; "
-            f"motor COMPLETED en todas: {motores}"
-        )
-    return "\n".join(lineas)
 
 
 def format_campaign_inspection(resolved: ResolvedCampaign) -> str:

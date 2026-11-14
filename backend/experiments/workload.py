@@ -21,6 +21,7 @@ from experiments.calibration import calibrate_individual_syncunit_payload
 from experiments.offered_load import (
     generation_rate_for_event_count,
     offered_load_event_count,
+    offered_load_count_and_rate,
 )
 
 CONTROLLED_COMMON_WORKLOAD_ID = "controlled-common-v1"
@@ -134,19 +135,10 @@ class Workload(BaseModel):
 
         Exige ``duration_seconds``: la tasa es ``conteo / duración``.
         """
-        if self.duration_seconds is None:
-            raise ValueError("la carga ofrecida requiere duration_seconds")
-        event_count = offered_load_event_count(
+        event_count, rate = offered_load_count_and_rate(
             load_fraction=load_fraction,
             capacity_bytes=capacity_bytes,
             canonical_individual_bytes=self.canonical_individual_syncunit_bytes,
-        )
-        if event_count < 1:
-            raise ValueError(
-                f"la fracción {load_fraction} produce 0 eventos con esa capacidad"
-            )
-        rate = generation_rate_for_event_count(
-            event_count=event_count,
             duration_seconds=self.duration_seconds,
         )
         return self.model_copy(

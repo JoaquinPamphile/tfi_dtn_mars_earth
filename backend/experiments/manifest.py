@@ -219,34 +219,36 @@ def campaign_manifest(
             raise ValueError("las corridas del resultado deben seguir el orden declarado")
         if finished.label != planned.label:
             raise ValueError("el rótulo del resultado no coincide con la especificación")
-        if finished.completed:
-            manifest = scientific_run_manifest(
-                planned.spec,
-                finished.result,
-                provenance=observed,
-            )
-        else:
-            manifest = scientific_run_manifest(
-                planned.spec,
-                None,
-                error_type=finished.error_type,
-                error_message=finished.error_message,
-                provenance=observed,
-            )
-        body = manifest.to_dict()
-        entries.append(
-            {
-                "index": index,
-                "label": planned.label,
-                "completed": finished.completed,
-                "failed": not finished.completed,
-                "configuration_hash": body["configuration_hash"],
-                "dataset_fingerprint": body["dataset_fingerprint"],
-                "dataset_identity": body["dataset_identity"],
-                "execution_identity": body["execution_identity"],
-                "manifest": body,
-            }
-        )
+        entries.append(campaign_run_manifest_entry(planned.spec, finished, observed))
+    return campaign_manifest_from_entries(spec, entries, observed)
+
+
+def campaign_run_manifest_entry(planned, finished, provenance) -> dict[str, Any]:
+    """Sobre compartido de un intento; no conserva el resultado científico."""
+    body = scientific_run_manifest(
+        planned, finished.result, error_type=finished.error_type,
+        error_message=finished.error_message, provenance=provenance,
+    ).to_dict()
+    return {
+        "index": finished.index, "label": finished.label,
+        "completed": finished.completed, "failed": not finished.completed,
+        "configuration_hash": body["configuration_hash"],
+        "dataset_fingerprint": body["dataset_fingerprint"],
+        "dataset_identity": body["dataset_identity"],
+        "execution_identity": body["execution_identity"], "manifest": body,
+    }
+
+
+def campaign_manifest_from_entries(spec, entries, observed) -> CampaignManifest:
+    """Cierra metadatos ordenados, tanto materializados como incrementales."""
+    if len(entries) != len(spec.runs):
+        raise ValueError("el resultado no tiene las corridas de la especificación")
+    for index, (planned, finished) in enumerate(zip(spec.runs, entries, strict=True)):
+        if finished["index"] != index:
+            raise ValueError("las corridas del resultado deben seguir el orden declarado")
+        if finished["label"] != planned.label:
+            raise ValueError("el rótulo del resultado no coincide con la especificación")
+    completed = sum(entry["completed"] for entry in entries)
     return CampaignManifest(
         manifest_schema_version=MANIFEST_SCHEMA_VERSION,
         software_version=observed.software_version,
@@ -255,9 +257,9 @@ def campaign_manifest(
         campaign_id=spec.campaign_id,
         campaign_identity=spec.campaign_identity,
         description=spec.description,
-        status=result.status,
-        run_count=result.run_count,
-        completed_count=result.completed_count,
-        failed_count=result.failed_count,
+        status="COMPLETED" if completed == len(entries) else "COMPLETED_WITH_FAILURES",
+        run_count=len(entries),
+        completed_count=completed,
+        failed_count=len(entries) - completed,
         runs=tuple(entries),
     )

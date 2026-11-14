@@ -9,6 +9,12 @@ from typing import Any
 
 from core.simulation.engine import SimulationStatus
 from experiments.campaign import CampaignResult, execute_campaign
+from experiments import campaign as campaign_execution
+from experiments.bank_result_spool import BankResultSpool
+from experiments.campaign import present_result_spec_differences
+from experiments.manifest import campaign_run_manifest_entry, campaign_manifest_from_entries
+from experiments.experiment_bank_result import bank_result_metadata, E2_CONFIGURABLE_BANK_RESULT
+from cli.present.bank import format_e2_campaign_blocks, lineas_de_resultado_e2
 from experiments.campaign_persistence import (
     PersistedCampaignResult,
     execute_campaign_persisted,
@@ -35,15 +41,10 @@ from experiments.experiment_bank_result import (
 from experiments.experiment_campaign_loader import load_declared_configuration
 from experiments import experiment_bank_run_index as bank_index
 from experiments.software_provenance import SoftwareProvenance, current_provenance
-from experiments.experiment_suite import (
+from experiments.publication import (
     PUBLICATION_FAILED,
     PUBLICATION_NOT_REQUESTED,
     PUBLICATION_PUBLISHED,
-    ResolvedSuite,
-    ResolvedSuiteEntry,
-    SuiteSummaryEntry,
-    build_suite_summary,
-    write_suite_summary,
 )
 from cli.utils import parse_path_options
 from cli.present import (
@@ -53,13 +54,11 @@ from cli.present import (
     format_configurable_e3_campaign,
     format_configurable_e3_sensitivity_campaign,
     format_e1_bank_comparison,
-    format_suite_execution_summary,
-    format_suite_inspection,
 )
 
 
 def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
-    """Inspecciona o ejecuta la campaña o la suite declarada."""
+    """Inspecciona o ejecuta el banco declarado."""
     if tokens == ["-h"] or tokens == ["--help"]:
         print(ayuda, end="")
         return 0
@@ -79,36 +78,19 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
         print(str(exc), file=sys.stderr)
         return 1
     if comando == "inspect":
-        if isinstance(declarado, ResolvedSuite):
-            print(format_suite_inspection(declarado))
-        elif isinstance(declarado, ResolvedExperimentBank):
-            print("\n\n".join(
-                format_campaign_inspection(resolved)
-                for _, resolved in declarado.entries
-            ))
-        else:
-            print(format_campaign_inspection(declarado))
+        print("\n\n".join(
+            format_campaign_inspection(resolved)
+            for _, resolved in declarado.entries
+        ))
         return 0
     output_path = rutas.get("--output")
-    output_dir = rutas.get("--output-dir")
-    if isinstance(declarado, ResolvedSuite):
-        if output_dir is not None:
-            print(
-                "--output-dir no admite suites; declare una campaña E1, E2 o E3",
-                file=sys.stderr,
-            )
-            return 1
-        return ejecutar_suite(declarado, output_path)
-    if isinstance(declarado, ResolvedExperimentBank):
-        if output_dir is not None:
-            print("--output-dir no admite bancos multi-experimento", file=sys.stderr)
-            return 1
-        if output_path is not None:
-            return ejecutar_banco(declarado, output_path, input_sources=input_sources)
-        return ejecutar_banco(declarado, output_path)
-    if output_dir is not None:
-        return ejecutar_campana_persistida(declarado, output_dir)
-    return codigo_de_salida(procesar_campana_resuelta(declarado, output_path))
+    if rutas.get("--output-dir") is not None:
+        print("--output-dir no admite bancos multi-experimento", file=sys.stderr)
+        return 1
+    if output_path is not None:
+        return ejecutar_banco(declarado, output_path, input_sources=input_sources)
+    return ejecutar_banco(declarado, output_path)
+
 
 def ejecutar_campana_persistida(
     resuelta: ResolvedCampaign,
@@ -153,7 +135,7 @@ def ejecutar_banco(
     *,
     input_sources: dict[str, dict[str, str]] | None = None,
 ) -> int:
-    """Ejecuta la colección directamente, sin fabricar una suite."""
+    """Ejecuta las camañas del banco."""
     directorio: Path | None = None
     if output_path is not None:
         try:
@@ -175,13 +157,8 @@ def ejecutar_banco(
     if directorio is not None:
         return ejecutar_banco_indexado(bank, directorio, confirmed, provenance)
     registros: list[ProcessedCampaign] = []
-    for experiment_id, resolved in bank.entries:
-        destino = (
-            None
-            if directorio is None
-            else str(directorio / f"{experiment_id}.json")
-        )
-        registros.append(procesar_campana_resuelta(resolved, destino))
+    for _, resolved in bank.entries:
+        registros.append(procesar_campana_resuelta(resolved, None))
     return codigo_de_salida(*registros)
 
 
@@ -248,43 +225,6 @@ def _publicar_indice_final(directory: Path, confirmed: dict[str, Any]) -> bool:
     print(f"Índice de banco guardado: {written}", file=sys.stderr)
     return True
 
-def ejecutar_suite(
-    suite: ResolvedSuite,
-    output_path: str | None,
-) -> int:
-    """
-    Distribuye la ejecuón de las campañas en orden y luego invoca la contrucción del resumen de los resultados. 
-    """
-    directorio: Path | None = None
-    if output_path is not None:
-        try:
-            directorio = crear_directorio_exclusivo(Path(output_path))
-        except OSError as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-    registros: list[SuiteSummaryEntry] = []
-    for entrada in suite.entries:
-        destino = None
-        if directorio is not None:
-            destino = str(directorio / f"{entrada.experiment_id}.json")
-        procesada = procesar_campana_resuelta(entrada.resolved, destino)
-        registros.append(_entrada_de_resumen(entrada, procesada))
-        del procesada
-    if directorio is None:
-        print(format_suite_execution_summary(suite.document.suite_id, registros))
-        return codigo_de_salida(*registros)
-    document = build_suite_summary(suite.document, registros)
-    try:
-        written = write_suite_summary(directorio / "suite-summary.json", document)
-    except (OSError, TypeError, ValueError) as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    finally:
-        del document
-    print(f"Resumen de suite guardado: {written}", file=sys.stderr)
-    return codigo_de_salida(*registros)
-
-
 def procesar_campana_resuelta(
     resuelta: ResolvedCampaign,
     output_path: str | None,
@@ -295,12 +235,15 @@ def procesar_campana_resuelta(
     """Ejecuta una campaña ya resuelta, la presenta y, si hay ruta, la publica.
 
     El ``CampaignResult`` y el documento construido no salen de esta
-    función. La suite llama una vez por entrada y descarta el regreso
-    antes de la campaña siguiente.
+    función. El banco llama una vez por entrada y conserva solo estos hechos
+    entre campañas.
     """
+    if isinstance(resuelta, ResolvedE2Campaign) and output_path is not None and index_entry is not None:
+        return _ejecutar_e2_indexado(resuelta, output_path, index_entry, provenance)
     resultado = execute_campaign(resuelta.campaign)
+    estado_campana = resultado.status
     if index_entry is not None:
-        index_entry.update(execution_status="returned", campaign_status=resultado.status)
+        index_entry.update(execution_status="returned", campaign_status=estado_campana)
         if (resultado.campaign_id != index_entry["campaign_id"]
                 or resultado.campaign_identity != index_entry["campaign_identity"]
                 or len(resultado.runs) != len(index_entry["runs"])):
@@ -370,7 +313,7 @@ def procesar_campana_resuelta(
     procesada = ProcessedCampaign(
         campaign_id=resultado.campaign_id,
         campaign_identity=resultado.campaign_identity,
-        campaign_status=resultado.status,
+        campaign_status=estado_campana,
         run_count=resultado.run_count,
         completed_run_count=resultado.completed_count,
         failed_run_count=resultado.failed_count,
@@ -409,30 +352,7 @@ def crear_directorio_exclusivo(path: Path) -> Path:
     return path
 
 
-def _entrada_de_resumen(
-    entrada: ResolvedSuiteEntry,
-    procesada: ProcessedCampaign,
-) -> SuiteSummaryEntry:
-    result_file = None
-    if procesada.publication_status == PUBLICATION_PUBLISHED:
-        result_file = f"{entrada.experiment_id}.json"
-    return SuiteSummaryEntry(
-        experiment_id=entrada.experiment_id,
-        config_file=entrada.config_file,
-        campaign_id=procesada.campaign_id,
-        campaign_identity=procesada.campaign_identity,
-        campaign_status=procesada.campaign_status,
-        run_count=procesada.run_count,
-        completed_run_count=procesada.completed_run_count,
-        failed_run_count=procesada.failed_run_count,
-        all_runs_engine_completed=procesada.all_runs_engine_completed,
-        publication_status=procesada.publication_status,
-        result_file=result_file,
-        publication_error=procesada.publication_error,
-    )
-
-
-def codigo_de_salida(*entradas: ProcessedCampaign | SuiteSummaryEntry) -> int:
+def codigo_de_salida(*entradas: ProcessedCampaign) -> int:
     if any(
         entrada.publication_status == PUBLICATION_FAILED
         or not entrada.all_runs_engine_completed
@@ -501,15 +421,98 @@ def _proyectar_manifiesto(entry: dict[str, Any], document: dict[str, Any]) -> No
             raise ValueError("terminal de manifiesto difiere del retorno observado")
         target["dataset_fingerprint"] = body["dataset_fingerprint"]
 
+def _fallo_de_corrida(run) -> str | None:
+    if run.result is None:
+        return f"{run.label}: {run.error_type}: {run.error_message}"
+    if run.result.engine_status != SimulationStatus.COMPLETED.value:
+        return f"{run.label}: estado {run.result.engine_status}"
+    return None
+
+
 def resumen_de_fallos(resultado: CampaignResult) -> str:
-    lineas: list[str] = []
-    for run in resultado.runs:
-        if run.result is None:
-            lineas.append(f"{run.label}: {run.error_type}: {run.error_message}")
-            continue
-        if run.result.engine_status != SimulationStatus.COMPLETED.value:
-            lineas.append(f"{run.label}: estado {run.result.engine_status}")
-    return "\n".join(lineas)
+    return "\n".join(text for run in resultado.runs if (text := _fallo_de_corrida(run)))
+
+
+def _ejecutar_e2_indexado(resuelta, output_path, index_entry, provenance):
+    """E2 con salida: solo hechos ligeros sobreviven a cada intento."""
+    provenance = current_provenance() if provenance is None else provenance
+    entries, blocks, failures, terminals = [], [], [], []
+    validation_error = None
+    engine_completed = True
+    spool = BankResultSpool(Path(output_path))
+    try:
+        for run in campaign_execution._iter_campaign_runs(
+            resuelta.campaign, campaign_execution.execute_scientific_run,
+        ):
+            planned = resuelta.campaign.runs[run.index]
+            terminal = dict(completed=run.completed,
+                engine_status=None if run.result is None else run.result.engine_status,
+                error_type=run.error_type, error_message=run.error_message)
+            terminals.append(terminal)
+            engine_completed &= terminal['engine_status'] == SimulationStatus.COMPLETED.value
+            blocks.append("\n".join(lineas_de_resultado_e2(planned, run)))
+            if text := _fallo_de_corrida(run):
+                failures.append(text)
+            try:
+                entries.append(campaign_run_manifest_entry(planned.spec, run, provenance))
+            except (TypeError, ValueError) as exc:
+                spool.fail('manifiesto', exc)
+            if run.result is not None:
+                differences = present_result_spec_differences(run.result, planned.spec)
+                if differences and validation_error is None:
+                    validation_error = (
+                        "el resultado de la corrida no coincide con su especificación: "
+                        f"label={run.label}, campo={differences[0][0]}"
+                    )
+            spool.append(run.index, run.result)
+            del run
+        completed = sum(t['completed'] for t in terminals)
+        status = 'COMPLETED' if completed == len(terminals) else 'COMPLETED_WITH_FAILURES'
+        identity = resuelta.campaign.campaign_identity
+        index_entry.update(execution_status='returned', campaign_status=status)
+        if (resuelta.campaign.campaign_id != index_entry['campaign_id']
+                or identity != index_entry['campaign_identity']
+                or len(terminals) != len(index_entry['runs'])):
+            raise ValueError('el retorno no corresponde a la campaña planificada')
+        for position, (target, terminal) in enumerate(zip(index_entry['runs'], terminals, strict=True)):
+            if target['index'] != position or target['label'] != resuelta.campaign.runs[position].label:
+                raise ValueError('el retorno no respeta el orden planificado')
+            target['terminal'] = terminal
+        print(format_e2_campaign_blocks(resuelta, identity, blocks))
+        if failures:
+            print("\n".join(failures), file=sys.stderr)
+        try:
+            manifest = campaign_manifest_from_entries(resuelta.campaign, entries, provenance).to_dict()
+            if validation_error is not None:
+                raise ValueError(validation_error)
+            metadata = bank_result_metadata(resuelta, manifest, provenance, E2_CONFIGURABLE_BANK_RESULT)
+            _proyectar_manifiesto(index_entry, metadata)
+            spool.publish(metadata)
+        except (OSError, TypeError, ValueError) as exc:
+            spool.fail('construcción', exc)
+        publication_error = None
+        publication_status = PUBLICATION_PUBLISHED if spool.published else PUBLICATION_FAILED
+        if not spool.published:
+            publication_error = spool.error
+            index_entry.update(publication_status='failed', publication_error=publication_error)
+            print(publication_error, file=sys.stderr)
+        else:
+            print(f'Resultado guardado: {output_path}', file=sys.stderr)
+            index_entry.update(publication_status='published', publication_error=None)
+            try:
+                if spool.cleanup_error is not None:
+                    raise OSError(spool.cleanup_error)
+                index_entry['artifact'] = bank_index.artifact_metadata(Path(output_path).parent, 'e2')
+            except (OSError, ValueError) as exc:
+                index_entry.update(publication_status='unverified', integrity_error=f'{type(exc).__name__}: {exc}',
+                    artifact=dict(relative_path=Path(output_path).name, size_bytes=None, sha256=None))
+                print(f'Resultado publicado sin hash confirmado: {exc}', file=sys.stderr)
+        return ProcessedCampaign(resuelta.campaign.campaign_id, identity, status, len(terminals), completed,
+            len(terminals)-completed, engine_completed, publication_status, publication_error)
+    finally:
+        spool.close()
+        if spool.cleanup_error is not None:
+            print(spool.cleanup_error, file=sys.stderr)
 
 
 def todas_las_corridas_completaron(resultado: CampaignResult) -> bool:

@@ -20,11 +20,11 @@ from experiments.campaign import (
 from experiments.canonical import jsonable
 from experiments.publication import write_exclusive_canonical_json
 from experiments.contact_plan import (
-    ContactPlanDefinition,
     contact_plan_definition_fingerprint,
     contact_plan_fingerprint,
 )
 from experiments.experiment_bank import (
+    ResolvedCampaign,
     ResolvedE1Campaign,
     ResolvedE2Campaign,
     ResolvedE3Campaign,
@@ -56,20 +56,7 @@ def build_e1_bank_result(
     """
     if not isinstance(resolved, ResolvedE1Campaign):
         raise TypeError("resolved debe ser un ResolvedE1Campaign")
-    observed, manifest = _observed_campaign_manifest(
-        resolved.campaign,
-        result,
-        provenance,
-    )
-    document = _configured_bank_document(
-        artifact_type=E1_CONFIGURABLE_BANK_RESULT,
-        configuration=resolved.bank_document.model_dump(mode="json"),
-        contact_plan_definition=resolved.contact_plan_definition,
-        provenance=observed,
-        manifest=manifest,
-        result=result,
-    )
-    return _json_object(document)
+    return _build_bank_result(resolved, result, provenance, E1_CONFIGURABLE_BANK_RESULT)
 
 
 def build_e2_bank_result(
@@ -104,23 +91,7 @@ def build_e2_bank_result(
     """
     if not isinstance(resolved, ResolvedE2Campaign):
         raise TypeError("resolved debe ser un ResolvedE2Campaign")
-    observed, manifest = _observed_campaign_manifest(
-        resolved.campaign,
-        result,
-        provenance,
-    )
-    document = _configured_bank_document(
-        artifact_type=E2_CONFIGURABLE_BANK_RESULT,
-        configuration=resolved.bank_document.model_dump(mode="json"),
-        contact_plan_definition=resolved.contact_plan_definition,
-        provenance=observed,
-        manifest=manifest,
-        result=result,
-        reference_capacity=_nominal_mars_to_relay_capacity(
-            resolved.reference_capacity
-        ),
-    )
-    return _json_object(document)
+    return _build_bank_result(resolved, result, provenance, E2_CONFIGURABLE_BANK_RESULT)
 
 
 def build_e3_bank_result(
@@ -170,20 +141,7 @@ def build_e3_bank_result(
     """
     if not isinstance(resolved, ResolvedE3Campaign):
         raise TypeError("resolved debe ser un ResolvedE3Campaign")
-    observed, manifest = _observed_campaign_manifest(
-        resolved.campaign,
-        result,
-        provenance,
-    )
-    document = _configured_bank_document(
-        artifact_type=E3_CONFIGURABLE_BANK_RESULT,
-        configuration=resolved.bank_document.model_dump(mode="json"),
-        contact_plan_definition=resolved.contact_plan_definition,
-        provenance=observed,
-        manifest=manifest,
-        result=result,
-    )
-    return _json_object(document)
+    return _build_bank_result(resolved, result, provenance, E3_CONFIGURABLE_BANK_RESULT)
 
 
 def build_e3_sensitivity_bank_result(
@@ -199,20 +157,7 @@ def build_e3_sensitivity_bank_result(
     """
     if not isinstance(resolved, ResolvedE3SensitivityCampaign):
         raise TypeError("resolved debe ser un ResolvedE3SensitivityCampaign")
-    observed, manifest = _observed_campaign_manifest(
-        resolved.campaign,
-        result,
-        provenance,
-    )
-    document = _configured_bank_document(
-        artifact_type=E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT,
-        configuration=resolved.bank_document.model_dump(mode="json"),
-        contact_plan_definition=resolved.contact_plan_definition,
-        provenance=observed,
-        manifest=manifest,
-        result=result,
-    )
-    return _json_object(document)
+    return _build_bank_result(resolved, result, provenance, E3_SENSITIVITY_CONFIGURABLE_BANK_RESULT)
 
 
 def write_e1_bank_result(path: Path, document: dict[str, Any]) -> Path:
@@ -310,17 +255,17 @@ def _publish_bank_result(
     return write_exclusive_canonical_json(path, serialized)
 
 
-def _observed_campaign_manifest(
-    campaign: CampaignSpec,
+def _build_bank_result(
+    resolved: ResolvedCampaign,
     result: CampaignResult,
     provenance: SoftwareProvenance | None,
-) -> tuple[SoftwareProvenance, dict[str, Any]]:
-    """Usa una sola procedencia y exige que el resultado sea el de esta campaña.
+    artifact_type: str,
+) -> dict[str, Any]:
+    """Construye un artefacto completo; los adaptadores tipados fijan su marcador.
 
-    ``campaign_manifest`` comprueba identidad, cantidad, índices, rótulos y
-    orden. Después, cada corrida terminada se compara con los identificadores
-    y parámetros de su propia especificación. La misma longitud no dice que
-    una corrida corresponda a la otra.
+    Una sola procedencia y un solo manifiesto por documento. La capacidad E2
+    se copia de la resolución; no se recalcula. Los resultados parciales son
+    válidos: resultado presente no significa motor COMPLETED ni convergencia.
     """
     if not isinstance(result, CampaignResult):
         raise TypeError("result debe ser un CampaignResult")
@@ -328,46 +273,44 @@ def _observed_campaign_manifest(
         raise TypeError("provenance debe ser una SoftwareProvenance")
 
     observed = current_provenance() if provenance is None else provenance
-    manifest = campaign_manifest(campaign, result, provenance=observed).to_dict()
-    _require_completed_results_match_specs(campaign, result)
-    return observed, manifest
+    manifest = campaign_manifest(resolved.campaign, result, provenance=observed).to_dict()
+    _require_completed_results_match_specs(resolved.campaign, result)
+    serialized = bank_result_metadata(resolved, manifest, observed, artifact_type)
+    serialized["run_results"] = [
+        {"result": None if run.result is None else _result_remainder(run.result)}
+        for run in result.runs
+    ]
+    return serialized
 
 
-def _configured_bank_document(
-    *,
-    artifact_type: str,
-    configuration: dict[str, Any],
-    contact_plan_definition: ContactPlanDefinition,
-    provenance: SoftwareProvenance,
-    manifest: dict[str, Any],
-    result: CampaignResult,
-    reference_capacity: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Arma el documento común. La capacidad E2 entra solo cuando ya fue copiada."""
+def bank_result_metadata(resolved, manifest, observed, artifact_type) -> dict[str, Any]:
+    """Encabezado común, independiente de dónde se retienen los resultados."""
+    configuration = resolved.bank_document.model_dump(mode="json")
+    reference_capacity = (
+        _nominal_mars_to_relay_capacity(resolved.reference_capacity)
+        if isinstance(resolved, ResolvedE2Campaign) else None
+    )
+    definition = resolved.contact_plan_definition
     document: dict[str, Any] = {
         "bank_result_schema_version": BANK_RESULT_SCHEMA_VERSION,
         "artifact_type": artifact_type,
         "configuration": configuration,
-        "contact_plan_definition": contact_plan_definition.model_dump(mode="json"),
-        "contact_plan_fingerprint": contact_plan_fingerprint(contact_plan_definition),
-        "contact_plan_definition_fingerprint": contact_plan_definition_fingerprint(
-            contact_plan_definition
-        ),
+        "contact_plan_definition": definition.model_dump(mode="json"),
+        "contact_plan_fingerprint": contact_plan_fingerprint(definition),
+        "contact_plan_definition_fingerprint": contact_plan_definition_fingerprint(definition),
     }
     if reference_capacity is not None:
         document["reference_capacity"] = reference_capacity
     document["software_provenance"] = {
-        "software_version": provenance.software_version,
-        "source_revision": provenance.source_revision,
-        "source_state": provenance.source_state,
+        "software_version": observed.software_version,
+        "source_revision": observed.source_revision,
+        "source_state": observed.source_state,
     }
     document["campaign_manifest"] = manifest
-    document["run_results"] = [
-        {"result": None if run.result is None else _result_remainder(run.result)}
-        for run in result.runs
-    ]
-    return document
-
+    serialized = jsonable(document)
+    if not isinstance(serialized, dict):
+        raise RuntimeError("el resultado del banco debe ser un objeto JSON")
+    return serialized
 
 def _nominal_mars_to_relay_capacity(capacity: ReferenceCapacity) -> dict[str, Any]:
     """Copia la capacidad nominal Marte → relé ya resuelta.
@@ -385,13 +328,6 @@ def _nominal_mars_to_relay_capacity(capacity: ReferenceCapacity) -> dict[str, An
         "serialized_capacity_bytes": capacity.serialized_capacity_bytes,
         "contact_count": capacity.contact_count,
     }
-
-
-def _json_object(document: dict[str, Any]) -> dict[str, Any]:
-    serialized = jsonable(document)
-    if not isinstance(serialized, dict):
-        raise RuntimeError("el resultado del banco debe ser un objeto JSON")
-    return serialized
 
 
 def _require_completed_results_match_specs(
@@ -419,12 +355,16 @@ def _require_completed_results_match_specs(
 
 
 def _result_remainder(result: ScientificRunResult) -> dict[str, Any]:
-    """Campos observados que ``ScientificRunManifest`` no conserva."""
+    """Campos JSON observados, sin retener otro árbol completo de eventos.
+
+    Cada evento conserva la copia de dataclasses y la normalización de tipos;
+    su diccionario intermedio se libera antes de procesar el siguiente.
+    """
     return {
-        "offered_load_fraction": result.offered_load_fraction,
-        "simulation_time": result.simulation_time,
-        "events": [asdict(event) for event in result.events],
-        "events_persisted_earth": result.events_persisted_earth,
-        "events_confirmed_mars": result.events_confirmed_mars,
-        "trace_entry_count": result.trace_entry_count,
+        "offered_load_fraction": jsonable(result.offered_load_fraction),
+        "simulation_time": jsonable(result.simulation_time),
+        "events": [jsonable(asdict(event)) for event in result.events],
+        "events_persisted_earth": jsonable(result.events_persisted_earth),
+        "events_confirmed_mars": jsonable(result.events_confirmed_mars),
+        "trace_entry_count": jsonable(result.trace_entry_count),
     }

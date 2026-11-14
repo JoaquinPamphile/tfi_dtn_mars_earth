@@ -12,6 +12,7 @@ from experiments.campaign import (
     CAMPAIGN_COMPLETED_WITH_FAILURES,
     CampaignSpec,
     _expected_result_spec_values,
+    _iter_campaign_runs,
     present_result_spec_differences,
 )
 from experiments.canonical import jsonable
@@ -124,23 +125,19 @@ def execute_campaign_persisted(
     refs: list[PersistedCampaignRunRef] = []
     hard_failure: str | None = None
 
-    for index, run in enumerate(spec.runs):
-        if hard_failure is not None:
-            break
+    for outcome in _iter_campaign_runs(spec, execute_scientific_run):
+        index = outcome.index
+        run = spec.runs[index]
         relative_path = f"{RUNS_SUBDIR}/{_run_filename(index, run.label)}"
         target = directory / relative_path
-        scientific: ScientificRunResult | None = None
-        error_type: str | None = None
-        error_message: str | None = None
+        scientific = outcome.result
+        error_type = outcome.error_type
+        error_message = outcome.error_message
+        del outcome
         identity_dataset: str | None = None
         identity_experiment: str | None = None
         identity_execution: str | None = None
-        try:
-            scientific = execute_scientific_run(run.spec)
-        except Exception as exc:
-            error_type = type(exc).__name__
-            error_message = str(exc)
-        else:
+        if scientific is not None:
             differences = present_result_spec_differences(scientific, run.spec)
             if differences:
                 hard_failure = (
@@ -187,6 +184,8 @@ def execute_campaign_persisted(
         del document
         if after_run_released is not None:
             after_run_released(index)
+        if hard_failure is not None:
+            break
 
     runs = tuple(refs)
     failed = sum(1 for item in runs if not item.completed)

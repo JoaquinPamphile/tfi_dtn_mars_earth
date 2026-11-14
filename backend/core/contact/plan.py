@@ -15,11 +15,16 @@ class ContactPlan:
     Cada sentido es independiente. El plan no crea el contacto inverso.
     """
     def __init__(self, contacts: Sequence[Contact]) -> None:
+        self._contacts = self.validated_contacts(contacts)
+
+    @classmethod
+    def validated_contacts(cls, contacts: Sequence[Contact]) -> tuple[Contact, ...]:
+        """Ordena y valida sin construir un plan; conserva los mismos Contact."""
         ordered = tuple(
             sorted(contacts, key=lambda contact: (contact.start_time_sim, contact.contact_id))
         )
-        self._validate(ordered)
-        self._contacts = ordered
+        cls._validate(ordered)
+        return ordered
 
     @property
     def contacts(self) -> tuple[Contact, ...]:

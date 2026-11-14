@@ -5,8 +5,6 @@ from cli.present.bank import (
     format_configurable_e3_campaign,
     format_configurable_e3_sensitivity_campaign,
     format_e1_bank_comparison,
-    format_suite_execution_summary,
-    format_suite_inspection,
 )
 
 __all__ = [
@@ -16,6 +14,4 @@ __all__ = [
     "format_configurable_e3_campaign",
     "format_configurable_e3_sensitivity_campaign",
     "format_e1_bank_comparison",
-    "format_suite_execution_summary",
-    "format_suite_inspection",
 ]

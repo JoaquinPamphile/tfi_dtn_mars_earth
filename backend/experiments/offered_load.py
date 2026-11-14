@@ -130,6 +130,32 @@ def generation_rate_for_event_count(*, event_count: int, duration_seconds: float
     return event_count / duration_seconds
 
 
+
+def offered_load_count_and_rate(
+    *,
+    load_fraction: float,
+    capacity_bytes: float,
+    canonical_individual_bytes: int,
+    duration_seconds: float | None,
+) -> tuple[int, float]:
+    """Conteo positivo y tasa derivados, sin construir una carga provisional."""
+    if duration_seconds is None:
+        raise ValueError("la carga ofrecida requiere duration_seconds")
+    event_count = offered_load_event_count(
+        load_fraction=load_fraction,
+        capacity_bytes=capacity_bytes,
+        canonical_individual_bytes=canonical_individual_bytes,
+    )
+    if event_count < 1:
+        raise ValueError(
+            f"la fracción {load_fraction} produce 0 eventos con esa capacidad"
+        )
+    rate = generation_rate_for_event_count(
+        event_count=event_count,
+        duration_seconds=duration_seconds,
+    )
+    return event_count, rate
+
 def _overlapping_serialized_bytes(
     contact: Contact, interval_start: float, interval_end: float
 ) -> float:

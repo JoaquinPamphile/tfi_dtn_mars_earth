@@ -1,16 +1,8 @@
-"""Valida la entrada del banco y prepara campañas sin ejecutarlas.
-
-El documento v1 acepta exactamente una sección: ``experiments.e1``,
-``experiments.e2``, ``experiments.e3`` o ``experiments.e3_sensitivity``.
-La última es sensibilidad de E3, no un cuarto experimento. Cada resolver
-exige su sección y no corre el motor. La resolución queda en memoria:
-no se carga desde un constructor histórico, no se ejecuta y no se persiste.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from pydantic import (
     BaseModel,
@@ -38,33 +30,23 @@ from core.trace.level import TraceLevel
 
 from experiments.campaign import CampaignRunSpec, CampaignSpec
 from experiments.contact_plan import ContactPlanDefinition
-from experiments.offered_load import ReferenceCapacity, reference_mars_to_relay_capacity
+from experiments.offered_load import (
+    ReferenceCapacity,
+    offered_load_count_and_rate,
+    reference_mars_to_relay_capacity,
+)
 from experiments.scenario_adapter import scenario_from_contact_plan_definition
 from experiments.spec import ScientificRunSpec
 from experiments.workload import Workload
 
-EXPERIMENT_BANK_SCHEMA_VERSION = 1
 EXPERIMENT_BANK_SCHEMA_VERSION_V2 = 2
-# Defaults propios de la versión 1 del contrato de entrada. Inicialmente
-# coinciden con E1 oficial, pero no se derivan de su builder histórico.
-EXPERIMENT_BANK_DEFAULT_SEED = 1
-E1_BANK_DEFAULT_START_TIME_SIM = 0.0
-E1_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
-E1_BANK_DEFAULT_BATCH_SIZES = (10, 25, 50)
-# Defaults explícitos del contrato E2. No se importan del experimento oficial.
-E2_BANK_DEFAULT_START_TIME_SIM = 0.0
-E2_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
-E2_BANK_DEFAULT_BATCH_SIZE_EVENTS = 25
-_ADMITTED_EXPERIMENT_SECTIONS = frozenset({"e1", "e2", "e3", "e3_sensitivity"})
-_EXPERIMENT_SECTION_ORDER = ("e1", "e2", "e3", "e3_sensitivity")
-_UNSUPPORTED_EXPERIMENTS = frozenset({"sensitivity"})
 
 E1_BANK_CAMPAIGN_ID = "e1-experiment-bank-v1"
 E1_BANK_CAMPAIGN_DESCRIPTION = (
     "E1 configurable resuelto desde el banco experimental v1. "
     "No es el diseño oficial de E1."
 )
-# Defaults del banco cuando experiments.e1 no declara la identidad.
+# Etiquetas científicas conservadas; V2 exige declarar la identidad.
 # Forman parte del workload materializado y, por lo tanto, de sus payloads
 # y huellas. No se leen del builder oficial ni atribuyen el banco a Alessi.
 E1_BANK_WORKLOAD_ID = "experiment-bank-e1-v1"
@@ -75,16 +57,13 @@ E2_BANK_CAMPAIGN_DESCRIPTION = (
     "E2 configurable resuelto desde el banco experimental v1. "
     "No es el diseño oficial de E2."
 )
-# Defaults del banco cuando experiments.e2 no declara la identidad.
+# Etiquetas científicas conservadas; V2 exige declarar la identidad.
 # Son los literales que el resolver imponía antes de leerlos del documento.
 # Entran en el workload materializado. No son los identificadores de Alessi
 # ni los de la campaña oficial de carga ofrecida, y no se importan de su builder.
 E2_BANK_WORKLOAD_ID = "experiment-bank-e2-v1"
 E2_BANK_EVENT_TYPE = "research.tfi.experiment_bank.e2"
 E2_BANK_FLOW = "tfi.experiment_bank.e2"
-# Defaults explícitos del contrato E3. No se importan del experimento oficial.
-E3_BANK_DEFAULT_START_TIME_SIM = 0.0
-E3_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES = 4096
 E3_BANK_WORKLOAD_ID = "experiment-bank-e3-v1"
 E3_BANK_EVENT_TYPE = "research.tfi.experiment_bank.e3"
 E3_BANK_FLOW = "tfi.experiment_bank.e3"
@@ -103,11 +82,6 @@ E3_SENSITIVITY_BANK_CAMPAIGN_DESCRIPTION = (
     "Sensibilidad de E3 configurable resuelta desde el banco experimental v1. "
     "No es el diseño oficial de sensibilidad ni un experimento E4."
 )
-# ACK de RetryPolicy en las celdas receiver-driven C y D.
-# Receiver-driven no programa ACK_TIMEOUT. Este valor es configuración
-# auxiliar del protocolo inicial: no es gap_request_timeout_seconds y no
-# se toma del default de RetryPolicy, que podría cambiar.
-E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS = 600.0
 E3_BANK_LOSS_ATTEMPT = 1
 E3_BANK_LOSS_MAX_OCCURRENCES = 1
 
@@ -139,29 +113,25 @@ class ExperimentBankScenario(_BankInputModel):
 class ExperimentBankE1(_BankInputModel):
     """Parámetros declarados para E1, todavía sin resolver a corridas.
 
-    ``workload_id``, ``event_type`` y ``flow`` pueden omitirse. El default
-    es el de este banco. No hay otro bloque ni un modo particular para
-    reemplazarlos.
+    Todos los parámetros científicos e identidades se declaran explícitamente.
     """
 
     event_count: int = Field(gt=0, strict=True)
     event_interval_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
     sender_ack_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
-    batch_sizes: tuple[StrictInt, ...] = E1_BANK_DEFAULT_BATCH_SIZES
+    batch_sizes: tuple[StrictInt, ...]
     start_time_sim: float = Field(
-        default=E1_BANK_DEFAULT_START_TIME_SIM,
         ge=0,
         allow_inf_nan=False,
         strict=True,
     )
     individual_syncunit_bytes: int = Field(
-        default=E1_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES,
         gt=0,
         strict=True,
     )
-    workload_id: str = Field(default=E1_BANK_WORKLOAD_ID, min_length=1)
-    event_type: str = Field(default=E1_BANK_EVENT_TYPE)
-    flow: str = Field(default=E1_BANK_FLOW)
+    workload_id: str = Field(min_length=1)
+    event_type: str = Field()
+    flow: str = Field()
 
     @field_validator("workload_id", "event_type", "flow")
     @classmethod
@@ -211,9 +181,7 @@ class ExperimentBankE2(_BankInputModel):
     Individual, no solamente el del payload. ``capacity_interval_end_sim``
     en ``None`` usa el horizonte del escenario como fin de capacidad.
 
-    ``workload_id``, ``event_type`` y ``flow`` pueden omitirse. El default
-    es el de este banco. No hay otro bloque ni un modo particular para
-    reemplazarlos.
+    Todos los parámetros científicos e identidades se declaran explícitamente.
     """
 
     generation_duration_seconds: float = Field(
@@ -228,30 +196,26 @@ class ExperimentBankE2(_BankInputModel):
         strict=True,
     )
     start_time_sim: float = Field(
-        default=E2_BANK_DEFAULT_START_TIME_SIM,
         ge=0,
         allow_inf_nan=False,
         strict=True,
     )
     individual_syncunit_bytes: int = Field(
-        default=E2_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES,
         gt=0,
         strict=True,
     )
     batch_size_events: int = Field(
-        default=E2_BANK_DEFAULT_BATCH_SIZE_EVENTS,
         ge=MIN_BATCH_SIZE_EVENTS,
         le=MAX_BATCH_SIZE_EVENTS,
         strict=True,
     )
     capacity_interval_end_sim: float | None = Field(
-        default=None,
         allow_inf_nan=False,
         strict=True,
     )
-    workload_id: str = Field(default=E2_BANK_WORKLOAD_ID, min_length=1)
-    event_type: str = Field(default=E2_BANK_EVENT_TYPE)
-    flow: str = Field(default=E2_BANK_FLOW)
+    workload_id: str = Field(min_length=1)
+    event_type: str = Field()
+    flow: str = Field()
 
     @field_validator("workload_id", "event_type", "flow")
     @classmethod
@@ -306,10 +270,10 @@ class ExperimentBankE2(_BankInputModel):
         return self
 
 
-class ExperimentBankE3(_BankInputModel):
+class ExperimentBankE3V2(_BankInputModel):
     """Parámetros declarados para E3.
 
-    El documento v1 admite ``experiments.e3`` como única sección.
+    V2 permite seleccionar E3 junto con otros protocolos.
     ``resolve_e3_campaign`` arma las cuatro celdas en memoria. Este modelo,
     por sí solo, no calcula la tasa ni el último instante de generación, no
     consulta el horizonte ni los contactos, no calibra payloads y no arma
@@ -317,10 +281,10 @@ class ExperimentBankE3(_BankInputModel):
     La secuencia interna solo exige un vecino anterior y uno posterior:
     no afirma que la pérdida se active, se detecte o se recupere.
 
-    ``workload_id``, ``event_type`` y ``flow`` pueden omitirse. El default
-    es el de este banco. No se importa del builder oficial ni atribuye la
-    corrida a Alessi.
+    Todos los parámetros científicos e identidades se declaran explícitamente.
     """
+
+    receiver_ack_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
 
     event_count: int = Field(ge=3, strict=True)
     event_interval_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
@@ -328,19 +292,17 @@ class ExperimentBankE3(_BankInputModel):
     gap_request_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
     loss_sequence_number: int = Field(ge=1, strict=True)
     start_time_sim: float = Field(
-        default=E3_BANK_DEFAULT_START_TIME_SIM,
         ge=0,
         allow_inf_nan=False,
         strict=True,
     )
     individual_syncunit_bytes: int = Field(
-        default=E3_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES,
         gt=0,
         strict=True,
     )
-    workload_id: str = Field(default=E3_BANK_WORKLOAD_ID, min_length=1)
-    event_type: str = Field(default=E3_BANK_EVENT_TYPE)
-    flow: str = Field(default=E3_BANK_FLOW)
+    workload_id: str = Field(min_length=1)
+    event_type: str = Field()
+    flow: str = Field()
 
     @field_validator("workload_id", "event_type", "flow")
     @classmethod
@@ -376,7 +338,7 @@ class ExperimentBankE3(_BankInputModel):
         return self
 
 
-class ExperimentBankE3Sensitivity(_BankInputModel):
+class ExperimentBankE3SensitivityV2(_BankInputModel):
     """Parámetros declarados para la sensibilidad de E3.
 
     Es la misma generación, identidad, tamaño Individual, inicio y timeouts
@@ -386,25 +348,25 @@ class ExperimentBankE3Sensitivity(_BankInputModel):
     Validar este modelo no arma el plan de fallos ni consulta el horizonte.
     """
 
+    receiver_ack_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
+
     event_count: int = Field(ge=3, strict=True)
     event_interval_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
     sender_ack_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
     gap_request_timeout_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
     loss_sequence_numbers: tuple[StrictInt, ...]
     start_time_sim: float = Field(
-        default=E3_BANK_DEFAULT_START_TIME_SIM,
         ge=0,
         allow_inf_nan=False,
         strict=True,
     )
     individual_syncunit_bytes: int = Field(
-        default=E3_BANK_DEFAULT_INDIVIDUAL_SYNCUNIT_BYTES,
         gt=0,
         strict=True,
     )
-    workload_id: str = Field(default=E3_SENSITIVITY_BANK_WORKLOAD_ID, min_length=1)
-    event_type: str = Field(default=E3_SENSITIVITY_BANK_EVENT_TYPE)
-    flow: str = Field(default=E3_SENSITIVITY_BANK_FLOW)
+    workload_id: str = Field(min_length=1)
+    event_type: str = Field()
+    flow: str = Field()
 
     @field_validator("workload_id", "event_type", "flow")
     @classmethod
@@ -457,131 +419,6 @@ class ExperimentBankE3Sensitivity(_BankInputModel):
         return self
 
 
-class ExperimentBankExperiments(_BankInputModel):
-    """Sección E1 del documento. No incluye ni serializa E2."""
-
-    e1: ExperimentBankE1
-
-
-class ExperimentBankE2Section(_BankInputModel):
-    """Sección E2 del documento. No es una campaña resuelta ni ejecutable."""
-
-    e2: ExperimentBankE2
-
-
-class ExperimentBankE3Section(_BankInputModel):
-    """Sección E3 del documento. Validarla no resuelve ni ejecuta la campaña."""
-
-    e3: ExperimentBankE3
-
-
-class ExperimentBankE3SensitivitySection(_BankInputModel):
-    """Sección de sensibilidad de E3. Validarla no resuelve ni ejecuta."""
-
-    e3_sensitivity: ExperimentBankE3Sensitivity
-
-
-class LegacyExperimentBankDocument(_BankInputModel):
-    """Documento validado, no una configuración efectiva de ejecución.
-
-    Contiene exactamente una sección: E1, E2, E3 o sensibilidad de E3.
-    Validar el documento no abre el plan ni ejecuta la campaña.
-    """
-
-    schema_version: int = Field(strict=True)
-    seed: int = Field(default=EXPERIMENT_BANK_DEFAULT_SEED, strict=True)
-    scenario: ExperimentBankScenario
-    experiments: (
-        ExperimentBankExperiments
-        | ExperimentBankE2Section
-        | ExperimentBankE3Section
-        | ExperimentBankE3SensitivitySection
-    )
-
-    @field_validator("schema_version", mode="before")
-    @classmethod
-    def schema_version_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("schema_version no admite booleanos")
-        return value
-
-    @field_validator("seed", mode="before")
-    @classmethod
-    def seed_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("seed no admite booleanos")
-        return value
-
-    @field_validator("experiments", mode="before")
-    @classmethod
-    def select_exactly_one_experiment(cls, value: Any) -> Any:
-        if isinstance(
-            value,
-            (
-                ExperimentBankExperiments,
-                ExperimentBankE2Section,
-                ExperimentBankE3Section,
-                ExperimentBankE3SensitivitySection,
-            ),
-        ):
-            return value
-        if not isinstance(value, dict):
-            return value
-        unsupported = sorted(_UNSUPPORTED_EXPERIMENTS.intersection(value))
-        if unsupported:
-            names = ", ".join(unsupported)
-            raise ValueError(
-                f"{names} todavía no está soportado por el contrato de entrada v1"
-            )
-        unknown = sorted(set(value).difference(_ADMITTED_EXPERIMENT_SECTIONS))
-        if unknown:
-            names = ", ".join(unknown)
-            raise ValueError(f"clave desconocida en experiments: {names}")
-        selected = [name for name in _EXPERIMENT_SECTION_ORDER if name in value]
-        if len(selected) == 0:
-            raise ValueError(
-                "el documento debe incluir exactamente una sección: "
-                "experiments.e1, experiments.e2, experiments.e3 "
-                "o experiments.e3_sensitivity"
-            )
-        if len(selected) > 1:
-            names = " y ".join(f"experiments.{name}" for name in selected)
-            raise ValueError(f"{names} no pueden estar presentes a la vez")
-        chosen = selected[0]
-        if value[chosen] is None:
-            raise ValueError(f"experiments.{chosen} no puede ser null")
-        return value
-
-    @model_validator(mode="after")
-    def supported_schema_version(self) -> Self:
-        if self.schema_version != EXPERIMENT_BANK_SCHEMA_VERSION:
-            raise ValueError(
-                "schema_version no soportada: "
-                f"se requiere {EXPERIMENT_BANK_SCHEMA_VERSION}"
-            )
-        return self
-
-
-class ExperimentBankE3V2(ExperimentBankE3):
-    """E3 v2 exige declarar el ACK auxiliar receiver-driven."""
-
-    receiver_ack_timeout_seconds: float = Field(
-        gt=0,
-        allow_inf_nan=False,
-        strict=True,
-    )
-
-
-class ExperimentBankE3SensitivityV2(ExperimentBankE3Sensitivity):
-    """Sensibilidad v2 exige declarar el ACK auxiliar receiver-driven."""
-
-    receiver_ack_timeout_seconds: float = Field(
-        gt=0,
-        allow_inf_nan=False,
-        strict=True,
-    )
-
-
 class ExperimentBankExperimentsV2(_BankInputModel):
     """Selección v2. Cada bloque presente es una campaña solicitada."""
 
@@ -604,15 +441,6 @@ class ExperimentBankExperimentsV2(_BankInputModel):
         ]
         if not selected:
             raise ValueError("experiments debe declarar al menos un experimento")
-        for configuration in selected:
-            missing = set(type(configuration).model_fields).difference(
-                configuration.model_fields_set
-            )
-            if missing:
-                raise ValueError(
-                    "la configuración v2 debe declarar explícitamente: "
-                    + ", ".join(sorted(missing))
-                )
         return self
 
 
@@ -631,94 +459,24 @@ class ExperimentBankDocument(_BankInputModel):
             raise ValueError("los enteros no admiten booleanos")
         return value
 
-    @model_validator(mode="after")
-    def supported_schema_version(self) -> Self:
-        if self.schema_version != EXPERIMENT_BANK_SCHEMA_VERSION_V2:
+    @field_validator("schema_version")
+    @classmethod
+    def supported_schema_version(cls, value: int) -> int:
+        if value != EXPERIMENT_BANK_SCHEMA_VERSION_V2:
             raise ValueError(
                 "schema_version no soportada para el banco v2: "
                 f"se requiere {EXPERIMENT_BANK_SCHEMA_VERSION_V2}"
             )
-        return self
-
-
-ExperimentBankSourceDocument = LegacyExperimentBankDocument | ExperimentBankDocument
+        return value
 
 
 @dataclass(frozen=True, slots=True)
 class ResolvedE1Campaign:
     """Resolución inmutable con sus dos documentos de entrada y el spec efectivo."""
 
-    bank_document: ExperimentBankSourceDocument
+    bank_document: ExperimentBankDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
-
-
-_LEGACY_SECTION_EXECUTION_LABEL = {
-    "e1": "una campaña E1",
-    "e2": "una campaña E2",
-    "e3": "una campaña E3",
-    "e3_sensitivity": "una sensibilidad de E3",
-}
-
-
-def _legacy_selected_configuration(
-    bank_document: LegacyExperimentBankDocument,
-) -> tuple[
-    str,
-    ExperimentBankE1
-    | ExperimentBankE2
-    | ExperimentBankE3
-    | ExperimentBankE3Sensitivity,
-] | tuple[None, None]:
-    """Identifica la única sección v1 ya validada, o ``(None, None)`` si no aplica."""
-    experiments = bank_document.experiments
-    if isinstance(experiments, ExperimentBankExperiments):
-        return "e1", experiments.e1
-    if isinstance(experiments, ExperimentBankE2Section):
-        return "e2", experiments.e2
-    if isinstance(experiments, ExperimentBankE3Section):
-        return "e3", experiments.e3
-    if isinstance(experiments, ExperimentBankE3SensitivitySection):
-        return "e3_sensitivity", experiments.e3_sensitivity
-    return None, None
-
-
-def _require_legacy_bank_selection(
-    bank_document: LegacyExperimentBankDocument,
-    *,
-    expected: str,
-    resolver_name: str,
-) -> (
-    ExperimentBankE1
-    | ExperimentBankE2
-    | ExperimentBankE3
-    | ExperimentBankE3Sensitivity
-):
-    """Devuelve la sección ``expected`` o rechaza otra selección v1 con el mismo mensaje."""
-    selected, configuration = _legacy_selected_configuration(bank_document)
-    if selected == expected and configuration is not None:
-        return configuration
-    if selected is None:
-        raise ValueError(f"el documento no selecciona experiments.{expected}")
-    raise ValueError(
-        f"el documento selecciona experiments.{selected}; "
-        f"{resolver_name} solo acepta experiments.{expected} "
-        f"y no construye ni ejecuta {_LEGACY_SECTION_EXECUTION_LABEL[selected]}"
-    )
-
-
-def require_e1_bank_selection(
-    bank_document: LegacyExperimentBankDocument,
-) -> ExperimentBankE1:
-    """Devuelve la sección E1 o rechaza un documento que selecciona E2 o E3."""
-    return cast(
-        ExperimentBankE1,
-        _require_legacy_bank_selection(
-            bank_document,
-            expected="e1",
-            resolver_name="resolve_e1_campaign",
-        ),
-    )
 
 
 def _finite_workload_from_interval(
@@ -754,10 +512,8 @@ def _finite_workload_from_interval(
 
 
 def resolve_e1_campaign(
-    bank_document: ExperimentBankSourceDocument,
+    bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
-    *,
-    configuration: ExperimentBankE1 | None = None,
 ) -> ResolvedE1Campaign:
     """Convierte en memoria una entrada validada del banco en una campaña E1.
 
@@ -770,13 +526,11 @@ def resolve_e1_campaign(
     construir el escenario o la campaña. Un documento que selecciona E3
     se rechaza del mismo modo, antes de construir el escenario, e
     identifica la sección E3. La identidad del workload es la
-    declarada en ``experiments.e1`` o, si falta, la de este banco.
+    declarada explícitamente en ``experiments.e1``.
     """
-    e1_config = (
-        require_e1_bank_selection(bank_document)
-        if configuration is None
-        else configuration
-    )
+    e1_config = bank_document.experiments.e1
+    if e1_config is None:
+        raise ValueError("el documento no selecciona experiments.e1")
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -858,31 +612,15 @@ def resolve_e1_campaign(
 class ResolvedE2Campaign:
     """Resolución E2 inmutable. No guarda resultados ni métricas de una corrida."""
 
-    bank_document: ExperimentBankSourceDocument
+    bank_document: ExperimentBankDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
     reference_capacity: ReferenceCapacity
 
 
-def require_e2_bank_selection(
-    bank_document: LegacyExperimentBankDocument,
-) -> ExperimentBankE2:
-    """Devuelve la sección E2 o rechaza un documento que selecciona E1 o E3."""
-    return cast(
-        ExperimentBankE2,
-        _require_legacy_bank_selection(
-            bank_document,
-            expected="e2",
-            resolver_name="resolve_e2_campaign",
-        ),
-    )
-
-
 def resolve_e2_campaign(
-    bank_document: ExperimentBankSourceDocument,
+    bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
-    *,
-    configuration: ExperimentBankE2 | None = None,
 ) -> ResolvedE2Campaign:
     """Convierte una entrada E2 validada en una campaña, sin ejecutarla.
 
@@ -897,14 +635,12 @@ def resolve_e2_campaign(
     No es capacidad extremo a extremo, utilización realizada ni una garantía
     de entrega. No exige convergencia, retorno suficiente ni ausencia de
     retries, y no usa el fin del último contacto del E2 oficial.
-    La identidad del workload es la declarada en ``experiments.e2`` o, si
-    falta, la de este banco. No se lee del builder oficial.
+    La identidad del workload se declara en ``experiments.e2``. No se lee
+    del builder oficial.
     """
-    e2_config = (
-        require_e2_bank_selection(bank_document)
-        if configuration is None
-        else configuration
-    )
+    e2_config = bank_document.experiments.e2
+    if e2_config is None:
+        raise ValueError("el documento no selecciona experiments.e2")
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -924,18 +660,6 @@ def resolve_e2_campaign(
     )
     _require_positive_finite_capacity(capacity)
 
-    # La tasa 1.0 solo completa el workload base. with_offered_load la reemplaza.
-    base_workload = Workload(
-        workload_id=e2_config.workload_id,
-        event_type=e2_config.event_type,
-        flow=e2_config.flow,
-        priority=TelemetryPriority.NORMAL,
-        start_time_sim=e2_config.start_time_sim,
-        duration_seconds=e2_config.generation_duration_seconds,
-        max_events=None,
-        rate_events_per_second=1.0,
-        canonical_individual_syncunit_bytes=e2_config.individual_syncunit_bytes,
-    )
     retry_policy = RetryPolicy(
         ack_timeout_seconds=e2_config.sender_ack_timeout_seconds
     )
@@ -952,12 +676,10 @@ def resolve_e2_campaign(
     runs: list[CampaignRunSpec] = []
     for load_index, load_fraction in enumerate(e2_config.offered_load_fractions):
         workload = _e2_workload_for_fraction(
-            base_workload,
+            e2_config,
             load_index=load_index,
             load_fraction=load_fraction,
             capacity_bytes=capacity.serialized_capacity_bytes,
-            individual_bytes=e2_config.individual_syncunit_bytes,
-            duration_seconds=e2_config.generation_duration_seconds,
         )
         pair_parameters = {**shared_run_parameters, "workload": workload}
         runs.append(
@@ -1053,15 +775,15 @@ def _require_positive_finite_capacity(capacity: ReferenceCapacity) -> None:
 
 
 def _e2_workload_for_fraction(
-    base_workload: Workload,
+    config: ExperimentBankE2,
     *,
     load_index: int,
     load_fraction: float,
     capacity_bytes: float,
-    individual_bytes: int,
-    duration_seconds: float,
 ) -> Workload:
-    """Conteo y tasa de una fracción, con un mensaje que la identifica."""
+    """Carga efectiva de una fracción, con un mensaje que la identifica."""
+    individual_bytes = config.individual_syncunit_bytes
+    duration_seconds = config.generation_duration_seconds
     context = (
         f"fraction_index={load_index}, "
         f"offered_load_fraction={load_fraction}, "
@@ -1070,16 +792,16 @@ def _e2_workload_for_fraction(
         f"generation_duration_seconds={duration_seconds}"
     )
     try:
-        workload = base_workload.with_offered_load(
+        event_count, rate = offered_load_count_and_rate(
             load_fraction=load_fraction,
             capacity_bytes=capacity_bytes,
+            canonical_individual_bytes=individual_bytes,
+            duration_seconds=duration_seconds,
         )
     except (ValueError, OverflowError, ValidationError) as error:
         raise ValueError(
             f"no se pudo derivar el conteo o la tasa de la fracción: {context}. {error}"
         ) from error
-    event_count = workload.max_events
-    rate = workload.rate_events_per_second
     if (
         event_count is None
         or isinstance(event_count, bool)
@@ -1093,37 +815,32 @@ def _e2_workload_for_fraction(
             f"event_count={event_count}, "
             f"rate_events_per_second={rate}"
         )
-    return workload
+    return Workload(
+        workload_id=config.workload_id,
+        event_type=config.event_type,
+        flow=config.flow,
+        priority=TelemetryPriority.NORMAL,
+        start_time_sim=config.start_time_sim,
+        duration_seconds=duration_seconds,
+        max_events=event_count,
+        rate_events_per_second=rate,
+        canonical_individual_syncunit_bytes=individual_bytes,
+        offered_load_fraction=load_fraction,
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class ResolvedE3Campaign:
     """Resolución E3 inmutable. Conserva las entradas y el spec; no guarda resultados."""
 
-    bank_document: ExperimentBankSourceDocument
+    bank_document: ExperimentBankDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
 
 
-def require_e3_bank_selection(
-    bank_document: LegacyExperimentBankDocument,
-) -> ExperimentBankE3:
-    """Devuelve la sección E3 o rechaza un documento que selecciona E1 o E2."""
-    return cast(
-        ExperimentBankE3,
-        _require_legacy_bank_selection(
-            bank_document,
-            expected="e3",
-            resolver_name="resolve_e3_campaign",
-        ),
-    )
-
-
 def resolve_e3_campaign(
-    bank_document: ExperimentBankSourceDocument,
+    bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
-    *,
-    configuration: ExperimentBankE3 | None = None,
 ) -> ResolvedE3Campaign:
     """Convierte en memoria una entrada E3 validada en cuatro celdas, sin ejecutarlas.
 
@@ -1143,8 +860,7 @@ def resolve_e3_campaign(
     Las cuatro corridas comparten escenario, workload y semilla, en el orden
     A, B, C, D. A y C no tienen fallos. B y D comparten una pérdida silenciosa
     de la secuencia declarada, intento 1, hop relé → Tierra y una ocurrencia.
-    C y D fijan el ACK de ``RetryPolicy`` en
-    ``E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS`` (600 s). Ese número es
+    C y D usan el ACK de ``RetryPolicy`` declarado explícitamente. Es
     configuración auxiliar de este protocolo: receiver-driven no programa
     ``ACK_TIMEOUT``. No es el timeout científico del receptor ni el default
     de ``RetryPolicy``.
@@ -1154,11 +870,9 @@ def resolve_e3_campaign(
     recuperación, completitud o convergencia. Un plan vacío o sin retorno
     sigue siendo válido. No se llama a ``e3_result``.
     """
-    e3_config = (
-        require_e3_bank_selection(bank_document)
-        if configuration is None
-        else configuration
-    )
+    e3_config = bank_document.experiments.e3
+    if e3_config is None:
+        raise ValueError("el documento no selecciona experiments.e3")
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -1186,11 +900,7 @@ def resolve_e3_campaign(
         ack_timeout_seconds=e3_config.sender_ack_timeout_seconds
     )
     receiver_retry = RetryPolicy(
-        ack_timeout_seconds=getattr(
-            e3_config,
-            "receiver_ack_timeout_seconds",
-            E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS,
-        )
+        ack_timeout_seconds=e3_config.receiver_ack_timeout_seconds
     )
     shared_run_parameters = {
         "scenario": scenario,
@@ -1268,7 +978,7 @@ def resolve_e3_campaign(
 class ResolvedE3SensitivityCampaign:
     """Resolución de sensibilidad E3. Conserva las entradas y el spec."""
 
-    bank_document: ExperimentBankSourceDocument
+    bank_document: ExperimentBankDocument
     contact_plan_definition: ContactPlanDefinition
     campaign: CampaignSpec
 
@@ -1281,25 +991,9 @@ ResolvedCampaign = (
 )
 
 
-def require_e3_sensitivity_bank_selection(
-    bank_document: LegacyExperimentBankDocument,
-) -> ExperimentBankE3Sensitivity:
-    """Devuelve la sección de sensibilidad o rechaza E1, E2 o E3."""
-    return cast(
-        ExperimentBankE3Sensitivity,
-        _require_legacy_bank_selection(
-            bank_document,
-            expected="e3_sensitivity",
-            resolver_name="resolve_e3_sensitivity_campaign",
-        ),
-    )
-
-
 def resolve_e3_sensitivity_campaign(
-    bank_document: ExperimentBankSourceDocument,
+    bank_document: ExperimentBankDocument,
     contact_plan_definition: ContactPlanDefinition,
-    *,
-    configuration: ExperimentBankE3Sensitivity | None = None,
 ) -> ResolvedE3SensitivityCampaign:
     """Arma una pareja sender/receiver por cada secuencia, sin ejecutarla.
 
@@ -1320,11 +1014,9 @@ def resolve_e3_sensitivity_campaign(
     no exige que la pérdida se active, que el retorno alcance ni que haya
     convergencia. No llama al evaluador histórico.
     """
-    config = (
-        require_e3_sensitivity_bank_selection(bank_document)
-        if configuration is None
-        else configuration
-    )
+    config = bank_document.experiments.e3_sensitivity
+    if config is None:
+        raise ValueError("el documento no selecciona experiments.e3_sensitivity")
     scenario_config = bank_document.scenario
     scenario = scenario_from_contact_plan_definition(
         contact_plan_definition,
@@ -1344,11 +1036,7 @@ def resolve_e3_sensitivity_campaign(
     )
     sender_retry = RetryPolicy(ack_timeout_seconds=config.sender_ack_timeout_seconds)
     receiver_retry = RetryPolicy(
-        ack_timeout_seconds=getattr(
-            config,
-            "receiver_ack_timeout_seconds",
-            E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS,
-        )
+        ack_timeout_seconds=config.receiver_ack_timeout_seconds
     )
     shared_run_parameters = {
         "scenario": scenario,
@@ -1513,7 +1201,6 @@ def resolve_experiment_bank(
                 resolve_e1_campaign(
                     document,
                     contact_plan_definition,
-                    configuration=selected.e1,
                 ),
             )
         )
@@ -1524,7 +1211,6 @@ def resolve_experiment_bank(
                 resolve_e2_campaign(
                     document,
                     contact_plan_definition,
-                    configuration=selected.e2,
                 ),
             )
         )
@@ -1535,7 +1221,6 @@ def resolve_experiment_bank(
                 resolve_e3_campaign(
                     document,
                     contact_plan_definition,
-                    configuration=selected.e3,
                 ),
             )
         )
@@ -1546,7 +1231,6 @@ def resolve_experiment_bank(
                 resolve_e3_sensitivity_campaign(
                     document,
                     contact_plan_definition,
-                    configuration=selected.e3_sensitivity,
                 ),
             )
         )

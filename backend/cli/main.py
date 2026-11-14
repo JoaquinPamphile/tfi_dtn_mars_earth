@@ -7,16 +7,16 @@ Uso:
   python -m cli run --config <archivo.json> [--output <ruta> | --output-dir <directorio>]
 
 Comandos:
-  inspect                               Prepara e inspecciona la campaña que declara el documento, sin ejecutarla. Una suite muestra cada campaña en el orden declarado, sin ejecutarla.
-  run                                   Ejecuta la campaña que declara el documento, muestra los resultados en consola y no genera un paquete reproducible de evidencia. Una suite ejecuta las campañas en el orden declarado.
+  inspect                               Prepara e inspecciona las campañas seleccionadas, sin ejecutar.
+  run                                   Ejecuta las campañas seleccionadas; no genera evidencia oficial.
 
 Opciones de inspect:
-  --config ARCHIVO                      Documento individual v1, banco multi-experimento v2 o suite v1. Prepara e inspecciona sin ejecutar.
+  --config ARCHIVO                      Banco schema_version: 2 con parámetros científicos explícitos.
 
 Opciones de run:
-  --config ARCHIVO                      Documento individual v1, banco multi-experimento v2 o suite v1. Ejecuta las campañas declaradas y no genera evidencia oficial.
-  --output RUTA                         Documento individual v1: archivo autocontenido. Banco v2: directorio nuevo con un JSON por experimento, índices parciales inmutables e índice global final. Suite v1: directorio nuevo con resumen. El padre debe existir.
-  --output-dir DIRECTORIO               Documento individual (E1, E2 o E3): conserva un resultado por corrida en un directorio nuevo. El formato (campaign_run_set) difiere del JSON monolítico de --output. No admite suites ni --output en la misma invocación.
+  --config ARCHIVO                      Banco schema_version: 2; E1, E2, E3 y/o sensibilidad E3.
+  --output RUTA                         Directorio nuevo con un JSON por experimento, índices parciales inmutables e índice global final. El padre debe existir.
+  --output-dir DIRECTORIO               No admitido para bancos V2. Use --output.
 Ayuda:
   -h, --help                            Muestra esta ayuda.
 

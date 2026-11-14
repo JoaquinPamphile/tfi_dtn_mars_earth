@@ -16,7 +16,7 @@ permanecen. ``KeyboardInterrupt`` y ``SystemExit`` se propagan.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -197,34 +197,43 @@ def execute_campaign(spec: CampaignSpec) -> CampaignResult:
     """
     if not isinstance(spec, CampaignSpec):
         raise TypeError("spec debe ser un CampaignSpec")
-    outcomes: list[CampaignRunResult] = []
-    for index, run in enumerate(spec.runs):
-        try:
-            result = execute_scientific_run(run.spec)
-        except Exception as exc:
-            outcomes.append(
-                CampaignRunResult(
-                    index=index,
-                    label=run.label,
-                    result=None,
-                    error_type=type(exc).__name__,
-                    error_message=str(exc),
-                )
-            )
-        else:
-            outcomes.append(
-                CampaignRunResult(
-                    index=index,
-                    label=run.label,
-                    result=result,
-                )
-            )
+    runs = tuple(_iter_campaign_runs(spec, execute_scientific_run))
     return CampaignResult(
         campaign_id=spec.campaign_id,
         description=spec.description,
         campaign_identity=spec.campaign_identity,
-        runs=tuple(outcomes),
+        runs=runs,
     )
+
+
+def _iter_campaign_runs(
+    spec: CampaignSpec,
+    execute_run: Callable[[ScientificRunSpec], ScientificRunResult],
+) -> Iterator[CampaignRunResult]:
+    """Secuencia perezosa común; cada consumidor decide cuánto retener.
+
+    El generador no guarda el resultado entregado. La llamada separada
+    limita su vida al intento y permite liberarlo antes del siguiente.
+    """
+    return (
+        _execute_campaign_run(index, run, execute_run)
+        for index, run in enumerate(spec.runs)
+    )
+
+
+def _execute_campaign_run(
+    index: int,
+    run: CampaignRunSpec,
+    execute_run: Callable[[ScientificRunSpec], ScientificRunResult],
+) -> CampaignRunResult:
+    try:
+        result = execute_run(run.spec)
+    except Exception as exc:
+        return CampaignRunResult(
+            index=index, label=run.label, result=None,
+            error_type=type(exc).__name__, error_message=str(exc),
+        )
+    return CampaignRunResult(index=index, label=run.label, result=result)
 
 
 def execute_campaign_persisted(spec: CampaignSpec, directory: Path, **kwargs: Any):
