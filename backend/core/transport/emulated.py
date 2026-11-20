@@ -97,7 +97,6 @@ class EmulatedTransport:
         self._in_flight: dict[str, SyncUnit] = {}
         self._attempts: dict[str, TransmissionAttempt] = {}
         self._next_attempt_seq = 0
-        self._pending_deliveries: list[TransportDelivery] = []
         self._delivery_handlers: list[DeliveryHandler] = []
         self._failures = failures if failures is not None else FailureRuntime()
         self._hop_records: list[HopTransmissionRecord] = []
@@ -162,11 +161,6 @@ class EmulatedTransport:
         """Registra quién recibe cada llegada de este hop."""
         self._delivery_handlers.append(handler)
 
-    def poll_deliveries(self) -> tuple[TransportDelivery, ...]:
-        """Devuelve y vacía las llegadas todavía no consultadas."""
-        pending = tuple(self._pending_deliveries)
-        self._pending_deliveries.clear()
-        return pending
 
     def open_contact(self, contact: Contact) -> None:
         """Abre la ventana en su enlace e intenta transmitir.
@@ -544,7 +538,6 @@ class EmulatedTransport:
             sync_unit=unit,
             contact_id=str(action.payload["contact_id"]),
         )
-        self._pending_deliveries.append(delivery)
         for handler in list(self._delivery_handlers):
             handler(delivery)
 
@@ -568,7 +561,6 @@ class EmulatedTransport:
             sync_unit=unit,
             contact_id=str(action.payload["contact_id"]),
         )
-        self._pending_deliveries.append(delivery)
         for handler in list(self._delivery_handlers):
             handler(delivery)
 

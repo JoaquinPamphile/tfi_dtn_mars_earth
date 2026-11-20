@@ -26,11 +26,9 @@ from experiments.experiment_bank import (
 from experiments.experiment_bank_interpretation import assess_e1_bank_comparison
 from experiments.experiment_bank_result import (
     build_e1_bank_result,
-    build_e2_bank_result,
     build_e3_bank_result,
     build_e3_sensitivity_bank_result,
     write_e1_bank_result,
-    write_e2_bank_result,
     write_e3_bank_result,
     write_e3_sensitivity_bank_result,
 )
@@ -59,7 +57,11 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
         print(ayuda, end="")
         return 0
     try:
-        rutas = rutas_de_opciones(tokens, comando=comando)
+        rutas = parse_path_options(
+            tokens,
+            allowed=frozenset({"--config"}) if comando == "inspect" else OPCIONES,
+            command_name=comando,
+        )
         config_path = rutas["--config"]
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -197,7 +199,9 @@ def procesar_campana_resuelta(
     función. El banco llama una vez por entrada y conserva solo estos hechos
     entre campañas.
     """
-    if isinstance(resuelta, ResolvedE2Campaign) and output_path is not None and index_entry is not None:
+    if (output_path is None) != (index_entry is None):
+        raise ValueError("la publicación CLI requiere el índice V2; use la API de resultados para publicar un archivo")
+    if isinstance(resuelta, ResolvedE2Campaign) and output_path is not None:
         return _ejecutar_e2_indexado(resuelta, output_path, index_entry, provenance)
     resultado = execute_campaign(resuelta.campaign)
     estado_campana = resultado.status
@@ -223,7 +227,6 @@ def procesar_campana_resuelta(
         construir, escribir = build_e1_bank_result, write_e1_bank_result
     elif isinstance(resuelta, ResolvedE2Campaign):
         print(format_configurable_e2_campaign(resuelta, resultado))
-        construir, escribir = build_e2_bank_result, write_e2_bank_result
     elif isinstance(resuelta, ResolvedE3Campaign):
         print(format_configurable_e3_campaign(resuelta, resultado))
         construir, escribir = build_e3_bank_result, write_e3_bank_result
@@ -244,13 +247,10 @@ def procesar_campana_resuelta(
     publication_status = PUBLICATION_NOT_REQUESTED
     publication_error: str | None = None
     if output_path is not None:
-        arguments = (construir, escribir, resuelta, resultado, output_path)
-        if index_entry is None:
-            publication_error = publicar_resultado(*arguments)
-        else:
-            publication_error = publicar_resultado(
-                *arguments, index_entry=index_entry, provenance=provenance,
-            )
+        publication_error = publicar_resultado(
+            construir, escribir, resuelta, resultado, output_path,
+            index_entry=index_entry, provenance=provenance,
+        )
         publication_status = (
             PUBLICATION_FAILED
             if publication_error is not None
@@ -324,15 +324,6 @@ def codigo_de_salida(*entradas: ProcessedCampaign) -> int:
 OPCIONES = frozenset({"--config", "--output", "--output-dir"})
 
 
-def rutas_de_opciones(tokens: list[str], *, comando: str) -> dict[str, str]:
-    """Devuelve la ruta de --config y --output"""
-    permitidas = frozenset({"--config"}) if comando == "inspect" else OPCIONES
-    return parse_path_options(
-        tokens,
-        allowed=permitidas,
-        command_name=comando,
-        require_output=False,
-    )
 
 
 def publicar_resultado(
@@ -342,16 +333,13 @@ def publicar_resultado(
     resultado: CampaignResult,
     output_path: str,
     *,
-    index_entry: dict[str, Any] | None = None,
-    provenance: SoftwareProvenance | None = None,
+    index_entry: dict[str, Any],
+    provenance: SoftwareProvenance,
 ) -> str | None:
     """Publica el resultado. Devuelve None si terminó, o el texto del error."""
     try:
-        if index_entry is None:
-            document = construir(resuelta, resultado)
-        else:
-            document = construir(resuelta, resultado, provenance=provenance)
-            _proyectar_manifiesto(index_entry, document)
+        document = construir(resuelta, resultado, provenance=provenance)
+        _proyectar_manifiesto(index_entry, document)
         written = escribir(Path(output_path), document)
     except (OSError, TypeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
