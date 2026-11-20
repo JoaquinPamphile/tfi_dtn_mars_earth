@@ -67,9 +67,6 @@ def normalize_missing_ranges(
         merged.append(current)
     return tuple(merged)
 
-def ranges_from_sequences(sequences: Iterable[int]) -> tuple[MissingSequenceRange, ...]:
-    """Agrupa secuencias discretas en rangos inclusivos canónicos."""
-    return normalize_missing_ranges(sequences)
 
 def subtract_missing_ranges(
     have: Iterable[object],

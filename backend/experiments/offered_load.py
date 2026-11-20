@@ -54,21 +54,6 @@ def mars_to_relay_contacts(scenario: Scenario) -> tuple[Contact, ...]:
     )
 
 
-def capacity_interval_to_last_mars_relay_end(
-    scenario: Scenario,
-    *,
-    workload_start_sim: float,
-) -> tuple[float, float]:
-    """``[inicio del workload, fin del último contacto Marte → relé]``."""
-    contacts = mars_to_relay_contacts(scenario)
-    if not contacts:
-        raise ValueError(
-            f"{scenario.scenario_id} no tiene contactos Marte → relé para la capacidad"
-        )
-    last_end = max(contact.end_time_sim for contact in contacts)
-    if last_end <= workload_start_sim:
-        raise ValueError("el fin del último contacto Marte → relé debe ser posterior al inicio")
-    return (workload_start_sim, last_end)
 
 
 def reference_mars_to_relay_capacity(
