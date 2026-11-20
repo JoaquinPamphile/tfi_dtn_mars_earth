@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -234,14 +233,6 @@ def _execute_campaign_run(
             error_type=type(exc).__name__, error_message=str(exc),
         )
     return CampaignRunResult(index=index, label=run.label, result=result)
-
-
-def execute_campaign_persisted(spec: CampaignSpec, directory: Path, **kwargs: Any):
-    from experiments.campaign_persistence import (
-        execute_campaign_persisted as _execute_campaign_persisted,
-    )
-
-    return _execute_campaign_persisted(spec, directory, **kwargs)
 
 
 def _expected_result_spec_values(spec: ScientificRunSpec) -> dict[str, Any]:

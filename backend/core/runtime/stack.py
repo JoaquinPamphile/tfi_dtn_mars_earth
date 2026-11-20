@@ -122,8 +122,7 @@ class SimulationStack:
         earth_node = earth if earth is not None else EarthNode(FastEarthStateRepository())
         if experiment_identity is not None:
             mars_node.bind_experiment_identity(experiment_identity)
-        transport = EmulatedTransport(engine, contact_plan)
-        transport.bind_failures(failure_runtime)
+        transport = EmulatedTransport(engine, contact_plan, failures=failure_runtime)
         relay = RelayNode(engine, transport)
         recovery = None
         if recovery_policy.receiver_driven_enabled:

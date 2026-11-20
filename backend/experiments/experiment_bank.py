@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import isfinite
 from typing import Any, Self
 
@@ -36,6 +36,7 @@ from experiments.offered_load import (
     reference_mars_to_relay_capacity,
 )
 from experiments.scenario_adapter import scenario_from_contact_plan_definition
+from experiments.scenario import Scenario
 from experiments.spec import ScientificRunSpec
 from experiments.workload import Workload
 
@@ -891,34 +892,14 @@ def resolve_e3_campaign(
         event_count=e3_config.event_count,
         individual_syncunit_bytes=e3_config.individual_syncunit_bytes,
     )
-    quiet = FailurePlan()
     loss = _e3_silent_loss_plan(
         source_id=workload.source_id,
         sequence_number=e3_config.loss_sequence_number,
     )
-    sender_retry = RetryPolicy(
-        ack_timeout_seconds=e3_config.sender_ack_timeout_seconds
+    sender, receiver = _e3_policy_specs(
+        scenario=scenario, workload=workload, seed=bank_document.seed, config=e3_config,
     )
-    receiver_retry = RetryPolicy(
-        ack_timeout_seconds=e3_config.receiver_ack_timeout_seconds
-    )
-    shared_run_parameters = {
-        "scenario": scenario,
-        "workload": workload,
-        "seed": bank_document.seed,
-        "stop_policy": StopPolicy.PROFILE_HORIZON_SETTLED,
-        "trace_level": TraceLevel.SCIENTIFIC,
-    }
-    cell_a = CampaignRunSpec(
-        label="A",
-        spec=ScientificRunSpec(
-            strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-            recovery_policy=RecoveryPolicy.SENDER_DRIVEN,
-            retry_policy=sender_retry,
-            failure_plan=quiet,
-            **shared_run_parameters,
-        ),
-    )
+    cell_a = CampaignRunSpec(label="A", spec=sender)
     _require_e3_last_event_inside_horizon(
         event_count=e3_config.event_count,
         event_interval_seconds=e3_config.event_interval_seconds,
@@ -931,35 +912,12 @@ def resolve_e3_campaign(
         cell_a,
         CampaignRunSpec(
             label="B",
-            spec=ScientificRunSpec(
-                strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                recovery_policy=RecoveryPolicy.SENDER_DRIVEN,
-                retry_policy=sender_retry,
-                failure_plan=loss,
-                **shared_run_parameters,
-            ),
+            spec=replace(sender, failure_plan=loss),
         ),
-        CampaignRunSpec(
-            label="C",
-            spec=ScientificRunSpec(
-                strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                recovery_policy=RecoveryPolicy.RECEIVER_DRIVEN,
-                retry_policy=receiver_retry,
-                failure_plan=quiet,
-                gap_request_timeout_seconds=e3_config.gap_request_timeout_seconds,
-                **shared_run_parameters,
-            ),
-        ),
+        CampaignRunSpec(label="C", spec=receiver),
         CampaignRunSpec(
             label="D",
-            spec=ScientificRunSpec(
-                strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                recovery_policy=RecoveryPolicy.RECEIVER_DRIVEN,
-                retry_policy=receiver_retry,
-                failure_plan=loss,
-                gap_request_timeout_seconds=e3_config.gap_request_timeout_seconds,
-                **shared_run_parameters,
-            ),
+            spec=replace(receiver, failure_plan=loss),
         ),
     )
     campaign = CampaignSpec(
@@ -1004,8 +962,8 @@ def resolve_e3_sensitivity_campaign(
 
     La pérdida sigue el protocolo de E3: entrega silenciosa relé → Tierra,
     intento 1 y una ocurrencia. La estrategia es Individual. El ACK auxiliar
-    del receptor es ``E3_BANK_RECEIVER_RETRY_ACK_TIMEOUT_SECONDS``. La parada
-    y la traza son las del banco E3.
+    del receptor es ``receiver_ack_timeout_seconds`` declarado, separado de
+    ``gap_request_timeout_seconds``. La parada y la traza son las del banco E3.
 
     La etiqueta es ``<secuencia>-<política>``. La identidad de campaña es la
     de este banco, no la cohorte histórica ni RC1.
@@ -1034,17 +992,9 @@ def resolve_e3_sensitivity_campaign(
         event_count=config.event_count,
         individual_syncunit_bytes=config.individual_syncunit_bytes,
     )
-    sender_retry = RetryPolicy(ack_timeout_seconds=config.sender_ack_timeout_seconds)
-    receiver_retry = RetryPolicy(
-        ack_timeout_seconds=config.receiver_ack_timeout_seconds
+    sender, receiver = _e3_policy_specs(
+        scenario=scenario, workload=workload, seed=bank_document.seed, config=config,
     )
-    shared_run_parameters = {
-        "scenario": scenario,
-        "workload": workload,
-        "seed": bank_document.seed,
-        "stop_policy": StopPolicy.PROFILE_HORIZON_SETTLED,
-        "trace_level": TraceLevel.SCIENTIFIC,
-    }
     runs: list[CampaignRunSpec] = []
     for sequence in config.loss_sequence_numbers:
         loss = _e3_silent_loss_plan(
@@ -1054,26 +1004,13 @@ def resolve_e3_sensitivity_campaign(
         runs.append(
             CampaignRunSpec(
                 label=f"{sequence}-{RecoveryPolicy.SENDER_DRIVEN.value}",
-                spec=ScientificRunSpec(
-                    strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                    recovery_policy=RecoveryPolicy.SENDER_DRIVEN,
-                    retry_policy=sender_retry,
-                    failure_plan=loss,
-                    **shared_run_parameters,
-                ),
+                spec=replace(sender, failure_plan=loss),
             )
         )
         runs.append(
             CampaignRunSpec(
                 label=f"{sequence}-{RecoveryPolicy.RECEIVER_DRIVEN.value}",
-                spec=ScientificRunSpec(
-                    strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                    recovery_policy=RecoveryPolicy.RECEIVER_DRIVEN,
-                    retry_policy=receiver_retry,
-                    failure_plan=loss,
-                    gap_request_timeout_seconds=config.gap_request_timeout_seconds,
-                    **shared_run_parameters,
-                ),
+                spec=replace(receiver, failure_plan=loss),
             )
         )
     _require_e3_last_event_inside_horizon(
@@ -1093,6 +1030,42 @@ def resolve_e3_sensitivity_campaign(
         bank_document=bank_document,
         contact_plan_definition=contact_plan_definition,
         campaign=campaign,
+    )
+
+
+def _e3_policy_specs(
+    *,
+    scenario: Scenario,
+    workload: Workload,
+    seed: int,
+    config: ExperimentBankE3V2 | ExperimentBankE3SensitivityV2,
+) -> tuple[ScientificRunSpec, ScientificRunSpec]:
+    """Bases sin pérdida; el resolver conserva etiquetas, controles y parejas.
+
+    ``replace`` cambia solo el plan de fallos y conserva los objetos compartidos.
+    El ACK auxiliar del receptor no sustituye al timeout de GapRequest.
+    """
+    shared = dict(
+        scenario=scenario,
+        workload=workload,
+        seed=seed,
+        strategy_type=STRATEGY_TYPE_INDIVIDUAL,
+        failure_plan=FailurePlan(),
+        stop_policy=StopPolicy.PROFILE_HORIZON_SETTLED,
+        trace_level=TraceLevel.SCIENTIFIC,
+    )
+    return (
+        ScientificRunSpec(
+            recovery_policy=RecoveryPolicy.SENDER_DRIVEN,
+            retry_policy=RetryPolicy(ack_timeout_seconds=config.sender_ack_timeout_seconds),
+            **shared,
+        ),
+        ScientificRunSpec(
+            recovery_policy=RecoveryPolicy.RECEIVER_DRIVEN,
+            retry_policy=RetryPolicy(ack_timeout_seconds=config.receiver_ack_timeout_seconds),
+            gap_request_timeout_seconds=config.gap_request_timeout_seconds,
+            **shared,
+        ),
     )
 
 

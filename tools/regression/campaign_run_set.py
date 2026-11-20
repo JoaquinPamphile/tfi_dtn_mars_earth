@@ -1,31 +1,25 @@
+"""Lectura y verificación del formato histórico campaign_run_set, versión 1.
+
+La escritura ya no pertenece al contrato productivo V2.
+"""
 from __future__ import annotations
 
 import hashlib
 import json
-import re
-from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from experiments.campaign import (
     CAMPAIGN_COMPLETED,
-    CAMPAIGN_COMPLETED_WITH_FAILURES,
     CampaignSpec,
     _expected_result_spec_values,
-    _iter_campaign_runs,
-    present_result_spec_differences,
 )
-from experiments.canonical import jsonable
-from experiments.execute import execute_scientific_run
-from experiments.publication import write_exclusive_canonical_json
 from experiments.fingerprint import (
     dataset_event_count,
     dataset_fingerprint,
     dataset_fingerprint_from_events,
 )
-from experiments.manifest import scientific_run_manifest
-from experiments.result import GeneratedTelemetry, ScientificRunResult
-from experiments.software_provenance import SoftwareProvenance, current_provenance
+from experiments.result import GeneratedTelemetry
 from experiments.spec import ScientificRunSpec
 
 CAMPAIGN_RUN_SET_FORMAT = "campaign_run_set"
@@ -33,192 +27,6 @@ CAMPAIGN_RUN_SET_VERSION = 1
 CAMPAIGN_RUN_RESULT_ARTIFACT = "campaign_run_result"
 CAMPAIGN_RUN_SET_INDEX_ARTIFACT = "campaign_run_set_index"
 INDEX_FILENAME = "campaign-run-set-index.json"
-RUNS_SUBDIR = "runs"
-
-_LABEL_SAFE = re.compile(r"[^A-Za-z0-9._-]+")
-
-
-@dataclass(frozen=True, slots=True)
-class PersistedCampaignRunRef:
-    """Referencia pequeña a una corrida ya publicada. Sin eventos ni payloads."""
-
-    index: int
-    label: str
-    relative_path: str
-    sha256: str
-    completed: bool
-    error_type: str | None
-    error_message: str | None
-    dataset_identity: str | None
-    experiment_identity: str | None
-    execution_identity: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class PersistedCampaignResult:
-    """Salida de ``execute_campaign_persisted``.
-
-    ``index_path`` es ``None`` si la campaña no publicó índice final de éxito
-    (fallo de corrida, validación o publicación incompleta). Los archivos de
-    corrida ya escritos se conservan.
-    """
-
-    campaign_id: str
-    description: str
-    campaign_identity: str
-    directory: Path
-    runs: tuple[PersistedCampaignRunRef, ...]
-    index_path: Path | None
-    status: str
-    format_name: str = CAMPAIGN_RUN_SET_FORMAT
-    format_version: int = CAMPAIGN_RUN_SET_VERSION
-
-    @property
-    def run_count(self) -> int:
-        return len(self.runs)
-
-    @property
-    def completed_count(self) -> int:
-        return sum(1 for run in self.runs if run.completed)
-
-    @property
-    def failed_count(self) -> int:
-        return self.run_count - self.completed_count
-
-    @property
-    def index_published(self) -> bool:
-        return self.index_path is not None
-
-
-def execute_campaign_persisted(
-    spec: CampaignSpec,
-    directory: Path,
-    *,
-    provenance: SoftwareProvenance | None = None,
-    after_run_released=None,
-) -> PersistedCampaignResult:
-    """Ejecuta cada corrida, publica su resultado y libera objetos grandes.
-
-    Reutiliza ``execute_scientific_run``. No acumula ``ScientificRunResult``
-    de corridas anteriores. El índice final solo se publica si todas las
-    corridas terminaron sin error de ejecución y pasaron la validación de
-    correspondencia con su spec.
-
-    ``after_run_released``, si se pasa, se invoca con el índice de corrida
-    después de eliminar las referencias locales al resultado y al documento.
-    Existe para comprobaciones de retención; no forma parte del artefacto.
-    """
-    if not isinstance(spec, CampaignSpec):
-        raise TypeError("spec debe ser un CampaignSpec")
-    if not isinstance(directory, Path):
-        raise TypeError("directory debe ser un Path")
-    if provenance is not None and not isinstance(provenance, SoftwareProvenance):
-        raise TypeError("provenance debe ser una SoftwareProvenance")
-    if after_run_released is not None and not callable(after_run_released):
-        raise TypeError("after_run_released debe ser callable o None")
-
-    directory.mkdir(parents=True, exist_ok=True)
-    runs_dir = directory / RUNS_SUBDIR
-    runs_dir.mkdir(parents=True, exist_ok=True)
-
-    observed = current_provenance() if provenance is None else provenance
-    refs: list[PersistedCampaignRunRef] = []
-    hard_failure: str | None = None
-
-    for outcome in _iter_campaign_runs(spec, execute_scientific_run):
-        index = outcome.index
-        run = spec.runs[index]
-        relative_path = f"{RUNS_SUBDIR}/{_run_filename(index, run.label)}"
-        target = directory / relative_path
-        scientific = outcome.result
-        error_type = outcome.error_type
-        error_message = outcome.error_message
-        del outcome
-        identity_dataset: str | None = None
-        identity_experiment: str | None = None
-        identity_execution: str | None = None
-        if scientific is not None:
-            differences = present_result_spec_differences(scientific, run.spec)
-            if differences:
-                hard_failure = (
-                    "el resultado de la corrida no coincide con su especificación: "
-                    f"label={run.label}, campo={differences[0][0]}"
-                )
-                error_type = "ValidationError"
-                error_message = hard_failure
-                scientific = None
-            else:
-                identity_dataset = scientific.dataset_identity
-                identity_experiment = scientific.experiment_identity
-                identity_execution = scientific.execution_identity
-
-        document = _build_run_document(
-            campaign=spec,
-            index=index,
-            label=run.label,
-            planned=run.spec,
-            result=scientific,
-            error_type=error_type,
-            error_message=error_message,
-            provenance=observed,
-        )
-        completed = scientific is not None
-        _publish_run_document(target, document)
-        digest = _sha256_file(target)
-        refs.append(
-            PersistedCampaignRunRef(
-                index=index,
-                label=run.label,
-                relative_path=relative_path.replace("\\", "/"),
-                sha256=digest,
-                completed=completed,
-                error_type=error_type,
-                error_message=error_message,
-                dataset_identity=identity_dataset,
-                experiment_identity=identity_experiment,
-                execution_identity=identity_execution,
-            )
-        )
-        # Liberar referencias a objetos grandes antes de la siguiente corrida.
-        del scientific
-        del document
-        if after_run_released is not None:
-            after_run_released(index)
-        if hard_failure is not None:
-            break
-
-    runs = tuple(refs)
-    failed = sum(1 for item in runs if not item.completed)
-    if hard_failure is not None or failed or len(runs) != len(spec.runs):
-        status = CAMPAIGN_COMPLETED_WITH_FAILURES
-        return PersistedCampaignResult(
-            campaign_id=spec.campaign_id,
-            description=spec.description,
-            campaign_identity=spec.campaign_identity,
-            directory=directory,
-            runs=runs,
-            index_path=None,
-            status=status,
-        )
-
-    index_document = _build_index_document(
-        campaign=spec,
-        runs=runs,
-        provenance=observed,
-        status=CAMPAIGN_COMPLETED,
-    )
-    index_path = directory / INDEX_FILENAME
-    _publish_run_document(index_path, index_document)
-    del index_document
-    return PersistedCampaignResult(
-        campaign_id=spec.campaign_id,
-        description=spec.description,
-        campaign_identity=spec.campaign_identity,
-        directory=directory,
-        runs=runs,
-        index_path=index_path,
-        status=CAMPAIGN_COMPLETED,
-    )
 
 
 def verify_campaign_run_set(
@@ -488,140 +296,6 @@ def _observed_and_expected(
     return observed_fingerprint, expected_fingerprint, expected_count
 
 
-def _build_run_document(
-    *,
-    campaign: CampaignSpec,
-    index: int,
-    label: str,
-    planned: ScientificRunSpec,
-    result: ScientificRunResult | None,
-    error_type: str | None,
-    error_message: str | None,
-    provenance: SoftwareProvenance,
-) -> dict[str, Any]:
-    if result is None:
-        manifest = scientific_run_manifest(
-            planned,
-            None,
-            error_type=error_type,
-            error_message=error_message,
-            provenance=provenance,
-        )
-        result_body = None
-    else:
-        manifest = scientific_run_manifest(planned, result, provenance=provenance)
-        result_body = _result_body(result)
-
-    return {
-        "campaign_run_set_format": CAMPAIGN_RUN_SET_FORMAT,
-        "campaign_run_set_version": CAMPAIGN_RUN_SET_VERSION,
-        "artifact_type": CAMPAIGN_RUN_RESULT_ARTIFACT,
-        "campaign_id": campaign.campaign_id,
-        "campaign_identity": campaign.campaign_identity,
-        "description": campaign.description,
-        "index": index,
-        "label": label,
-        "software_provenance": {
-            "software_version": provenance.software_version,
-            "source_revision": provenance.source_revision,
-            "source_state": provenance.source_state,
-        },
-        "manifest": manifest.to_dict(),
-        "result": result_body,
-        "format_note": (
-            "Documento por corrida del conjunto campaign_run_set. "
-            "No es un e1/e2/e3_configurable_bank_result monolítico."
-        ),
-    }
-
-
-def _build_index_document(
-    *,
-    campaign: CampaignSpec,
-    runs: tuple[PersistedCampaignRunRef, ...],
-    provenance: SoftwareProvenance,
-    status: str,
-) -> dict[str, Any]:
-    return {
-        "campaign_run_set_format": CAMPAIGN_RUN_SET_FORMAT,
-        "campaign_run_set_version": CAMPAIGN_RUN_SET_VERSION,
-        "artifact_type": CAMPAIGN_RUN_SET_INDEX_ARTIFACT,
-        "campaign_id": campaign.campaign_id,
-        "campaign_identity": campaign.campaign_identity,
-        "description": campaign.description,
-        "status": status,
-        "run_count": len(runs),
-        "completed_count": sum(1 for run in runs if run.completed),
-        "failed_count": sum(1 for run in runs if not run.completed),
-        "software_provenance": {
-            "software_version": provenance.software_version,
-            "source_revision": provenance.source_revision,
-            "source_state": provenance.source_state,
-        },
-        "expected_runs": [
-            {
-                "index": index,
-                "label": run.label,
-                "dataset_identity": run.spec.dataset_identity,
-                "experiment_identity": run.spec.experiment_identity,
-                "execution_identity": run.spec.execution_identity,
-            }
-            for index, run in enumerate(campaign.runs)
-        ],
-        "runs": [
-            {
-                "index": run.index,
-                "label": run.label,
-                "relative_path": run.relative_path,
-                "sha256": run.sha256,
-                "completed": run.completed,
-                "error_type": run.error_type,
-                "error_message": run.error_message,
-                "dataset_identity": run.dataset_identity,
-                "experiment_identity": run.experiment_identity,
-                "execution_identity": run.execution_identity,
-            }
-            for run in runs
-        ],
-        "format_note": (
-            "Índice de campaign_run_set. Formato distinto del JSON monolítico "
-            "del banco configurable; cada corrida vive en relative_path."
-        ),
-    }
-
-
-def _result_body(result: ScientificRunResult) -> dict[str, Any]:
-    return {
-        "scenario_id": result.scenario_id,
-        "workload_id": result.workload_id,
-        "seed": result.seed,
-        "dataset_identity": result.dataset_identity,
-        "experiment_identity": result.experiment_identity,
-        "execution_identity": result.execution_identity,
-        "strategy_type": result.strategy_type,
-        "batch_size_events": result.batch_size_events,
-        "stop_policy": result.stop_policy,
-        "horizon_seconds": result.horizon_seconds,
-        "recovery_policy": result.recovery_policy,
-        "offered_load_fraction": result.offered_load_fraction,
-        "simulation_time": result.simulation_time,
-        "engine_status": result.engine_status,
-        "events": [asdict(event) for event in result.events],
-        "events_persisted_earth": result.events_persisted_earth,
-        "events_confirmed_mars": result.events_confirmed_mars,
-        "metrics": result.metrics.to_dict(),
-        "trace_entry_count": result.trace_entry_count,
-    }
-
-
-def _publish_run_document(path: Path, document: dict[str, Any]) -> Path:
-    """Normaliza con ``jsonable`` (tipos ricos) y publica con creación exclusiva."""
-    serialized = jsonable(document)
-    if not isinstance(serialized, dict):
-        raise RuntimeError("el documento publicado debe ser un objeto JSON")
-    return write_exclusive_canonical_json(path, serialized)
-
-
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -631,11 +305,6 @@ def _sha256_file(path: Path) -> str:
                 break
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _run_filename(index: int, label: str) -> str:
-    safe = _LABEL_SAFE.sub("_", label.strip()).strip("._") or "run"
-    return f"{index:04d}-{safe}.json"
 
 
 def _event_from_dict(item: dict[str, Any]) -> GeneratedTelemetry:
@@ -663,3 +332,18 @@ def _document_spec_differences(
         if observed != expected_value:
             differences.append((field, expected_value, observed))
     return tuple(differences)
+
+def main(argv: list[str] | None = None) -> int:
+    """Verifica un índice histórico sin campaña esperada; emite el informe JSON."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Verifica un campaign_run_set histórico sin ejecutar campañas.")
+    parser.add_argument("index", type=Path, help="Archivo campaign-run-set-index.json a verificar")
+    args = parser.parse_args(argv)
+    report = verify_campaign_run_set(args.index)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

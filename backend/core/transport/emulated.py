@@ -83,7 +83,14 @@ class EmulatedTransport:
     reencolado por interrupción conserva ese valor.
     """
 
-    def __init__(self, engine: SimulationEngine, contact_plan: ContactPlan) -> None:
+    def __init__(
+        self,
+        engine: SimulationEngine,
+        contact_plan: ContactPlan,
+        *,
+        failures: FailureRuntime | None = None,
+    ) -> None:
+        """Recibe el runtime compartido; sin él crea uno vacío para este transporte."""
         self._engine = engine
         self._plan = contact_plan
         self._links: dict[tuple[LogicalNode, LogicalNode], _LinkState] = {}
@@ -92,7 +99,7 @@ class EmulatedTransport:
         self._next_attempt_seq = 0
         self._pending_deliveries: list[TransportDelivery] = []
         self._delivery_handlers: list[DeliveryHandler] = []
-        self._failures = FailureRuntime()
+        self._failures = failures if failures is not None else FailureRuntime()
         self._hop_records: list[HopTransmissionRecord] = []
         self._forced_cuts: list[ForcedContactCut] = []
         engine.register_handler(
@@ -118,14 +125,6 @@ class EmulatedTransport:
             SimulationEventType.SILENT_FORWARD_DELIVERY_DROPPED.value,
             self._on_silent_forward_delivery_dropped,
         )
-
-    def bind_failures(self, failures: FailureRuntime) -> None:
-        """Usa el runtime de la corrida para suprimir entregas hacia Tierra.
-
-        Un plan vacío no cambia los arribos. El objeto recibido no se copia:
-        los contadores quedan en ese mismo runtime.
-        """
-        self._failures = failures
 
     def submit(self, unit: SyncUnit) -> None:
         """Presenta una SyncUnit a la cola de su enlace dirigido.

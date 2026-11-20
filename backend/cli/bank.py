@@ -15,10 +15,6 @@ from experiments.campaign import present_result_spec_differences
 from experiments.manifest import campaign_run_manifest_entry, campaign_manifest_from_entries
 from experiments.experiment_bank_result import bank_result_metadata, E2_CONFIGURABLE_BANK_RESULT
 from cli.present.bank import format_e2_campaign_blocks, lineas_de_resultado_e2
-from experiments.campaign_persistence import (
-    PersistedCampaignResult,
-    execute_campaign_persisted,
-)
 from experiments.experiment_bank import (
     ResolvedCampaign,
     ResolvedE1Campaign,
@@ -90,43 +86,6 @@ def comando_banco(tokens: list[str], *, ayuda: str, comando: str) -> int:
     if output_path is not None:
         return ejecutar_banco(declarado, output_path, input_sources=input_sources)
     return ejecutar_banco(declarado, output_path)
-
-
-def ejecutar_campana_persistida(
-    resuelta: ResolvedCampaign,
-    output_dir: str,
-) -> int:
-    """Ejecuta con persistencia por corrida. No construye el JSON monolítico."""
-    try:
-        directorio = crear_directorio_exclusivo(Path(output_dir))
-    except OSError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    try:
-        persisted = execute_campaign_persisted(resuelta.campaign, directorio)
-    except (OSError, TypeError, ValueError) as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    return codigo_de_salida_persistida(persisted)
-
-def presentar_campana_persistida(persisted: PersistedCampaignResult) -> None:
-    """Resumen breve sin recargar resultados ni construir el monolítico."""
-    print(f"Estado: {persisted.status}")
-    print(f"Corridas completadas: {persisted.completed_count}")
-    print(f"Corridas fallidas: {persisted.failed_count}")
-    print(f"Directorio: {persisted.directory}")
-    if persisted.index_path is not None:
-        print(f"Índice: {persisted.index_path}")
-
-def codigo_de_salida_persistida(persisted: PersistedCampaignResult) -> int:
-    presentar_campana_persistida(persisted)
-    if persisted.index_path is None:
-        print(
-            "Ejecución incompleta: no se publicó el índice.",
-            file=sys.stderr,
-        )
-        return 1
-    return 0
 
 
 def ejecutar_banco(
