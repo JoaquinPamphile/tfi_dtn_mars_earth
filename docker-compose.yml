@@ -4,10 +4,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     image: tfi-dtn-mars-earth-test
+    volumes:
+      - ./configs:/app/configs:ro
 
-  # Demostración local del motor: docker compose run --rm simulator run
+  # Banco V2: docker compose run --rm simulator inspect --config /app/configs/experiments/alessi-bank-v2.json
   simulator:
     image: tfi-dtn-mars-earth-test
+    volumes:
+      - ./configs:/app/configs:ro
     build:
       context: .
       dockerfile: docker/Dockerfile

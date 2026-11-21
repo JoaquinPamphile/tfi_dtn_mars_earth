@@ -1,0 +1,4 @@
+# No distribuir cachés locales ni propuestas pendientes de incorporación.
+**/__pycache__/
+**/*.pyc
+**/*-cambios*.py

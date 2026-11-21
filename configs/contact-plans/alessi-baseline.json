@@ -1,0 +1,1609 @@
+{
+  "schema_version": 1,
+  "contact_plan_id": "alessi-baseline",
+  "source_type": "STATIC_DOCUMENTED",
+  "declared_nodes": [
+    "MARS",
+    "RELAY",
+    "EARTH"
+  ],
+  "contacts": [
+    {
+      "contact_id": "alessi-mars-relay-01",
+      "source": "MARS",
+      "destination": "RELAY",
+      "start_time_sim": 27000.0,
+      "end_time_sim": 28500.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-mars-relay-02",
+      "source": "MARS",
+      "destination": "RELAY",
+      "start_time_sim": 34500.0,
+      "end_time_sim": 35700.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-mars-relay-03",
+      "source": "MARS",
+      "destination": "RELAY",
+      "start_time_sim": 73200.0,
+      "end_time_sim": 74700.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-mars-relay-04",
+      "source": "MARS",
+      "destination": "RELAY",
+      "start_time_sim": 80700.0,
+      "end_time_sim": 81900.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-relay-mars-01",
+      "source": "RELAY",
+      "destination": "MARS",
+      "start_time_sim": 27000.0,
+      "end_time_sim": 28500.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-relay-mars-02",
+      "source": "RELAY",
+      "destination": "MARS",
+      "start_time_sim": 34500.0,
+      "end_time_sim": 35700.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-relay-mars-03",
+      "source": "RELAY",
+      "destination": "MARS",
+      "start_time_sim": 73200.0,
+      "end_time_sim": 74700.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-relay-mars-04",
+      "source": "RELAY",
+      "destination": "MARS",
+      "start_time_sim": 80700.0,
+      "end_time_sim": 81900.0,
+      "data_rate_bps": 1000000,
+      "propagation_delay_s": 0.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-01",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 1200.0,
+      "end_time_sim": 6300.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-02",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 8100.0,
+      "end_time_sim": 9600.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-03",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 15300.0,
+      "end_time_sim": 20700.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-04",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 22500.0,
+      "end_time_sim": 27600.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-05",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 29400.0,
+      "end_time_sim": 34800.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-06",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 36300.0,
+      "end_time_sim": 42000.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-07",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 43500.0,
+      "end_time_sim": 48900.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-08",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 50700.0,
+      "end_time_sim": 56100.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-09",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 57600.0,
+      "end_time_sim": 63300.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-10",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 64800.0,
+      "end_time_sim": 70200.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-11",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 72000.0,
+      "end_time_sim": 77400.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-relay-earth-12",
+      "source": "RELAY",
+      "destination": "EARTH",
+      "start_time_sim": 79200.0,
+      "end_time_sim": 84000.0,
+      "data_rate_bps": 2000000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-01",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 1200.0,
+      "end_time_sim": 6300.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-02",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 8100.0,
+      "end_time_sim": 9600.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-03",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 15300.0,
+      "end_time_sim": 20700.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-04",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 22500.0,
+      "end_time_sim": 27600.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-05",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 29400.0,
+      "end_time_sim": 34800.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-06",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 36300.0,
+      "end_time_sim": 42000.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-07",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 43500.0,
+      "end_time_sim": 48900.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-08",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 50700.0,
+      "end_time_sim": 56100.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-09",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 57600.0,
+      "end_time_sim": 63300.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-10",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 64800.0,
+      "end_time_sim": 70200.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-11",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 72000.0,
+      "end_time_sim": 77400.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    },
+    {
+      "contact_id": "alessi-earth-relay-12",
+      "source": "EARTH",
+      "destination": "RELAY",
+      "start_time_sim": 79200.0,
+      "end_time_sim": 84000.0,
+      "data_rate_bps": 32000,
+      "propagation_delay_s": 1380.0
+    }
+  ],
+  "provenance": {
+    "source": null,
+    "statements": [
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-mars-relay-01",
+        "source_ref": "Figura 5, enlace 143-141. Reconstruido y redondeado a 5 s de figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-mars-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-mars-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-mars-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-mars-relay-02",
+        "source_ref": "Figura 5, enlace 143-141. Reconstruido y redondeado a 5 s de figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-mars-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-mars-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-mars-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-mars-relay-03",
+        "source_ref": "Figura 5, enlace 143-141. Reconstruido y redondeado a 5 s de figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-mars-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-mars-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-mars-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-mars-relay-04",
+        "source_ref": "Figura 5, enlace 143-141. Reconstruido y redondeado a 5 s de figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-mars-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-mars-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-mars-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-mars-01",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-mars-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-relay-mars-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-01",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-mars-02",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-mars-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-relay-mars-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-02",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-mars-03",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-mars-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-relay-mars-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-03",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-mars-04",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-mars-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "tasa SOURCE_TRANSFORMED desde 1 Mbps"
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_DIRECT",
+        "contact_id": "alessi-relay-mars-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "retardo SOURCE_DIRECT, aproximadamente nulo"
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "el corte a solo el orbitador 1 es TFI_ASSUMPTION"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-mars-04",
+        "source_ref": "Figura 5, enlace 143-141. El camino de vuelta no está en la figura.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-01",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-02",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-03",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-04",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-05",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-06",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-07",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-08",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-09",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-10",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-11",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-relay-earth-12",
+        "source_ref": "Figura 5, unión reconstruida de 141-201, 141-202, 141-203 y 141-105. El colapso en un extremo Tierra es un supuesto. No es una tabla exacta.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-relay-earth-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-relay-earth-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-01",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-01",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-01",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-02",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-02",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-02",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-03",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-03",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-03",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-04",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-04",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-04",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-05",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-05",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-05",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-06",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-06",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-06",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-07",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-07",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-07",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-08",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-08",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-08",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-09",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-09",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-09",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-10",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-10",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-10",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-11",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-11",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-11",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      },
+      {
+        "parameter": "TIME",
+        "classification": "SOURCE_APPROXIMATED",
+        "contact_id": "alessi-earth-relay-12",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": null
+      },
+      {
+        "parameter": "RATE",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+      },
+      {
+        "parameter": "DELAY",
+        "classification": "SOURCE_TRANSFORMED",
+        "contact_id": "alessi-earth-relay-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60."
+      },
+      {
+        "parameter": "TOPOLOGY",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-12",
+        "source_ref": "",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo"
+      },
+      {
+        "parameter": "RETURN",
+        "classification": "TFI_ASSUMPTION",
+        "contact_id": "alessi-earth-relay-12",
+        "source_ref": "Figura 5, unión de enlaces del orbitador 1 hacia Tierra. Mismos intervalos reconstruidos. El camino de ACK es un supuesto.",
+        "artifact_ref": null,
+        "artifact_sha256": null,
+        "assumption": "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+      }
+    ],
+    "references": [],
+    "assumptions": [
+      "Los instantes salen de una reconstrucción de la figura 5, redondeada al múltiplo de 5 s de esa figura y pasada a tiempo físico multiplicando por 60.",
+      "No son una tabla exacta de contactos ni un efemérides orbital.",
+      "No reproduce la red de nueve nodos y no usa el orbitador 2.",
+      "El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION."
+    ]
+  },
+  "notes": "Clasificación. Intervalos Marte–relé: tiempo SOURCE_APPROXIMATED; tasa SOURCE_TRANSFORMED desde 1 Mbps; retardo SOURCE_DIRECT, aproximadamente nulo; el corte a solo el orbitador 1 es TFI_ASSUMPTION. Intervalos relé–Tierra: tiempo SOURCE_APPROXIMATED de la unión reconstruida y topología TFI_ASSUMPTION por el colapso de las estaciones en un extremo. El camino de vuelta, en ambos tramos, es TFI_ASSUMPTION. Horizonte SOURCE_TRANSFORMED: 1440 s de figura por 60. Retardo interplanetario SOURCE_TRANSFORMED: 23 min por 60. Tasas de bajada 2 Mbps y de subida 0,032 Mbps, SOURCE_TRANSFORMED a bps."
+}

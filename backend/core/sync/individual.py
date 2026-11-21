@@ -4,7 +4,6 @@ from core.domain.event import TelemetryEvent
 from core.sync.strategy import (
     STRATEGY_TYPE_INDIVIDUAL,
     SyncPlan,
-    SyncPlanningContext,
 )
 
 class IndividualSyncStrategy:
@@ -24,10 +23,7 @@ class IndividualSyncStrategy:
     def plan(
         self,
         eligible_events: Sequence[TelemetryEvent],
-        context: SyncPlanningContext,
     ) -> tuple[SyncPlan, ...]:
-        # El contexto no decide qué eventos entran ni en qué orden.
-        del context
         plans: list[SyncPlan] = []
         seen: set[UUID] = set()
         for event in eligible_events:

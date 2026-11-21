@@ -57,7 +57,7 @@ class RelayNode:
         self._engine = engine
         self._transport = transport
         self._store: dict[str, SyncUnit] = {}
-        self._forwarded: dict[str, None] = {}
+        self._forwarded: set[str] = set()
         transport.register_delivery_handler(self.handle_delivery)
 
     def stored(self) -> tuple[SyncUnit, ...]:
@@ -120,7 +120,7 @@ class RelayNode:
         if unit.sync_unit_id in self._forwarded:
             return
         next_source, next_destination = _next_hop(unit)
-        self._forwarded[unit.sync_unit_id] = None
+        self._forwarded.add(unit.sync_unit_id)
         self._transport.submit(unit.for_hop(next_source, next_destination))
 
 

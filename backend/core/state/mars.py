@@ -56,7 +56,6 @@ class _SourceIndex:
     event_ids_by_sequence: list[UUID] = field(default_factory=list)
     pending_event_ids: list[UUID] = field(default_factory=list)
     pending_set: set[UUID] = field(default_factory=set)
-    confirmed_event_ids: set[UUID] = field(default_factory=set)
     generated: int = 0
     pending: int = 0
     confirmed: int = 0
@@ -82,7 +81,6 @@ class FastMarsStateRepository:
         self._latest_attempt_by_group: dict[str, str] = {}
         self._retry_attempt_ids_by_source: dict[str, set[str]] = {}
         self._event_source: dict[UUID, str] = {}
-        self._pending_compactions = 0
 
     def close(self) -> None:
         """No libera recursos externos. El estado en memoria sigue disponible."""
@@ -101,7 +99,6 @@ class FastMarsStateRepository:
         self._latest_attempt_by_group.clear()
         self._retry_attempt_ids_by_source.clear()
         self._event_source.clear()
-        self._pending_compactions = 0
 
     def commit_new_event(
         self,
@@ -406,7 +403,6 @@ class FastMarsStateRepository:
             if event_id in index.pending_set:
                 index.pending_set.discard(event_id)
                 index.pending -= 1
-            index.confirmed_event_ids.add(event_id)
             index.confirmed += 1
             if index.max_confirmed_at_sim is None or at_sim > index.max_confirmed_at_sim:
                 index.max_confirmed_at_sim = at_sim
@@ -551,14 +547,6 @@ class FastMarsStateRepository:
                 counted.add(attempt_id)
         return len(counted)
 
-    @property
-    def pending_compaction_count(self) -> int:
-        """Veces que se compactó la lista de pendientes.
-
-        Diagnóstico del índice de tumbas. No es una métrica científica.
-        """
-        return self._pending_compactions
-
     def retry_attempts_total(self, source_id: str) -> int:
         """Intentos con ``attempt_number`` mayor que 1 guardados para la fuente."""
         return len(self._retry_attempt_ids_by_source.get(source_id, ()))
@@ -623,7 +611,6 @@ class FastMarsStateRepository:
         index.pending_event_ids = [
             event_id for event_id in index.pending_event_ids if event_id in index.pending_set
         ]
-        self._pending_compactions += 1
 
 
 assert isinstance(FastMarsStateRepository(), MarsStateRepository)

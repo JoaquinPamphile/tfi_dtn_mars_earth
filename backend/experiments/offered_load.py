@@ -44,10 +44,6 @@ class ReferenceCapacity:
     serialized_capacity_bytes: float
     contact_count: int
 
-    @property
-    def interval_duration_seconds(self) -> float:
-        return self.interval_end_sim - self.interval_start_sim
-
 
 def mars_to_relay_contacts(scenario: Scenario) -> tuple[Contact, ...]:
     """Contactos dirigidos Marte → relé, en el orden del escenario."""
@@ -58,21 +54,6 @@ def mars_to_relay_contacts(scenario: Scenario) -> tuple[Contact, ...]:
     )
 
 
-def capacity_interval_to_last_mars_relay_end(
-    scenario: Scenario,
-    *,
-    workload_start_sim: float,
-) -> tuple[float, float]:
-    """``[inicio del workload, fin del último contacto Marte → relé]``."""
-    contacts = mars_to_relay_contacts(scenario)
-    if not contacts:
-        raise ValueError(
-            f"{scenario.scenario_id} no tiene contactos Marte → relé para la capacidad"
-        )
-    last_end = max(contact.end_time_sim for contact in contacts)
-    if last_end <= workload_start_sim:
-        raise ValueError("el fin del último contacto Marte → relé debe ser posterior al inicio")
-    return (workload_start_sim, last_end)
 
 
 def reference_mars_to_relay_capacity(
@@ -133,6 +114,32 @@ def generation_rate_for_event_count(*, event_count: int, duration_seconds: float
         raise ValueError("la duración debe ser mayor que 0")
     return event_count / duration_seconds
 
+
+
+def offered_load_count_and_rate(
+    *,
+    load_fraction: float,
+    capacity_bytes: float,
+    canonical_individual_bytes: int,
+    duration_seconds: float | None,
+) -> tuple[int, float]:
+    """Conteo positivo y tasa derivados, sin construir una carga provisional."""
+    if duration_seconds is None:
+        raise ValueError("la carga ofrecida requiere duration_seconds")
+    event_count = offered_load_event_count(
+        load_fraction=load_fraction,
+        capacity_bytes=capacity_bytes,
+        canonical_individual_bytes=canonical_individual_bytes,
+    )
+    if event_count < 1:
+        raise ValueError(
+            f"la fracción {load_fraction} produce 0 eventos con esa capacidad"
+        )
+    rate = generation_rate_for_event_count(
+        event_count=event_count,
+        duration_seconds=duration_seconds,
+    )
+    return event_count, rate
 
 def _overlapping_serialized_bytes(
     contact: Contact, interval_start: float, interval_end: float

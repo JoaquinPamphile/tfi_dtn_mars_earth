@@ -34,37 +34,6 @@ class FailurePlan(BaseModel):
             raise ValueError("como máximo un fallo de pérdida de ACK")
         return self
 
-    def contact_cut_for(self, contact_id: str) -> ContactCutFailure | None:
-        """Devuelve el corte de ese contacto, si está configurado."""
-        for cut in self.contact_cuts:
-            if cut.contact_id == contact_id:
-                return cut
-        return None
-
-    def ack_drop(self) -> AckDropFailure | None:
-        """Devuelve la pérdida de ACK activa.
-
-        Una configuración con ``count`` menor o igual que cero no está activa.
-        """
-        if not self.ack_drops:
-            return None
-        drop = self.ack_drops[0]
-        if drop.count <= 0:
-            return None
-        return drop
-
-    def match_ack_drop(self, acks_already_dropped: int) -> AckDropFailure | None:
-        """Devuelve la pérdida de ACK si el siguiente ACK generado debe perderse.
-        ``acks_already_dropped`` es cuántos ACK ya se perdieron. Esta consulta
-        no incrementa ese contador.
-        """
-        drop = self.ack_drop()
-        if drop is None:
-            return None
-        if acks_already_dropped >= drop.count:
-            return None
-        return drop
-
     def match_silent_forward_delivery_loss(
         self,
         *,

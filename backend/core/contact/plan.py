@@ -15,11 +15,16 @@ class ContactPlan:
     Cada sentido es independiente. El plan no crea el contacto inverso.
     """
     def __init__(self, contacts: Sequence[Contact]) -> None:
+        self._contacts = self.validated_contacts(contacts)
+
+    @classmethod
+    def validated_contacts(cls, contacts: Sequence[Contact]) -> tuple[Contact, ...]:
+        """Ordena y valida sin construir un plan; conserva los mismos Contact."""
         ordered = tuple(
             sorted(contacts, key=lambda contact: (contact.start_time_sim, contact.contact_id))
         )
-        self._validate(ordered)
-        self._contacts = ordered
+        cls._validate(ordered)
+        return ordered
 
     @property
     def contacts(self) -> tuple[Contact, ...]:
@@ -32,8 +37,6 @@ class ContactPlan:
 
     def get(self, contact_id: str) -> Contact:
         """Devuelve el contacto con ese identificador.
-
-        Lanza ``KeyError`` si no existe.
         """
         for contact in self._contacts:
             if contact.contact_id == contact_id:
@@ -51,8 +54,6 @@ class ContactPlan:
         destination: LogicalNode,
     ) -> Contact | None:
         """Primer contacto del sentido cuyo inicio es estrictamente posterior a ``time_sim``.
-
-        El desempate es ``(start_time_sim, contact_id)``.
         Un contacto ya iniciado no se devuelve.
         """
         return self._next_contact(time_sim, source, destination, inclusive_start=False)
@@ -64,8 +65,6 @@ class ContactPlan:
         destination: LogicalNode,
     ) -> Contact | None:
         """Primer contacto del sentido cuyo inicio es mayor o igual que ``time_sim``.
-
-        El desempate es ``(start_time_sim, contact_id)``.
         Un contacto ya iniciado, con inicio anterior a ``time_sim``, no se devuelve.
         """
         return self._next_contact(time_sim, source, destination, inclusive_start=True)

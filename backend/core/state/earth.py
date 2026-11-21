@@ -5,18 +5,11 @@ duplicado y no registra un pedido de reparación.
 """
 from __future__ import annotations
 from collections.abc import Sequence
-from dataclasses import dataclass
 from uuid import UUID
 from core.domain.event import TelemetryEvent
 from core.domain.gap import MissingSequenceRange
-from core.gap.detection import missing_sequence_numbers
 from core.gap.index import EarthGapRangeStore
 from core.state.ports import EarthIngestResult, EarthPersistenceRecord, EarthStateRepository
-
-@dataclass
-class _EarthRow:
-    event: TelemetryEvent
-    first_persisted_at_sim: float
 
 class FastEarthStateRepository:
     """Estado lógico de Tierra dentro de una corrida, solo en memoria.
@@ -24,13 +17,9 @@ class FastEarthStateRepository:
     sobreviva a una caída del proceso.
     """
     def __init__(self) -> None:
-        self._by_id: dict[UUID, _EarthRow] = {}
+        self._by_id: dict[UUID, TelemetryEvent] = {}
         self._by_source_sequence: dict[tuple[str, int], UUID] = {}
-        self._sequences_by_source: dict[str, set[int]] = {}
-        self._max_sequence_by_source: dict[str, int] = {}
         self._gap_ranges = EarthGapRangeStore()
-        self._gaps_count = 0
-        self._freshness_samples: list[tuple[float, float]] = []
         self._unique_count = 0
         self._duplicates_received = 0
         self._duplicate_receipts: dict[UUID, int] = {}
@@ -45,11 +34,7 @@ class FastEarthStateRepository:
         """Vacía eventos, secuencias, huecos y recibos duplicados."""
         self._by_id.clear()
         self._by_source_sequence.clear()
-        self._sequences_by_source.clear()
-        self._max_sequence_by_source.clear()
         self._gap_ranges.clear()
-        self._gaps_count = 0
-        self._freshness_samples.clear()
         self._unique_count = 0
         self._duplicates_received = 0
         self._duplicate_receipts.clear()
@@ -93,10 +78,7 @@ class FastEarthStateRepository:
 
     def get_event(self, event_id: UUID) -> TelemetryEvent | None:
         """El mismo objeto de la primera aceptación, o ``None`` si no está."""
-        row = self._by_id.get(event_id)
-        if row is None:
-            return None
-        return row.event
+        return self._by_id.get(event_id)
 
     def event_count(self) -> int:
         """Cantidad de eventos únicos persistidos."""
@@ -116,7 +98,9 @@ class FastEarthStateRepository:
 
     def persistence_samples(self) -> tuple[tuple[float, float], ...]:
         """Pares ``(generated_at_sim, first_persisted_at_sim)``, en orden de alta."""
-        return tuple(self._freshness_samples)
+        return tuple(
+            (record.generated_at_sim, record.first_persisted_at_sim) for record in self._records
+        )
 
     def persistence_records(self) -> tuple[EarthPersistenceRecord, ...]:
         """Filas únicas en el orden en que fueron aceptadas, no por secuencia."""
@@ -143,11 +127,20 @@ class FastEarthStateRepository:
 
         Una fuente sin eventos devuelve una tupla vacía.
         """
-        return tuple(sorted(self._sequences_by_source.get(source_id, ())))
+        return tuple(
+            sorted(
+                sequence
+                for stored_source, sequence in self._by_source_sequence
+                if stored_source == source_id
+            )
+        )
 
     def gaps_for_source(self, source_id: str) -> tuple[int, ...]:
         """Enteros faltantes de la fuente, por debajo de su máxima observada."""
-        return missing_sequence_numbers(self.sequence_numbers(source_id))
+        missing: list[int] = []
+        for item in self._gap_ranges.ranges_for_source(source_id):
+            missing.extend(range(item.start_sequence, item.end_sequence + 1))
+        return tuple(missing)
 
     def gap_ranges_for_source(self, source_id: str) -> tuple[MissingSequenceRange, ...]:
         """Rangos faltantes observados al aceptar cada secuencia nueva."""
@@ -155,11 +148,10 @@ class FastEarthStateRepository:
 
     def gaps_count(self) -> int:
         """Enteros faltantes sumados entre todas las fuentes."""
-        return self._gaps_count
+        return self._gap_ranges.count()
 
     def _commit_unique(self, event: TelemetryEvent, ingested_at_sim: float) -> None:
-        row = _EarthRow(event=event, first_persisted_at_sim=ingested_at_sim)
-        self._by_id[event.event_id] = row
+        self._by_id[event.event_id] = event
         self._by_source_sequence[(event.source_id, event.sequence_number)] = event.event_id
         self._records.append(
             EarthPersistenceRecord(
@@ -170,8 +162,7 @@ class FastEarthStateRepository:
                 first_persisted_at_sim=ingested_at_sim,
             )
         )
-        self._note_unique_sequence(event)
-        self._freshness_samples.append((event.generated_at_sim, ingested_at_sim))
+        self._gap_ranges.observe(event.source_id, event.sequence_number)
         self._unique_count += 1
         if (
             self._max_generated_at_sim is None
@@ -182,24 +173,6 @@ class FastEarthStateRepository:
     def _note_duplicate(self, event_id: UUID) -> None:
         self._duplicates_received += 1
         self._duplicate_receipts[event_id] = self._duplicate_receipts.get(event_id, 0) + 1
-
-    def _note_unique_sequence(self, event: TelemetryEvent) -> None:
-        received = self._sequences_by_source.setdefault(event.source_id, set())
-        sequence = event.sequence_number
-        if sequence in received:
-            return
-        if not received:
-            self._gaps_count += sequence
-            self._max_sequence_by_source[event.source_id] = sequence
-        else:
-            old_max = self._max_sequence_by_source[event.source_id]
-            if sequence > old_max:
-                self._gaps_count += sequence - old_max - 1
-                self._max_sequence_by_source[event.source_id] = sequence
-            else:
-                self._gaps_count = max(0, self._gaps_count - 1)
-        received.add(sequence)
-        self._gap_ranges.observe(event.source_id, sequence)
 
 
 assert isinstance(FastEarthStateRepository(), EarthStateRepository)

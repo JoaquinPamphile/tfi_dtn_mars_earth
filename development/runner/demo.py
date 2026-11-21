@@ -21,7 +21,7 @@ from core.mars.node import DEFAULT_SOURCE_ID
 from core.recovery.policy import RecoveryPolicy
 from core.stopping.policy import StopPolicy
 from core.sync.strategy import STRATEGY_TYPE_INDIVIDUAL
-from runner.config import RunConfig
+from development.runner.config import RunConfig
 
 DEMO_SCENARIO_ID = "demo-local-motor"
 DEMO_RECOVERY_SCENARIO_ID = "demo-local-recuperacion"

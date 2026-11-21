@@ -16,29 +16,18 @@ permanecen. ``KeyboardInterrupt`` y ``SystemExit`` se propagan.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
+from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from core.stopping.policy import StopPolicy
-from core.sync.strategy import STRATEGY_TYPE_FIXED_BATCH, STRATEGY_TYPE_INDIVIDUAL
-from core.trace.level import TraceLevel
-
 from experiments.canonical import spec_payload
-from experiments.controlled import (
-    CONTROLLED_LOCAL_SEED,
-    controlled_local_scenario,
-    controlled_local_workload,
-)
 from experiments.execute import execute_scientific_run
 from experiments.result import ScientificRunResult
 from experiments.spec import ScientificRunSpec
 
 CAMPAIGN_COMPLETED = "COMPLETED"
 CAMPAIGN_COMPLETED_WITH_FAILURES = "COMPLETED_WITH_FAILURES"
-
-CONTROLLED_DEVELOPMENT_CAMPAIGN_ID = "controlled-campaign-v1"
-CONTROLLED_DEVELOPMENT_BATCH_SIZE = 2
 
 _CAMPAIGN_IDENTITY_NAMESPACE = uuid5(
     NAMESPACE_URL, "https://tfi.local/dtn-mars-earth-lab/campaign-identity"
@@ -207,70 +196,80 @@ def execute_campaign(spec: CampaignSpec) -> CampaignResult:
     """
     if not isinstance(spec, CampaignSpec):
         raise TypeError("spec debe ser un CampaignSpec")
-    outcomes: list[CampaignRunResult] = []
-    for index, run in enumerate(spec.runs):
-        try:
-            result = execute_scientific_run(run.spec)
-        except Exception as exc:
-            outcomes.append(
-                CampaignRunResult(
-                    index=index,
-                    label=run.label,
-                    result=None,
-                    error_type=type(exc).__name__,
-                    error_message=str(exc),
-                )
-            )
-        else:
-            outcomes.append(
-                CampaignRunResult(
-                    index=index,
-                    label=run.label,
-                    result=result,
-                )
-            )
+    runs = tuple(_iter_campaign_runs(spec, execute_scientific_run))
     return CampaignResult(
         campaign_id=spec.campaign_id,
         description=spec.description,
         campaign_identity=spec.campaign_identity,
-        runs=tuple(outcomes),
+        runs=runs,
     )
 
 
-def controlled_development_campaign() -> CampaignSpec:
-    """Dos corridas de desarrollo, en orden fijo.
+def _iter_campaign_runs(
+    spec: CampaignSpec,
+    execute_run: Callable[[ScientificRunSpec], ScientificRunResult],
+) -> Iterator[CampaignRunResult]:
+    """Secuencia perezosa común; cada consumidor decide cuánto retener.
 
-    Comparten escenario, workload y semilla. La primera es individual y
-    la segunda un lote fijo de dos eventos. No es evidencia científica.
+    El generador no guarda el resultado entregado. La llamada separada
+    limita su vida al intento y permite liberarlo antes del siguiente.
     """
-    scenario = controlled_local_scenario()
-    workload = controlled_local_workload()
-    comun = {
-        "scenario": scenario,
-        "workload": workload,
-        "seed": CONTROLLED_LOCAL_SEED,
-        "stop_policy": StopPolicy.PROFILE_HORIZON_SETTLED,
-        "trace_level": TraceLevel.SUMMARY,
+    return (
+        _execute_campaign_run(index, run, execute_run)
+        for index, run in enumerate(spec.runs)
+    )
+
+
+def _execute_campaign_run(
+    index: int,
+    run: CampaignRunSpec,
+    execute_run: Callable[[ScientificRunSpec], ScientificRunResult],
+) -> CampaignRunResult:
+    try:
+        result = execute_run(run.spec)
+    except Exception as exc:
+        return CampaignRunResult(
+            index=index, label=run.label, result=None,
+            error_type=type(exc).__name__, error_message=str(exc),
+        )
+    return CampaignRunResult(index=index, label=run.label, result=result)
+
+
+def _expected_result_spec_values(spec: ScientificRunSpec) -> dict[str, Any]:
+    return {
+        "scenario_id": spec.scenario.scenario_id,
+        "workload_id": spec.workload.workload_id,
+        "seed": spec.seed,
+        "dataset_identity": spec.dataset_identity,
+        "experiment_identity": spec.experiment_identity,
+        "execution_identity": spec.execution_identity,
+        "strategy_type": spec.strategy_type,
+        "batch_size_events": spec.batch_size_events,
+        "stop_policy": spec.stop_policy.value,
+        "horizon_seconds": spec.horizon_seconds,
+        "recovery_policy": spec.recovery_policy.value,
+        "offered_load_fraction": spec.workload.offered_load_fraction,
     }
-    individual = ScientificRunSpec(strategy_type=STRATEGY_TYPE_INDIVIDUAL, **comun)
-    lote = ScientificRunSpec(
-        strategy_type=STRATEGY_TYPE_FIXED_BATCH,
-        batch_size_events=CONTROLLED_DEVELOPMENT_BATCH_SIZE,
-        **comun,
-    )
-    return CampaignSpec(
-        campaign_id=CONTROLLED_DEVELOPMENT_CAMPAIGN_ID,
-        description=(
-            "Campaña científica controlada de desarrollo. No es evidencia científica."
-        ),
-        runs=(
-            CampaignRunSpec(label=STRATEGY_TYPE_INDIVIDUAL, spec=individual),
-            CampaignRunSpec(
-                label=f"fixed_batch_{CONTROLLED_DEVELOPMENT_BATCH_SIZE}",
-                spec=lote,
-            ),
-        ),
-    )
+
+
+def present_result_spec_differences(
+    result: ScientificRunResult,
+    spec: ScientificRunSpec,
+) -> tuple[tuple[str, Any, Any], ...]:
+    """Diferencias de un resultado presente contra los campos que puede contrastar.
+
+    Cada elemento es ``(campo, esperado, observado)``. El orden es escenario,
+    workload, semilla, identidades, estrategia, lote, parada, horizonte,
+    recuperación y fracción de carga. No consulta ``engine_status``,
+    métricas, episodios, fallos ni timeouts.
+    """
+    expected = _expected_result_spec_values(spec)
+    differences: list[tuple[str, Any, Any]] = []
+    for field, expected_value in expected.items():
+        observed = getattr(result, field)
+        if observed != expected_value:
+            differences.append((field, expected_value, observed))
+    return tuple(differences)
 
 
 def _canonical_campaign_json(spec: CampaignSpec) -> str:
@@ -279,11 +278,7 @@ def _canonical_campaign_json(spec: CampaignSpec) -> str:
         "campaign_id": spec.campaign_id,
         "description": spec.description,
         "runs": [
-            {"label": run.label, "spec": _spec_payload(run.spec)} for run in spec.runs
+            {"label": run.label, "spec": spec_payload(run.spec)} for run in spec.runs
         ],
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-
-
-def _spec_payload(spec: ScientificRunSpec) -> dict[str, object]:
-    return spec_payload(spec)

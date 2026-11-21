@@ -1,12 +1,12 @@
-"""Texto y JSON del resumen de una corrida. No ejecuta el motor."""
-
 from __future__ import annotations
 
 import json
 
 from core.metrics.run import ScientificRunMetrics
-from runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
-from runner.result import RunResult
+from development.runner.demo import DEMO_NOTICE, DEMO_RECOVERY_NOTICE
+from development.runner.result import RunResult
+
+from cli.utils import cantidad, entero, fila, numero, segundos
 
 
 def format_summary(result: RunResult) -> str:
@@ -15,7 +15,7 @@ def format_summary(result: RunResult) -> str:
     if result.batch_size_events is not None:
         estrategia = f"{estrategia} ({result.batch_size_events})"
     filas: list[tuple[str, str]] = [
-        ("Tiempo simulado", f"{_numero(result.simulation_time)} s"),
+        ("Tiempo simulado", f"{numero(result.simulation_time)} s"),
         ("Estrategia", estrategia),
         ("Eventos generados", str(result.events_generated)),
         ("Persistidos en Tierra", str(result.events_persisted_earth)),
@@ -28,15 +28,15 @@ def format_summary(result: RunResult) -> str:
         ("Entradas de traza", str(len(result.trace_entries))),
         ("Estado", result.engine_status),
     ]
-    if _muestra_recuperacion(result):
+    if muestra_recuperacion(result):
         filas[7:7] = [
-            ("Recuperación", _etiqueta_recuperacion(result.recovery_mode)),
+            ("Recuperación", etiqueta_recuperacion(result.recovery_mode)),
             ("Fallos inyectados", str(result.failures_injected)),
             ("Gaps observados", str(result.gaps_observed)),
             ("Gaps cerrados", str(result.gaps_closed)),
             ("Pedidos de hueco", str(result.gap_requests)),
         ]
-    aviso = DEMO_RECOVERY_NOTICE if _muestra_recuperacion(result) else DEMO_NOTICE
+    aviso = DEMO_RECOVERY_NOTICE if muestra_recuperacion(result) else DEMO_NOTICE
     ancho = max(len(etiqueta) for etiqueta, _valor in filas)
     lineas = ["Simulación completada", aviso, ""]
     for etiqueta, valor in filas:
@@ -50,7 +50,7 @@ def format_trace(result: RunResult) -> str:
     for entry in result.trace_entries:
         entidad = "-" if entry.entity_id is None else entry.entity_id
         lineas.append(
-            f"{_numero(entry.simulation_time)}  "
+            f"{numero(entry.simulation_time)}  "
             f"{entry.sequence_index}  "
             f"{entry.event_type}  "
             f"{entidad}"
@@ -71,60 +71,60 @@ def format_scientific_summary(result: RunResult) -> str:
         "Métricas científicas",
         "Una corrida. No es una campaña.",
         "",
-        _fila("Generados", str(metrics.generated)),
-        _fila("Persistidos en Tierra", str(metrics.earth_persisted_unique)),
-        _fila("Confirmados en Marte", str(metrics.confirmed)),
-        _fila("Backlog", str(metrics.final_backlog)),
-        _fila("No persistidos en Tierra", str(metrics.not_persisted_on_earth)),
-        _fila("Persistidos sin confirmar", str(metrics.persisted_on_earth_but_unconfirmed)),
-        _fila("Completitud en Tierra", _cantidad(metrics.completeness)),
-        _fila("Confirmación en Marte", _cantidad(metrics.confirmation_ratio)),
-        _fila("Convergió", "sí" if metrics.converged else "no"),
-        _fila("Referencia de convergencia", _segundos(metrics.convergence.reference_at_sim)),
-        _fila("Convergencia", _segundos(metrics.convergence.converged_at_sim)),
-        _fila(
+        fila("Generados", str(metrics.generated)),
+        fila("Persistidos en Tierra", str(metrics.earth_persisted_unique)),
+        fila("Confirmados en Marte", str(metrics.confirmed)),
+        fila("Backlog", str(metrics.final_backlog)),
+        fila("No persistidos en Tierra", str(metrics.not_persisted_on_earth)),
+        fila("Persistidos sin confirmar", str(metrics.persisted_on_earth_but_unconfirmed)),
+        fila("Completitud en Tierra", cantidad(metrics.completeness)),
+        fila("Confirmación en Marte", cantidad(metrics.confirmation_ratio)),
+        fila("Convergió", "sí" if metrics.converged else "no"),
+        fila("Referencia de convergencia", segundos(metrics.convergence.reference_at_sim)),
+        fila("Convergencia", segundos(metrics.convergence.converged_at_sim)),
+        fila(
             "Tiempo hasta convergencia",
-            _segundos(metrics.convergence.time_to_convergence_seconds),
+            segundos(metrics.convergence.time_to_convergence_seconds),
         ),
-        _fila("Fin del escenario", _segundos(metrics.scenario_completed_at_sim)),
-        _fila("Edad de la vista", _segundos(metrics.view_age_seconds)),
-        _fila("Muestra de frescura", str(metrics.freshness.count)),
-        _fila("Cobertura de frescura", _cantidad(metrics.freshness_coverage)),
-        _fila("Frescura mínima", _segundos(metrics.freshness.min_seconds)),
-        _fila("Frescura p50", _segundos(metrics.freshness.p50_seconds)),
-        _fila("Frescura p95", _segundos(metrics.freshness.p95_seconds)),
-        _fila("Frescura máxima", _segundos(metrics.freshness.max_seconds)),
-        _fila("Frescura media", _segundos(metrics.freshness.mean_seconds)),
-        _fila("Huecos", str(metrics.gaps_count)),
-        _fila("Duplicados recibidos", str(metrics.duplicates_received)),
-        _fila("Duplicados almacenados", str(metrics.duplicates_stored)),
-        _fila("Intentos con número > 1", str(metrics.retry_attempts_total)),
-        _fila("SyncUnits de telemetría", str(metrics.sync_units_created)),
-        _fila(
+        fila("Fin del escenario", segundos(metrics.scenario_completed_at_sim)),
+        fila("Edad de la vista", segundos(metrics.view_age_seconds)),
+        fila("Muestra de frescura", str(metrics.freshness.count)),
+        fila("Cobertura de frescura", cantidad(metrics.freshness_coverage)),
+        fila("Frescura mínima", segundos(metrics.freshness.min_seconds)),
+        fila("Frescura p50", segundos(metrics.freshness.p50_seconds)),
+        fila("Frescura p95", segundos(metrics.freshness.p95_seconds)),
+        fila("Frescura máxima", segundos(metrics.freshness.max_seconds)),
+        fila("Frescura media", segundos(metrics.freshness.mean_seconds)),
+        fila("Huecos", str(metrics.gaps_count)),
+        fila("Duplicados recibidos", str(metrics.duplicates_received)),
+        fila("Duplicados almacenados", str(metrics.duplicates_stored)),
+        fila("Intentos con número > 1", str(metrics.retry_attempts_total)),
+        fila("SyncUnits de telemetría", str(metrics.sync_units_created)),
+        fila(
             "Bytes de telemetría creados",
             str(metrics.traffic.telemetry_syncunit_bytes_created),
         ),
-        _fila(
+        fila(
             "Bytes iniciales creados",
             str(metrics.traffic.telemetry_initial_syncunit_bytes_created),
         ),
-        _fila(
+        fila(
             "Bytes de reintento creados",
             str(metrics.traffic.telemetry_retry_syncunit_bytes_created),
         ),
-        _fila("Bytes de ACK creados", str(metrics.traffic.ack_syncunit_bytes_created)),
-        _fila(
+        fila("Bytes de ACK creados", str(metrics.traffic.ack_syncunit_bytes_created)),
+        fila(
             "Bytes de transporte",
             str(metrics.traffic.total_transport_application_bytes),
         ),
-        _fila("Bytes de transporte en reintento", str(metrics.traffic.retry_transport_bytes)),
-        _fila("Bytes interrumpidos", str(metrics.traffic.interrupted_transport_bytes)),
-        _fila(
+        fila("Bytes de transporte en reintento", str(metrics.traffic.retry_transport_bytes)),
+        fila("Bytes interrumpidos", str(metrics.traffic.interrupted_transport_bytes)),
+        fila(
             "Utilización ponderada",
-            _cantidad(metrics.contacts.contact_utilization_weighted),
+            cantidad(metrics.contacts.contact_utilization_weighted),
         ),
     ]
-    lineas.extend(_lineas_recuperacion(metrics))
+    lineas.extend(lineas_recuperacion(metrics))
     return "\n".join(lineas)
 
 
@@ -152,7 +152,7 @@ def summary_json(
         "duplicates_received": result.duplicates_received,
         "trace_entries": len(result.trace_entries),
     }
-    if _muestra_recuperacion(result):
+    if muestra_recuperacion(result):
         payload["recovery_mode"] = result.recovery_mode
         payload["failures_injected"] = result.failures_injected
         payload["gaps_observed"] = result.gaps_observed
@@ -173,92 +173,63 @@ def summary_json(
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def _muestra_recuperacion(result: RunResult) -> bool:
+def muestra_recuperacion(result: RunResult) -> bool:
     """La demostración normal no agrega filas de recuperación."""
     return result.recovery_mode != "none" or result.failures_injected > 0
 
 
-def _etiqueta_recuperacion(recovery_mode: str) -> str:
+def etiqueta_recuperacion(recovery_mode: str) -> str:
     if recovery_mode == "none":
         return "ninguna"
     return recovery_mode
 
 
-def _numero(value: float) -> str:
-    texto = f"{value:.6f}".rstrip("0").rstrip(".")
-    if "." not in texto:
-        return f"{texto}.0"
-    return texto
-
-
-def _fila(etiqueta: str, valor: str) -> str:
-    return f"{etiqueta}:  {valor}"
-
-
-def _cantidad(value: float | None) -> str:
-    if value is None:
-        return "no definido"
-    return format(value, ".12g")
-
-
-def _segundos(value: float | None) -> str:
-    if value is None:
-        return "no definido"
-    return f"{format(value, '.12g')} s"
-
-
-def _lineas_recuperacion(metrics: ScientificRunMetrics) -> list[str]:
+def lineas_recuperacion(metrics: ScientificRunMetrics) -> list[str]:
     """Tiempos del episodio. No los reduce a un único tiempo de recuperación."""
     summary = metrics.recovery
     lineas = [
-        _fila("Episodios de recuperación", str(summary.episode_count)),
+        fila("Episodios de recuperación", str(summary.episode_count)),
     ]
     if summary.episode_count == 0:
         return lineas
     lineas.extend(
         [
-            _fila("Pérdida → disparo", _segundos(summary.loss_to_trigger_seconds)),
-            _fila(
+            fila("Pérdida → disparo", segundos(summary.loss_to_trigger_seconds)),
+            fila(
                 "Disparo → persistencia en Tierra",
-                _segundos(summary.trigger_to_earth_recovery_seconds),
+                segundos(summary.trigger_to_earth_recovery_seconds),
             ),
-            _fila(
+            fila(
                 "Pérdida → persistencia en Tierra",
-                _segundos(summary.loss_to_earth_recovery_seconds),
+                segundos(summary.loss_to_earth_recovery_seconds),
             ),
-            _fila(
+            fila(
                 "Persistencia → confirmación en Marte",
-                _segundos(summary.earth_recovery_to_origin_confirmation_seconds),
+                segundos(summary.earth_recovery_to_origin_confirmation_seconds),
             ),
-            _fila(
+            fila(
                 "Pérdida → confirmación en Marte",
-                _segundos(summary.loss_to_origin_confirmation_seconds),
+                segundos(summary.loss_to_origin_confirmation_seconds),
             ),
-            _fila("Hueco observado", _segundos(summary.gap_observed_at_sim)),
-            _fila("Timeouts de ACK del emisor", _entero(summary.sender_ack_timeout_count)),
-            _fila("Retries del emisor", _entero(summary.sender_retry_attempt_count)),
-            _fila(
+            fila("Hueco observado", segundos(summary.gap_observed_at_sim)),
+            fila("Timeouts de ACK del emisor", entero(summary.sender_ack_timeout_count)),
+            fila("Retries del emisor", entero(summary.sender_retry_attempt_count)),
+            fila(
                 "GapRequest lógicos",
-                _entero(summary.receiver_gap_request_logical_count),
+                entero(summary.receiver_gap_request_logical_count),
             ),
-            _fila(
+            fila(
                 "Intentos de transporte del GapRequest",
-                _entero(summary.gap_request_transport_attempt_count),
+                entero(summary.gap_request_transport_attempt_count),
             ),
-            _fila(
+            fila(
                 "Reparaciones del receptor",
-                _entero(summary.receiver_repair_attempt_count),
+                entero(summary.receiver_repair_attempt_count),
             ),
-            _fila(
+            fila(
                 "Bytes de red de la política",
-                _entero(summary.policy_recovery_network_bytes_total),
+                entero(summary.policy_recovery_network_bytes_total),
             ),
         ]
     )
     return lineas
-
-
-def _entero(value: int | None) -> str:
-    if value is None:
-        return "no definido"
-    return str(value)

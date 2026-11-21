@@ -273,6 +273,7 @@ def _contact_dict(contacts: ContactSummaryMetrics) -> dict[str, object]:
         "reverse_contact_utilization_weighted": (
             contacts.reverse_contact_utilization_weighted
         ),
+        "items": [asdict(item) for item in contacts.items],
     }
 
 
