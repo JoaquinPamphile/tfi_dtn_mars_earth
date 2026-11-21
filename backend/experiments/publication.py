@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import json
 import os
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from experiments.canonical import canonical_json_encoder
+
 
 PUBLICATION_NOT_REQUESTED = "not_requested"
 PUBLICATION_PUBLISHED = "published"
 PUBLICATION_FAILED = "failed"
-
-
-def canonical_json_encoder() -> json.JSONEncoder:
-    """Opciones únicas para los escritores canónicos materializado e incremental."""
-    return json.JSONEncoder(sort_keys=True, indent=2, ensure_ascii=True, allow_nan=False)
 
 
 def write_exclusive_canonical_json(path: Path, serialized: Any) -> Path:

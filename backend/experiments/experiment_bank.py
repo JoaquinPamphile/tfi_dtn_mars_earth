@@ -89,6 +89,30 @@ E3_BANK_LOSS_MAX_OCCURRENCES = 1
 class _BankInputModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    @field_validator("workload_id", "event_type", "flow", check_fields=False)
+    @classmethod
+    def identity_labels_follow_workload(cls, value: str) -> str:
+        """Un único contrato de identidad; no recorta el texto."""
+        return Workload.must_not_be_blank(value)
+
+    @field_validator(
+        "event_count", "event_interval_seconds", "sender_ack_timeout_seconds",
+        "batch_sizes", "start_time_sim", "individual_syncunit_bytes",
+        "generation_duration_seconds", "offered_load_fractions",
+        "batch_size_events", "capacity_interval_end_sim",
+        "gap_request_timeout_seconds", "loss_sequence_number",
+        mode="before", check_fields=False,
+    )
+    @classmethod
+    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("los campos numéricos no admiten booleanos")
+        if isinstance(value, (list, tuple)) and any(isinstance(item, bool) for item in value):
+            for collection in ("batch_sizes", "offered_load_fractions"):
+                if collection in cls.model_fields:
+                    raise ValueError(f"{collection} no admite booleanos")
+        return value
+
 class ExperimentBankScenario(_BankInputModel):
     id: str
     horizon_seconds: float = Field(gt=0, allow_inf_nan=False, strict=True)
@@ -134,28 +158,7 @@ class ExperimentBankE1(_BankInputModel):
     event_type: str = Field()
     flow: str = Field()
 
-    @field_validator("workload_id", "event_type", "flow")
-    @classmethod
-    def identity_labels_follow_workload(cls, value: str) -> str:
-        """Rechaza vacío, como Workload, y devuelve el texto sin recortarlo."""
-        return Workload.must_not_be_blank(value)
 
-    @field_validator(
-        "event_count",
-        "event_interval_seconds",
-        "sender_ack_timeout_seconds",
-        "batch_sizes",
-        "start_time_sim",
-        "individual_syncunit_bytes",
-        mode="before",
-    )
-    @classmethod
-    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("los campos numéricos no admiten booleanos")
-        if isinstance(value, (list, tuple)) and any(isinstance(item, bool) for item in value):
-            raise ValueError("batch_sizes no admite booleanos")
-        return value
 
     @field_validator("batch_sizes")
     @classmethod
@@ -218,29 +221,7 @@ class ExperimentBankE2(_BankInputModel):
     event_type: str = Field()
     flow: str = Field()
 
-    @field_validator("workload_id", "event_type", "flow")
-    @classmethod
-    def identity_labels_follow_workload(cls, value: str) -> str:
-        """Rechaza vacío, como Workload, y devuelve el texto sin recortarlo."""
-        return Workload.must_not_be_blank(value)
 
-    @field_validator(
-        "generation_duration_seconds",
-        "offered_load_fractions",
-        "sender_ack_timeout_seconds",
-        "start_time_sim",
-        "individual_syncunit_bytes",
-        "batch_size_events",
-        "capacity_interval_end_sim",
-        mode="before",
-    )
-    @classmethod
-    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("los campos numéricos no admiten booleanos")
-        if isinstance(value, (list, tuple)) and any(isinstance(item, bool) for item in value):
-            raise ValueError("offered_load_fractions no admite booleanos")
-        return value
 
     @field_validator("offered_load_fractions", mode="before")
     @classmethod
@@ -305,27 +286,7 @@ class ExperimentBankE3V2(_BankInputModel):
     event_type: str = Field()
     flow: str = Field()
 
-    @field_validator("workload_id", "event_type", "flow")
-    @classmethod
-    def identity_labels_follow_workload(cls, value: str) -> str:
-        """Rechaza vacío, como Workload, y devuelve el texto sin recortarlo."""
-        return Workload.must_not_be_blank(value)
 
-    @field_validator(
-        "event_count",
-        "event_interval_seconds",
-        "sender_ack_timeout_seconds",
-        "gap_request_timeout_seconds",
-        "loss_sequence_number",
-        "start_time_sim",
-        "individual_syncunit_bytes",
-        mode="before",
-    )
-    @classmethod
-    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("los campos numéricos no admiten booleanos")
-        return value
 
     @model_validator(mode="after")
     def loss_sequence_stays_internal(self) -> Self:
@@ -369,26 +330,7 @@ class ExperimentBankE3SensitivityV2(_BankInputModel):
     event_type: str = Field()
     flow: str = Field()
 
-    @field_validator("workload_id", "event_type", "flow")
-    @classmethod
-    def identity_labels_follow_workload(cls, value: str) -> str:
-        """Rechaza vacío, como Workload, y devuelve el texto sin recortarlo."""
-        return Workload.must_not_be_blank(value)
 
-    @field_validator(
-        "event_count",
-        "event_interval_seconds",
-        "sender_ack_timeout_seconds",
-        "gap_request_timeout_seconds",
-        "start_time_sim",
-        "individual_syncunit_bytes",
-        mode="before",
-    )
-    @classmethod
-    def numeric_fields_must_not_be_boolean(cls, value: Any) -> Any:
-        if isinstance(value, bool):
-            raise ValueError("los campos numéricos no admiten booleanos")
-        return value
 
     @field_validator("loss_sequence_numbers", mode="before")
     @classmethod
@@ -480,17 +422,17 @@ class ResolvedE1Campaign:
     campaign: CampaignSpec
 
 
-def _finite_workload_from_interval(
-    *,
-    event_interval_seconds: float,
-    workload_id: str,
-    event_type: str,
-    flow: str,
-    start_time_sim: float,
-    event_count: int,
-    individual_syncunit_bytes: int,
-) -> Workload:
-    """Construye la carga finita común a E1, E3 y su sensibilidad."""
+def _scenario_from_bank(document: ExperimentBankDocument, definition: ContactPlanDefinition) -> Scenario:
+    config = document.scenario
+    return scenario_from_contact_plan_definition(
+        definition, scenario_id=config.id, horizon_seconds=config.horizon_seconds,
+        description=config.description, notes=config.notes,
+    )
+
+
+def _finite_workload_from_interval(config: ExperimentBankE1 | ExperimentBankE3V2 | ExperimentBankE3SensitivityV2) -> Workload:
+    """Carga finita común; conserva exactamente 1 / intervalo y sus errores."""
+    event_interval_seconds = config.event_interval_seconds
     rate_events_per_second = 1.0 / event_interval_seconds
     if not isfinite(rate_events_per_second) or rate_events_per_second <= 0:
         raise ValueError(
@@ -499,15 +441,11 @@ def _finite_workload_from_interval(
             f"rate_events_per_second={rate_events_per_second}"
         )
     return Workload(
-        workload_id=workload_id,
-        event_type=event_type,
-        flow=flow,
-        priority=TelemetryPriority.NORMAL,
-        start_time_sim=start_time_sim,
-        duration_seconds=None,
-        max_events=event_count,
+        workload_id=config.workload_id, event_type=config.event_type, flow=config.flow,
+        priority=TelemetryPriority.NORMAL, start_time_sim=config.start_time_sim,
+        duration_seconds=None, max_events=config.event_count,
         rate_events_per_second=rate_events_per_second,
-        canonical_individual_syncunit_bytes=individual_syncunit_bytes,
+        canonical_individual_syncunit_bytes=config.individual_syncunit_bytes,
         offered_load_fraction=None,
     )
 
@@ -533,23 +471,9 @@ def resolve_e1_campaign(
     if e1_config is None:
         raise ValueError("el documento no selecciona experiments.e1")
     scenario_config = bank_document.scenario
-    scenario = scenario_from_contact_plan_definition(
-        contact_plan_definition,
-        scenario_id=scenario_config.id,
-        horizon_seconds=scenario_config.horizon_seconds,
-        description=scenario_config.description,
-        notes=scenario_config.notes,
-    )
+    scenario = _scenario_from_bank(bank_document, contact_plan_definition)
 
-    workload = _finite_workload_from_interval(
-        event_interval_seconds=e1_config.event_interval_seconds,
-        workload_id=e1_config.workload_id,
-        event_type=e1_config.event_type,
-        flow=e1_config.flow,
-        start_time_sim=e1_config.start_time_sim,
-        event_count=e1_config.event_count,
-        individual_syncunit_bytes=e1_config.individual_syncunit_bytes,
-    )
+    workload = _finite_workload_from_interval(e1_config)
     retry_policy = RetryPolicy(
         ack_timeout_seconds=e1_config.sender_ack_timeout_seconds
     )
@@ -643,13 +567,7 @@ def resolve_e2_campaign(
     if e2_config is None:
         raise ValueError("el documento no selecciona experiments.e2")
     scenario_config = bank_document.scenario
-    scenario = scenario_from_contact_plan_definition(
-        contact_plan_definition,
-        scenario_id=scenario_config.id,
-        horizon_seconds=scenario_config.horizon_seconds,
-        description=scenario_config.description,
-        notes=scenario_config.notes,
-    )
+    scenario = _scenario_from_bank(bank_document, contact_plan_definition)
     interval_start, interval_end = _e2_capacity_interval(
         e2_config,
         horizon_seconds=scenario_config.horizon_seconds,
@@ -683,25 +601,14 @@ def resolve_e2_campaign(
             capacity_bytes=capacity.serialized_capacity_bytes,
         )
         pair_parameters = {**shared_run_parameters, "workload": workload}
-        runs.append(
-            CampaignRunSpec(
-                label=f"load_{load_index}_{STRATEGY_TYPE_INDIVIDUAL}",
-                spec=ScientificRunSpec(
-                    strategy_type=STRATEGY_TYPE_INDIVIDUAL,
-                    **pair_parameters,
-                ),
-            )
-        )
-        runs.append(
-            CampaignRunSpec(
-                label=f"load_{load_index}_{STRATEGY_TYPE_FIXED_BATCH}",
-                spec=ScientificRunSpec(
-                    strategy_type=STRATEGY_TYPE_FIXED_BATCH,
-                    batch_size_events=e2_config.batch_size_events,
-                    **pair_parameters,
-                ),
-            )
-        )
+        for strategy, batch_size in (
+            (STRATEGY_TYPE_INDIVIDUAL, None),
+            (STRATEGY_TYPE_FIXED_BATCH, e2_config.batch_size_events),
+        ):
+            runs.append(CampaignRunSpec(
+                label=f"load_{load_index}_{strategy}",
+                spec=ScientificRunSpec(strategy_type=strategy, batch_size_events=batch_size, **pair_parameters),
+            ))
     campaign = CampaignSpec(
         campaign_id=E2_BANK_CAMPAIGN_ID,
         description=E2_BANK_CAMPAIGN_DESCRIPTION,
@@ -875,23 +782,9 @@ def resolve_e3_campaign(
     if e3_config is None:
         raise ValueError("el documento no selecciona experiments.e3")
     scenario_config = bank_document.scenario
-    scenario = scenario_from_contact_plan_definition(
-        contact_plan_definition,
-        scenario_id=scenario_config.id,
-        horizon_seconds=scenario_config.horizon_seconds,
-        description=scenario_config.description,
-        notes=scenario_config.notes,
-    )
+    scenario = _scenario_from_bank(bank_document, contact_plan_definition)
 
-    workload = _finite_workload_from_interval(
-        event_interval_seconds=e3_config.event_interval_seconds,
-        workload_id=e3_config.workload_id,
-        event_type=e3_config.event_type,
-        flow=e3_config.flow,
-        start_time_sim=e3_config.start_time_sim,
-        event_count=e3_config.event_count,
-        individual_syncunit_bytes=e3_config.individual_syncunit_bytes,
-    )
+    workload = _finite_workload_from_interval(e3_config)
     loss = _e3_silent_loss_plan(
         source_id=workload.source_id,
         sequence_number=e3_config.loss_sequence_number,
@@ -976,22 +869,8 @@ def resolve_e3_sensitivity_campaign(
     if config is None:
         raise ValueError("el documento no selecciona experiments.e3_sensitivity")
     scenario_config = bank_document.scenario
-    scenario = scenario_from_contact_plan_definition(
-        contact_plan_definition,
-        scenario_id=scenario_config.id,
-        horizon_seconds=scenario_config.horizon_seconds,
-        description=scenario_config.description,
-        notes=scenario_config.notes,
-    )
-    workload = _finite_workload_from_interval(
-        event_interval_seconds=config.event_interval_seconds,
-        workload_id=config.workload_id,
-        event_type=config.event_type,
-        flow=config.flow,
-        start_time_sim=config.start_time_sim,
-        event_count=config.event_count,
-        individual_syncunit_bytes=config.individual_syncunit_bytes,
-    )
+    scenario = _scenario_from_bank(bank_document, contact_plan_definition)
+    workload = _finite_workload_from_interval(config)
     sender, receiver = _e3_policy_specs(
         scenario=scenario, workload=workload, seed=bank_document.seed, config=config,
     )
@@ -1001,18 +880,11 @@ def resolve_e3_sensitivity_campaign(
             source_id=workload.source_id,
             sequence_number=sequence,
         )
-        runs.append(
-            CampaignRunSpec(
-                label=f"{sequence}-{RecoveryPolicy.SENDER_DRIVEN.value}",
-                spec=replace(sender, failure_plan=loss),
-            )
-        )
-        runs.append(
-            CampaignRunSpec(
-                label=f"{sequence}-{RecoveryPolicy.RECEIVER_DRIVEN.value}",
-                spec=replace(receiver, failure_plan=loss),
-            )
-        )
+        for base in (sender, receiver):
+            runs.append(CampaignRunSpec(
+                label=f"{sequence}-{base.recovery_policy.value}",
+                spec=replace(base, failure_plan=loss),
+            ))
     _require_e3_last_event_inside_horizon(
         event_count=config.event_count,
         event_interval_seconds=config.event_interval_seconds,
@@ -1165,47 +1037,13 @@ def resolve_experiment_bank(
     Sólo incluye bloques presentes. El orden es fijo y no depende del orden
     textual de las claves JSON.
     """
-    selected = document.experiments
-    entries: list[tuple[str, ResolvedCampaign]] = []
-    if selected.e1 is not None:
-        entries.append(
-            (
-                "e1",
-                resolve_e1_campaign(
-                    document,
-                    contact_plan_definition,
-                ),
-            )
-        )
-    if selected.e2 is not None:
-        entries.append(
-            (
-                "e2",
-                resolve_e2_campaign(
-                    document,
-                    contact_plan_definition,
-                ),
-            )
-        )
-    if selected.e3 is not None:
-        entries.append(
-            (
-                "e3",
-                resolve_e3_campaign(
-                    document,
-                    contact_plan_definition,
-                ),
-            )
-        )
-    if selected.e3_sensitivity is not None:
-        entries.append(
-            (
-                "e3_sensitivity",
-                resolve_e3_sensitivity_campaign(
-                    document,
-                    contact_plan_definition,
-                ),
-            )
-        )
+    entries = []
+    for family, resolver in (
+        ("e1", resolve_e1_campaign),
+        ("e2", resolve_e2_campaign),
+        ("e3", resolve_e3_campaign),
+        ("e3_sensitivity", resolve_e3_sensitivity_campaign),
+    ):
+        if getattr(document.experiments, family) is not None:
+            entries.append((family, resolver(document, contact_plan_definition)))
     return ResolvedExperimentBank(document=document, entries=tuple(entries))
-

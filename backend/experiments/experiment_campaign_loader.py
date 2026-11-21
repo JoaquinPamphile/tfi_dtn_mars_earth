@@ -19,21 +19,17 @@ def load_declared_configuration(
 ) -> ResolvedExperimentBank:
     """Valida V2 antes de abrir su plan; lee y hashea los mismos bytes una vez."""
     config_file = Path(config_path)
-    if input_sources is None:
-        bank = bank_from_text(read_utf8(config_file, "la configuración"), config_file)
-    else:
+    if input_sources is not None:
         input_sources.clear()
-        configuration_source: dict[str, str] = {}
-        bank = bank_from_text(
-            read_utf8(config_file, "la configuración", source=configuration_source), config_file,
-        )
+    configuration_source = {} if input_sources is not None else None
+    bank = bank_from_text(
+        read_utf8(config_file, "la configuración", source=configuration_source), config_file,
+    )
     plan_file = resolve_declared_path(config_file, bank.scenario.contact_plan_file)
-    if input_sources is None:
-        plan = read_contact_plan(plan_file)
-    else:
-        source: dict[str, str] = {}
-        plan = read_contact_plan(plan_file, source=source)
-        input_sources["contact_plan"] = source
+    plan_source = {} if input_sources is not None else None
+    plan = read_contact_plan(plan_file, source=plan_source)
+    if input_sources is not None:
+        input_sources["contact_plan"] = plan_source
     resolved = resolve_experiment_bank(bank, plan)
     if input_sources is not None:
         input_sources["configuration"] = configuration_source
@@ -67,8 +63,7 @@ def bank_from_text(text: str, config_file: Path) -> ExperimentBankDocument:
 def read_contact_plan(
     plan_file: Path, *, source: dict[str, str] | None = None,
 ) -> ContactPlanDefinition:
-    text = (read_utf8(plan_file, "el ContactPlan") if source is None
-            else read_utf8(plan_file, "el ContactPlan", source=source))
+    text = read_utf8(plan_file, "el ContactPlan", source=source)
     try:
         return ContactPlanDefinition.model_validate_json(text)
     except ValidationError as error:

@@ -382,7 +382,7 @@ class SimulationEngine:
             if peek.time <= horizon_seconds:
                 self.step()
                 continue
-            if _is_settling(peek):
+            if peek.event_type in _SETTLING_TYPES:
                 self.step()
                 continue
             self.skip_next()
@@ -451,5 +451,3 @@ class SimulationEngine:
                 f"la simulación no puede aceptar trabajo en estado {self._status}"
             )
 
-def _is_settling(action: ScheduledAction) -> bool:
-    return action.event_type in _SETTLING_TYPES

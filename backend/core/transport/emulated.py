@@ -532,14 +532,7 @@ class EmulatedTransport:
                 sync_unit_id=unit.sync_unit_id,
             )
         )
-        delivery = TransportDelivery(
-            time_sim=self._engine.now,
-            event_type=action.event_type,
-            sync_unit=unit,
-            contact_id=str(action.payload["contact_id"]),
-        )
-        for handler in list(self._delivery_handlers):
-            handler(delivery)
+        self._deliver(unit, action)
 
     def _on_arrival(self, action: ScheduledAction) -> None:
         unit_id = str(action.entity_id)
@@ -555,6 +548,9 @@ class EmulatedTransport:
                 payload=dict(action.payload.get("payload") or {}),
                 submission_order=int(action.payload.get("submission_order") or 0),
             )
+        self._deliver(unit, action)
+
+    def _deliver(self, unit: SyncUnit, action: ScheduledAction) -> None:
         delivery = TransportDelivery(
             time_sim=self._engine.now,
             event_type=action.event_type,

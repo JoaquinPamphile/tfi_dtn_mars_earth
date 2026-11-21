@@ -145,7 +145,6 @@ class TelemetrySyncSession:
         self._timeout_scheduled: dict[str, int] = {}
         self._retry_eval_pending: set[str] = set()
         self._sync_units_created = 0
-        self._telemetry_syncunit_bytes_created = 0
         self._telemetry_initial_syncunit_bytes_created = 0
         self._telemetry_retry_syncunit_bytes_created = 0
         self._ack_syncunit_bytes_created = 0
@@ -177,7 +176,10 @@ class TelemetrySyncSession:
     def created_sync_byte_counters(self) -> CreatedSyncByteCounters:
         """Contadores de unidades ya creadas. No lee la traza."""
         return CreatedSyncByteCounters(
-            telemetry_syncunit_bytes_created=self._telemetry_syncunit_bytes_created,
+            telemetry_syncunit_bytes_created=(
+                self._telemetry_initial_syncunit_bytes_created
+                + self._telemetry_retry_syncunit_bytes_created
+            ),
             telemetry_initial_syncunit_bytes_created=(
                 self._telemetry_initial_syncunit_bytes_created
             ),
@@ -195,7 +197,6 @@ class TelemetrySyncSession:
     def _note_telemetry_unit_created(self, payload_size_bytes: int, attempt_number: int) -> None:
         """Suma la unidad de telemetría recién creada. No cuenta hops ni ACK."""
         self._sync_units_created += 1
-        self._telemetry_syncunit_bytes_created += payload_size_bytes
         if attempt_number > 1:
             self._telemetry_retry_syncunit_bytes_created += payload_size_bytes
         else:
@@ -229,7 +230,7 @@ class TelemetrySyncSession:
         if not unique:
             return ()
         repairable: list[TelemetryEvent] = []
-        parents: list[SyncAttempt | None] = []
+        parent_by_event: dict[UUID, SyncAttempt | None] = {}
         for event in unique:
             sync = self.mars.sync_state(event.event_id)
             if sync is not None and sync.state is TelemetryEventState.CONFIRMED:
@@ -240,14 +241,10 @@ class TelemetrySyncSession:
             if not may_repair:
                 continue
             repairable.append(event)
-            parents.append(parent)
+            parent_by_event[event.event_id] = parent
         if not repairable:
             return ()
         plans = IndividualSyncStrategy().plan(repairable)
-        parent_by_event = {
-            event.event_id: parent
-            for event, parent in zip(repairable, parents, strict=True)
-        }
         aligned_parents = [parent_by_event.get(plan.event_ids[0]) for plan in plans]
         submitted = self._execute_plans(
             plans,
@@ -437,7 +434,9 @@ class TelemetrySyncSession:
         if self._mars_relay_available() is not None:
             self._plan_and_submit()
             return
-        next_contact = self._next_mars_relay_contact(now)
+        next_contact = self.contact_plan.next_contact_after(
+            now, LogicalNode.MARS, LogicalNode.RELAY
+        )
         if next_contact is None:
             self.engine.emit_trace(
                 SimulationEventType.RETRY_SCHEDULED.value,
@@ -584,16 +583,8 @@ class TelemetrySyncSession:
             }
             if attempt is not None:
                 confirmed_details["attempt_id"] = attempt.attempt_id
-            self.engine.emit_trace(
-                SimulationEventType.MARS_EVENT_CONFIRMED.value,
-                confirmed_details,
-                entity_id=str(event_id),
-            )
-            self.engine.emit_trace(
-                SimulationEventType.CONFIRMED.value,
-                confirmed_details,
-                entity_id=str(event_id),
-            )
+            for event_type in (SimulationEventType.MARS_EVENT_CONFIRMED, SimulationEventType.CONFIRMED):
+                self.engine.emit_trace(event_type.value, confirmed_details, entity_id=str(event_id))
 
     def _execute_plans(
         self,
@@ -831,11 +822,6 @@ class TelemetrySyncSession:
                 return True
         return False
 
-    def _next_mars_relay_contact(self, time_sim: float) -> Contact | None:
-        """Próximo contacto Marte → relé cuyo inicio es posterior a ``time_sim``."""
-        return self.contact_plan.next_contact_after(
-            time_sim, LogicalNode.MARS, LogicalNode.RELAY
-        )
 
     def _save_attempt_status(self, attempt: SyncAttempt, status: SyncAttemptStatus) -> None:
         if attempt.status is status:
@@ -846,7 +832,14 @@ class TelemetrySyncSession:
         )
 
     def _attempt_from_unit(self, unit: SyncUnit) -> SyncAttempt | None:
-        return self._attempt_from_event_ids(unit.event_ids, attempt_id_from_unit(unit))
+        attempt_id = attempt_id_from_unit(unit)
+        if attempt_id is not None:
+            found = self.mars.get_sync_attempt(attempt_id)
+            if found is not None:
+                return found
+        if not unit.event_ids:
+            return None
+        return self.mars.latest_sync_attempt_for_event(unit.event_ids[0])
 
     def _attempt_from_details(self, details: dict[str, object]) -> SyncAttempt | None:
         raw_attempt = details.get("attempt_id")
@@ -864,16 +857,6 @@ class TelemetrySyncSession:
             return None
         return self.mars.latest_sync_attempt_for_event(UUID(str(raw_ids[0])))
 
-    def _attempt_from_event_ids(
-        self, event_ids: tuple[UUID, ...], attempt_id: str | None
-    ) -> SyncAttempt | None:
-        if attempt_id is not None:
-            found = self.mars.get_sync_attempt(attempt_id)
-            if found is not None:
-                return found
-        if not event_ids:
-            return None
-        return self.mars.latest_sync_attempt_for_event(event_ids[0])
 
     def _emit_attempt_trace(
         self,
@@ -914,16 +897,8 @@ class TelemetrySyncSession:
             duplicate_details = _earth_event_details(
                 event_id, unit, arrived_at_sim, attempt_id
             )
-            self.engine.emit_trace(
-                SimulationEventType.EARTH_DUPLICATE_RECEIVED.value,
-                duplicate_details,
-                entity_id=str(event_id),
-            )
-            self.engine.emit_trace(
-                SimulationEventType.DUPLICATE_RECEIVED.value,
-                duplicate_details,
-                entity_id=str(event_id),
-            )
+            for event_type in (SimulationEventType.EARTH_DUPLICATE_RECEIVED, SimulationEventType.DUPLICATE_RECEIVED):
+                self.engine.emit_trace(event_type.value, duplicate_details, entity_id=str(event_id))
         ack_details: dict[str, object] = {
             "ack_id": ack.ack_id,
             "event_ids": [str(event_id) for event_id in ack.event_ids],
@@ -938,16 +913,8 @@ class TelemetrySyncSession:
         }
         if attempt_id is not None:
             ack_details["attempt_id"] = attempt_id
-        self.engine.emit_trace(
-            SimulationEventType.APPLICATION_ACK_GENERATED.value,
-            ack_details,
-            entity_id=ack.ack_id,
-        )
-        self.engine.emit_trace(
-            SimulationEventType.ACK_GENERATED.value,
-            ack_details,
-            entity_id=ack.ack_id,
-        )
+        for event_type in (SimulationEventType.APPLICATION_ACK_GENERATED, SimulationEventType.ACK_GENERATED):
+            self.engine.emit_trace(event_type.value, ack_details, entity_id=ack.ack_id)
 
 
 def _parse_event_ids(raw: object) -> list[UUID]:

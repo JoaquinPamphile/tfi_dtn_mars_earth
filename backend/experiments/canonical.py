@@ -77,15 +77,11 @@ def canonical_json(value: Any) -> str:
     )
 
 
+def canonical_json_encoder() -> json.JSONEncoder:
+    """Política única del JSON documental: texto, monolíticos e índices."""
+    return json.JSONEncoder(sort_keys=True, indent=2, ensure_ascii=True, allow_nan=False)
+
+
 def canonical_json_text(value: Any) -> str:
     """El mismo objeto, con sangría fija y salto de línea final."""
-    return (
-        json.dumps(
-            jsonable(value),
-            sort_keys=True,
-            indent=2,
-            ensure_ascii=True,
-            allow_nan=False,
-        )
-        + "\n"
-    )
+    return canonical_json_encoder().encode(jsonable(value)) + "\n"
